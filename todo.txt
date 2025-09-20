@@ -1,0 +1,70 @@
+# Offene Aufgaben
+
+Eingabe/UX
+- oben eine graue box für top bar
+
+Betrieb/Technik
+- Backup-System (mach ein backup der datenbank damit nicht alles plötzlich weg ist)
+
+Admin/Regeln
+- Admin-Ansicht (Ausbau)
+- Schwierigkeitsgrad für jeden Schüler berechnen (alterbasiert)
+- Einstellungen (Settings)
+- Ausgabe-/Export-Ansicht (PDF-Urkunden?)
+
+Event/Monitoring
+- Ansicht für Fortschritt aller Riegen
+- Live-Bestenliste pro Disziplin
+
+OFFENE FRAGEN (mit Galster klären)
+- Wie werden Riegen eingeteilt? (aktuell: Geschlecht-basiert)
+- Soll es Live-Bestenliste geben?
+- Welche Ausgabeformate für Ergebnisse?
+- Urkunden-System gewünscht?
+
+
+
+## ✅ ERLEDIGT
+### Backend & Datenbank
+- ✅ Datenbankstruktur erstellt (Schüler, Disziplinen, Ergebnisse)
+- ✅ CSV-Import für Schülerdaten funktioniert
+- ✅ Riegenführer-Zuordnung automatisiert (M→HeinzPohl, W→MayaKopf)
+- ✅ Backend-Klasse mit allen CRUD-Operationen
+- ✅ Redundante Dateien entfernt (get_*.py Dateien)
+
+### Frontend & UI
+- ✅ Schüler übrig aufteilen in die 3 runden
+- ✅ Namen mit gelb und grün markieren um Fortschritt zu zeigen
+- ✅ Dropdown für die 3 Durchgänge
+- ✅ Rot markieren für abwesend
+- ✅ 3 Haken/Kreuze hinter den Namen für fertig
+- ✅ Session-Synchronisation zwischen Frontend und Backend
+- ✅ **"Schüler übrig" Anzeige entfernt**: Cleaner UI ohne verwirrende Übrig-Zählung
+
+
+## ✅ ABGESCHLOSSEN
+### Kritische Bugs - ALLE BEHOBEN
+- ✅ **Ergebnisse in Datenbank speichern**: Session-Daten werden jetzt korrekt in DB persistiert
+- ✅ **Abwesenheit in DB speichern**: "Als abwesend markieren" funktioniert mit Datenbank
+- ✅ **Datenbankupdate-Methoden implementiert**: Backend hat update_student_result(), update_student_round_status(), mark_student_absent()
+- ✅ **SchuelerID-System implementiert**: Eindeutige Identifikation über SchuelerID statt Namen
+- ✅ **Automatische Schülerauswahl**: Nach "Get" wird automatisch der erste Schüler ausgewählt
+- ✅ **Ergebnisanzeige**: Gespeicherte Ergebnisse werden rechts neben Textinput angezeigt (nur Zahl oder "NA")
+- ✅ **Fallback-Logik**: System funktioniert auch wenn Schüler nicht in Session-Liste steht
+
+
+
+
+Fragen?
+was wen 11:99 also falsche zeit eingegeben wird?
+was wen ich eine riege lade die schon fertig ist oder angefangen hat?
+Soll jedes ipad ein eigenes passwort haben das am event tag übergeben wird um weitere sichert zu geben?
+laufen braucht nur ein ergebniss!
+bei dopplung wird immer die jüngste änderung genommen!
+
+
+
+
+aktuell werden nur die ergebnisse in der datenbank gespeichert aber es braucht sicherheit das nicht irgendwer daten verändert und man auch sieht woher die daten kommen und im nachhinein bestimmen zu können wer was gemacht hat und welche daten richtig sind
+
+ufztd

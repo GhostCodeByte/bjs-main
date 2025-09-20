@@ -1,0 +1,1234 @@
+<!doctype html>
+<html lang="de">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Flask Layout</title>
+
+        <!-- Externe CSS-Dateien für Styling -->
+        <link
+            rel="stylesheet"
+            href="{{ url_for('static', filename='styles.css') }}"
+        />
+        <link
+            href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+            rel="stylesheet"
+        />
+    </head>
+    <body>
+        {% if not session.get('logged_in') %}
+        <script>
+            window.location.href = "/login";
+        </script>
+        {% endif %}
+        <div class="container">
+            <!-- Oberer Navigationsbereich mit Buttons und Dropdowns -->
+            <div class="d-flex justify-content-between mt-3">
+                <!-- Button für Eingabe-Sektion -->
+
+                <!-- Mittlerer Dropdown-Bereich -->
+                <div>
+                    <select
+                        id="riegenfuehrer"
+                        class="form-select d-inline w-auto"
+                    >
+                        <option value="" selected disabled>Riegenführer</option>
+                        {% for riegen in riegenfuehrer %}
+                        <option>{{ riegen }}</option>
+                        {% endfor %}
+                    </select>
+                    <button class="btn btn-info ms-2" onclick="getRiege()">
+                        Get
+                    </button>
+                </div>
+
+                <!-- Button für Ausgabe-Sektion -->
+
+                <!-- Riege, Station und Logout rechts -->
+                <div class="d-flex align-items-center gap-2">
+                    <div class="text-muted small ms-2">
+                        Station: <strong>{{ station }}</strong>
+                        <span class="ms-2"
+                            >iPad:
+                            <strong>{{ ipad_stations_nummer }}</strong></span
+                        >
+                    </div>
+                    <button
+                        class="btn btn-danger ms-2"
+                        onclick="window.location.href='/logout'"
+                    >
+                        Logout
+                    </button>
+                </div>
+            </div>
+
+            <!-- Hauptcontainer mit Informations- und Eingabebereichen -->
+            <div class="d-flex mt-4 gap-4">
+                <!-- Linker Informationscontainer -->
+                <div class="box p-3">
+                    <p><strong>Klasse:</strong> <span id="klasse"></span></p>
+                    <p>
+                        <strong>Geschlecht:</strong>
+                        <span id="geschlecht"></span>
+                    </p>
+                    <div class="mt-3">
+                        <p class="mb-1">
+                            <strong>Fortschritt pro Runde:</strong>
+                        </p>
+                        <p class="mb-1">
+                            <span class="badge bg-secondary">Runde 1:</span>
+                            <span id="runde1_fertig">{{ runde1_fertig }}</span
+                            >/<span id="schueler_gesamt_r1"
+                                >{{ schueler_gesamt - schueler_abwesend }}</span
+                            >
+                        </p>
+                        <p class="mb-1">
+                            <span class="badge bg-secondary">Runde 2:</span>
+                            <span id="runde2_fertig">{{ runde2_fertig }}</span
+                            >/<span id="schueler_gesamt_r2"
+                                >{{ schueler_gesamt - schueler_abwesend }}</span
+                            >
+                        </p>
+                        <p class="mb-1">
+                            <span class="badge bg-secondary">Runde 3:</span>
+                            <span id="runde3_fertig">{{ runde3_fertig }}</span
+                            >/<span id="schueler_gesamt_r3"
+                                >{{ schueler_gesamt - schueler_abwesend }}</span
+                            >
+                        </p>
+                    </div>
+                    <div class="mt-3">
+                        <p class="mb-1">
+                            <span class="badge bg-danger">Abwesend:</span>
+                            <span id="schueler_abwesend"
+                                >{{ schueler_abwesend }}</span
+                            >
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Rechter Eingabecontainer -->
+                <div class="box p-3 flex-grow-1">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <p>
+                                <strong>Name:</strong>
+                                <span id="selectedSchueler"></span>
+                            </p>
+                            <p><strong>Schwierigkeitsgrad:</strong></p>
+                        </div>
+
+                        <!-- Dropdown für Schülerselektion -->
+                        <select
+                            id="schuelerDropdown"
+                            class="form-select w-auto"
+                            style="height: 50%"
+                            onchange="updateSelectedSchueler()"
+                        >
+                            <option value="" selected disabled>Schüler</option>
+                        </select>
+                    </div>
+
+                    <!-- Eingabefeld für Ergebnis mit Anzeige des gespeicherten Werts -->
+                    <div class="d-flex align-items-center mt-2 gap-3">
+                        <input
+                            type="text"
+                            id="ergebnis"
+                            class="form-control w-50"
+                            placeholder="mm:ss"
+                            inputmode="numeric"
+                            enterkeyhint="next"
+                            autocomplete="off"
+                            autocorrect="off"
+                            autocapitalize="off"
+                            spellcheck="false"
+                            pattern="[0-9:]*"
+                        />
+                        <div
+                            id="current-result-display"
+                            class="text-muted"
+                            style="min-width: 150px"
+                        >
+                            <!-- Hier wird das bereits gespeicherte Ergebnis angezeigt -->
+                        </div>
+                    </div>
+
+                    <!-- Buttons für Navigation und Aktionen -->
+                    <div class="d-flex justify-content-between mt-4">
+                        <button
+                            class="btn btn-success"
+                            onclick="next_schueler()"
+                        >
+                            Nächster
+                        </button>
+                        <div class="d-flex gap-2">
+                            <button
+                                class="toggle-btn"
+                                onclick="selectButton(this)"
+                            >
+                                Runde 1
+                            </button>
+                            <button
+                                class="toggle-btn"
+                                onclick="selectButton(this)"
+                            >
+                                Runde 2
+                            </button>
+                            <button
+                                class="toggle-btn"
+                                onclick="selectButton(this)"
+                            >
+                                Runde 3
+                            </button>
+                        </div>
+                        <button
+                            class="btn btn-danger"
+                            onclick="mark_abwesend()"
+                        >
+                            Abwesend
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            // Funktion zum Absenden des Ergebnisses und Aktualisieren der Schülerliste
+            function next_schueler() {
+                // Referenzen auf Dropdown und Eingabefelder
+                const schuelerDropdown =
+                    document.getElementById("schuelerDropdown");
+                const selectedSchuelerID = schuelerDropdown.value; // Das ist jetzt die SchuelerID
+                const ergebnis = document.getElementById("ergebnis").value;
+                const selected_round =
+                    document.querySelector(".toggle-btn.active");
+
+                // Debug-Ausgabe: Prüfe, welcher Button aktiv ist
+                console.log(
+                    "Aktiver Button:",
+                    selected_round
+                        ? selected_round.textContent
+                        : "Kein Button aktiv",
+                );
+
+                // Sichere Extraktion des Rundenwertes
+                let selected_round_value = null;
+                if (selected_round) {
+                    const parts = selected_round.textContent.trim().split(" ");
+                    if (parts.length >= 2) {
+                        selected_round_value = parts[1];
+                        console.log("Ausgewählte Runde:", selected_round_value);
+                    }
+                }
+
+                // Wenn keine Runde ausgewählt wurde, Fehler anzeigen
+                if (!selected_round_value) {
+                    alert("Bitte wählen Sie eine Runde aus.");
+                    return;
+                }
+
+                // Schülername aus data-attribute holen
+                const selectedOption =
+                    schuelerDropdown.options[schuelerDropdown.selectedIndex];
+                const selectedStudentName = selectedOption
+                    ? selectedOption.getAttribute("data-schueler-name")
+                    : "";
+
+                // POST-Anfrage zum Senden des Ergebnisses (mit SchuelerID und Name als Fallback)
+                fetch(`/next`, {
+                    method: "POST",
+                    body: new URLSearchParams({
+                        selectedSchueler: selectedSchuelerID, // SchuelerID senden
+                        selectedStudentName: selectedStudentName, // Name als Fallback senden
+                        ergebnis,
+                        selected_round: selected_round_value,
+                    }),
+                    headers: {
+                        "Content-Type": "application/x-www-form-urlencoded",
+                    },
+                })
+                    .then((response) => response.json())
+                    .then((data) => {
+                        // Optional: Popup-Nachricht anzeigen
+                        if (data.show_popup) {
+                            alert(data.message);
+                            return;
+                        }
+
+                        // Aktualisiere die Rundenzähler
+                        document.getElementById("runde1_fertig").innerText =
+                            data.runde1_fertig;
+                        document.getElementById("runde2_fertig").innerText =
+                            data.runde2_fertig;
+                        document.getElementById("runde3_fertig").innerText =
+                            data.runde3_fertig;
+                        document.getElementById("schueler_abwesend").innerText =
+                            data.schueler_abwesend;
+
+                        // Aktualisiere auch die Gesamtzahlen für jede Runde (abzüglich Abwesende)
+                        document.getElementById(
+                            "schueler_gesamt_r1",
+                        ).innerText =
+                            data.schueler_gesamt - data.schueler_abwesend;
+                        document.getElementById(
+                            "schueler_gesamt_r2",
+                        ).innerText =
+                            data.schueler_gesamt - data.schueler_abwesend;
+                        document.getElementById(
+                            "schueler_gesamt_r3",
+                        ).innerText =
+                            data.schueler_gesamt - data.schueler_abwesend;
+
+                        // Eingabefeld leeren
+                        document.getElementById("ergebnis").value = "";
+
+                        // Zum nächsten Schüler wechseln
+                        const currentIndex = schuelerDropdown.selectedIndex;
+
+                        // Aktualisiere die Kreuze in der Option basierend auf der ausgewählten Runde
+                        // Verwende die Rundennummer, die vom Server zurückgegeben wurde
+                        const selected_round_value = data.selected_round;
+                        if (selected_round_value) {
+                            updateStudentRoundStatus(
+                                currentIndex,
+                                selected_round_value,
+                            );
+                        }
+
+                        // Check if we're at the end of the student list
+                        const isLastStudent =
+                            currentIndex >= schuelerDropdown.options.length - 1;
+
+                        // If we're at the last student...
+                        if (isLastStudent) {
+                            // Determine which round was just completed
+                            const currentRoundIndex =
+                                parseInt(selected_round_value) - 1;
+                            let nextRoundIndex = currentRoundIndex + 1;
+
+                            // If we completed the last round, go back to the first round
+                            if (nextRoundIndex > 2) {
+                                nextRoundIndex = 0;
+                            }
+
+                            // Show popup message about reaching end of student list
+                            alert(
+                                "Ende der Schülerliste erreicht! Die Schülerliste wird von vorne begonnen mit der nächsten Runde.",
+                            );
+
+                            // Select first student
+                            schuelerDropdown.selectedIndex = 1; // Index 1 is first student (0 is placeholder)
+
+                            // Select next round
+                            const roundButtons =
+                                document.querySelectorAll(".toggle-btn");
+                            roundButtons.forEach((btn) =>
+                                btn.classList.remove("active"),
+                            );
+                            if (nextRoundIndex < roundButtons.length) {
+                                roundButtons[nextRoundIndex].classList.add(
+                                    "active",
+                                );
+                            }
+                        } else {
+                            // Normal case: find next non-absent student
+                            const nextNonAbsentIndex =
+                                findNextNonAbsentStudent(currentIndex);
+                            schuelerDropdown.selectedIndex = nextNonAbsentIndex;
+                        }
+
+                        updateSelectedSchueler(); // Anzeige des Namens aktualisieren und auto-select next round
+
+                        // Lade das aktuelle Ergebnis für den neuen Schüler/Runde
+                        loadCurrentResult();
+                        //selectFirstButton();
+                    });
+            }
+
+            // Funktion zum Abrufen einer Riege basierend auf Riegenführer und Disziplin
+            function getRiege() {
+                const riegenfuehrer =
+                    document.getElementById("riegenfuehrer").value;
+
+                if (riegenfuehrer) {
+                    fetch(`/get_riege?riegenfuehrer=${riegenfuehrer}`)
+                        .then((response) => response.json())
+                        .then((data) => {
+                            // Klasse und Geschlecht aktualisieren
+                            document.getElementById("klasse").innerText =
+                                data.klassen.join(", ");
+                            document.getElementById("geschlecht").innerText =
+                                data.geschlechter.join(", ");
+
+                            // Schüler-Dropdown aktualisieren
+                            updateSchuelerDropdown(
+                                data.schueler,
+                                data.schueler_daten,
+                            );
+                            document.getElementById("schueler").innerText =
+                                `0/${data.schueler_gesamt - data.schueler_abwesend}`;
+
+                            // Rundenzähler aktualisieren
+                            document.getElementById("runde1_fertig").innerText =
+                                data.runde1_fertig;
+                            document.getElementById("runde2_fertig").innerText =
+                                data.runde2_fertig;
+                            document.getElementById("runde3_fertig").innerText =
+                                data.runde3_fertig;
+                            document.getElementById(
+                                "schueler_gesamt_r1",
+                            ).innerText =
+                                data.schueler_gesamt - data.schueler_abwesend;
+                            document.getElementById(
+                                "schueler_gesamt_r2",
+                            ).innerText =
+                                data.schueler_gesamt - data.schueler_abwesend;
+                            document.getElementById(
+                                "schueler_gesamt_r3",
+                            ).innerText =
+                                data.schueler_gesamt - data.schueler_abwesend;
+                            document.getElementById(
+                                "schueler_abwesend",
+                            ).innerText = data.schueler_abwesend;
+
+                            // Automatisch den ersten Runden-Button auswählen
+                            selectFirstButton();
+
+                            // Automatisch den ersten Schüler auswählen
+                            if (
+                                data.auto_select_first &&
+                                data.schueler &&
+                                data.schueler.length > 0
+                            ) {
+                                const schuelerDropdown =
+                                    document.getElementById("schuelerDropdown");
+                                schuelerDropdown.selectedIndex = 1; // 0 ist Platzhalter
+                                updateSelectedSchueler(); // Name anzeigen und aktuelle Ergebnisse laden
+                                const ergebnisInput =
+                                    document.getElementById("ergebnis");
+                                if (ergebnisInput) {
+                                    ergebnisInput.focus();
+                                    try {
+                                        ergebnisInput.select();
+                                    } catch (e) {}
+                                }
+                            }
+                        });
+                } else {
+                    alert(
+                        "Bitte wählen Sie einen Riegenführer und eine Station aus.",
+                    );
+                }
+            }
+
+            // Funktion zum Aktualisieren des Schüler-Dropdowns
+            function updateSchuelerDropdown(schuelerListe, schuelerDaten) {
+                const schuelerDropdown =
+                    document.getElementById("schuelerDropdown");
+                schuelerDropdown.innerHTML =
+                    '<option value="" selected disabled>Schüler</option>'; // Reset Dropdown
+
+                // Debug: Zeige die Struktur von schuelerDaten
+                console.log("DEBUG schuelerDaten:", schuelerDaten);
+
+                // Schüler zum Dropdown hinzufügen
+                schuelerListe.forEach((schueler, index) => {
+                    const option = document.createElement("option");
+
+                    // Debug: Zeige SchuelerID für jeden Schüler
+                    console.log(
+                        `DEBUG Schüler ${index}: ${schueler}, SchuelerID: ${schuelerDaten[index][5]}`,
+                    );
+
+                    // SchuelerID als Wert verwenden (Index 5 in schuelerDaten!)
+                    option.value = schuelerDaten[index][5]; // SchuelerID
+
+                    // SchuelerID als data-attribute für Debugging speichern
+                    option.setAttribute(
+                        "data-schueler-id",
+                        schuelerDaten[index][5],
+                    );
+                    option.setAttribute("data-schueler-name", schueler);
+
+                    // Fortschritt des Schülers mit Haken/Kreuz anzeigen
+                    // schuelerDaten[index][6] ist für Runde 1 (Runde1_Fertig)
+                    // schuelerDaten[index][7] ist für Runde 2 (Runde2_Fertig)
+                    // schuelerDaten[index][8] ist für Runde 3 (Runde3_Fertig)
+
+                    // Sicherstellen, dass wir gültige Daten haben
+                    // Wenn Schüler abwesend ist (Index 9), aber Ergebnisse hat, zeige Haken für die Ergebnisse
+                    const isAbsent = schuelerDaten[index][9] === true;
+                    const hasResult1 =
+                        schuelerDaten[index][10] &&
+                        schuelerDaten[index][10] !== 0;
+                    const hasResult2 =
+                        schuelerDaten[index][11] &&
+                        schuelerDaten[index][11] !== 0;
+                    const hasResult3 =
+                        schuelerDaten[index][12] &&
+                        schuelerDaten[index][12] !== 0;
+
+                    // Status für jede Runde: Haken wenn Ergebnis vorhanden, sonst Kreuz wenn abwesend, sonst normal
+                    let runde1Status, runde2Status, runde3Status;
+
+                    if (hasResult1) {
+                        runde1Status = "✔️"; // Ergebnis vorhanden
+                    } else if (isAbsent) {
+                        runde1Status = "❌"; // Abwesend
+                    } else {
+                        runde1Status =
+                            schuelerDaten[index][6] === true ? "✔️" : "❌"; // Normal
+                    }
+
+                    if (hasResult2) {
+                        runde2Status = "✔️"; // Ergebnis vorhanden
+                    } else if (isAbsent) {
+                        runde2Status = "❌"; // Abwesend
+                    } else {
+                        runde2Status =
+                            schuelerDaten[index][7] === true ? "✔️" : "❌"; // Normal
+                    }
+
+                    if (hasResult3) {
+                        runde3Status = "✔️"; // Ergebnis vorhanden
+                    } else if (isAbsent) {
+                        runde3Status = "❌"; // Abwesend
+                    } else {
+                        runde3Status =
+                            schuelerDaten[index][8] === true ? "✔️" : "❌"; // Normal
+                    }
+
+                    // Alle drei Rundenstatus zusammenführen
+                    const progress = `${runde1Status} ${runde2Status} ${runde3Status}`;
+
+                    // Namen und Status in der Option anzeigen - mit ❌ Präfix wenn abwesend
+                    if (isAbsent) {
+                        option.text = `❌ ${schueler} ${progress}`;
+                        option.style.color = "red";
+                    } else {
+                        option.text = `${schueler} ${progress}`;
+                    }
+                    schuelerDropdown.appendChild(option);
+                });
+            }
+            function selectButton(clickedButton) {
+                // Entfernt die aktive Klasse von allen Buttons
+                document
+                    .querySelectorAll(".toggle-btn")
+                    .forEach((btn) => btn.classList.remove("active"));
+
+                // Fügt die aktive Klasse zum geklickten Button hinzu
+                clickedButton.classList.add("active");
+
+                // Aktuelles Ergebnis für die neue Runde laden
+                loadCurrentResult();
+            }
+            function selectFirstButton() {
+                // Alle Buttons zurücksetzen
+                document
+                    .querySelectorAll(".toggle-btn")
+                    .forEach((btn) => btn.classList.remove("active"));
+
+                // Ersten Button auswählen und aktiv machen
+                const firstButton = document.querySelector(".toggle-btn");
+                if (firstButton) {
+                    firstButton.classList.add("active");
+                }
+            }
+            // Hilfsfunktion zum Markieren eines Schülers als abwesend (❌ für alle Runden)
+            function updateStudentAbsentStatus(studentIndex) {
+                const schuelerDropdown =
+                    document.getElementById("schuelerDropdown");
+                if (
+                    studentIndex <= 0 ||
+                    studentIndex >= schuelerDropdown.options.length
+                )
+                    return;
+
+                const optionText = schuelerDropdown.options[studentIndex].text;
+                console.log("Markiere als abwesend:", optionText);
+
+                // Entferne bereits vorhandenes ❌ Präfix falls vorhanden
+                let cleanText = optionText;
+                if (cleanText.startsWith("❌ ")) {
+                    cleanText = cleanText.substring(2);
+                }
+
+                // Zerlege die Option in Name und Status-Teil
+                const lastSpaceIndex = cleanText.lastIndexOf(
+                    " ",
+                    cleanText.lastIndexOf(" ", cleanText.lastIndexOf(" ") - 1) -
+                        1,
+                );
+                const namePart = cleanText.substring(0, lastSpaceIndex).trim();
+
+                // Setze alle drei Runden auf ❌ (abwesend)
+                const newText = `❌ ${namePart} ❌ ❌ ❌`;
+                schuelerDropdown.options[studentIndex].text = newText;
+                schuelerDropdown.options[studentIndex].style.color = "red";
+
+                console.log("Neuer abwesend Text:", newText);
+            }
+
+            // Hilfsfunktion zum Finden des nächsten nicht-abwesenden Schülers
+            function findNextNonAbsentStudent(startIndex) {
+                const schuelerDropdown =
+                    document.getElementById("schuelerDropdown");
+                let nextIndex = startIndex;
+
+                // Suche bis zu 3 mal (um Endlosschleifen zu vermeiden)
+                for (let i = 0; i < schuelerDropdown.options.length; i++) {
+                    nextIndex++;
+
+                    // Wenn am Ende angelangt, fang von vorne an (aber überspringe Placeholder)
+                    if (nextIndex >= schuelerDropdown.options.length) {
+                        nextIndex = 1; // Index 1 ist der erste richtige Schüler (0 ist Placeholder)
+                    }
+
+                    // Prüfe ob der Schüler abwesend ist (Text beginnt mit ❌)
+                    const optionText = schuelerDropdown.options[nextIndex].text;
+                    if (!optionText.startsWith("❌")) {
+                        return nextIndex; // Nicht abwesend gefunden
+                    }
+                }
+
+                // Wenn alle Schüler abwesend sind, gib den nächsten Index zurück
+                return startIndex < schuelerDropdown.options.length - 1
+                    ? startIndex + 1
+                    : 1;
+            }
+
+            // Hilfsfunktion zum Aktualisieren des Rundenstatus eines Schülers
+            function updateStudentRoundStatus(studentIndex, completedRound) {
+                const schuelerDropdown =
+                    document.getElementById("schuelerDropdown");
+                if (
+                    studentIndex <= 0 ||
+                    studentIndex >= schuelerDropdown.options.length
+                )
+                    return;
+
+                const optionText = schuelerDropdown.options[studentIndex].text;
+                console.log(
+                    "Aktualisiere Rundenstatus für:",
+                    optionText,
+                    "Runde:",
+                    completedRound,
+                );
+
+                // Zerlege die Option in Name und Status
+                // Ein zuverlässigerer Ansatz: Finde die letzten 3 Symbole (✔️ oder ❌)
+                const lastSpaceIndex = optionText.lastIndexOf(
+                    " ",
+                    optionText.lastIndexOf(
+                        " ",
+                        optionText.lastIndexOf(" ") - 1,
+                    ) - 1,
+                );
+                const namePart = optionText.substring(0, lastSpaceIndex).trim();
+
+                // Extrahiere die Status-Symbole
+                const statusPart = optionText.substring(lastSpaceIndex).trim();
+
+                // Teile die Status-Symbole auf
+                const statusMarks = statusPart.split(" ");
+                console.log(
+                    "Status Marks vor Update:",
+                    statusMarks,
+                    "Runde:",
+                    completedRound,
+                );
+
+                // Prüfe den Index und aktualisiere das entsprechende Symbol
+                if (completedRound >= 1 && completedRound <= 3) {
+                    // Konvertiere zu 0-basiertem Index
+                    const index = completedRound - 1;
+                    if (index < statusMarks.length) {
+                        statusMarks[index] = "✔️";
+                    }
+                }
+
+                // Aktualisiere den Text in der Dropdown-Option
+                const newText = `${namePart} ${statusMarks.join(" ")}`;
+                schuelerDropdown.options[studentIndex].text = newText;
+
+                console.log("Neuer Text:", newText);
+            }
+
+            // Funktion zum Aktualisieren des ausgewählten Schülernamens
+            function updateSelectedSchueler() {
+                const schuelerDropdown =
+                    document.getElementById("schuelerDropdown");
+                const selectedOption =
+                    schuelerDropdown.options[schuelerDropdown.selectedIndex];
+
+                // Name aus dem data-attribute holen, falls verfügbar
+                const selectedSchuelerName = selectedOption
+                    ? selectedOption.getAttribute("data-schueler-name")
+                    : "";
+                document.getElementById("selectedSchueler").innerText =
+                    selectedSchuelerName || "";
+
+                // Auto-select next incomplete round for the selected student
+                autoSelectNextIncompleteRound();
+
+                // Aktuelles Ergebnis für den Schüler und die ausgewählte Runde laden
+                loadCurrentResult();
+            }
+
+            // Function to auto-select the next incomplete round for the current student
+            function autoSelectNextIncompleteRound() {
+                const schuelerDropdown =
+                    document.getElementById("schuelerDropdown");
+                if (schuelerDropdown.selectedIndex <= 0) return; // No student selected
+
+                const optionText =
+                    schuelerDropdown.options[schuelerDropdown.selectedIndex]
+                        .text;
+
+                // Check if student is marked as absent
+                if (optionText.startsWith("❌")) return; // Don't auto-select rounds for absent students
+
+                // Extract the status symbols (✔️ or ❌) for the rounds
+                const lastSpaceIndex = optionText.lastIndexOf(
+                    " ",
+                    optionText.lastIndexOf(
+                        " ",
+                        optionText.lastIndexOf(" ") - 1,
+                    ) - 1,
+                );
+                const statusPart = optionText.substring(lastSpaceIndex).trim();
+                const statusMarks = statusPart.split(" ");
+
+                // Find the first incomplete round (❌)
+                let incompleteRoundIndex = -1;
+                for (let i = 0; i < statusMarks.length; i++) {
+                    if (statusMarks[i] === "❌") {
+                        incompleteRoundIndex = i;
+                        break;
+                    }
+                }
+
+                // If we found an incomplete round, select the corresponding button
+                if (incompleteRoundIndex >= 0) {
+                    const roundButtons =
+                        document.querySelectorAll(".toggle-btn");
+                    if (incompleteRoundIndex < roundButtons.length) {
+                        // Reset all buttons
+                        roundButtons.forEach((btn) =>
+                            btn.classList.remove("active"),
+                        );
+                        // Activate the button for the incomplete round
+                        roundButtons[incompleteRoundIndex].classList.add(
+                            "active",
+                        );
+                    }
+                }
+            }
+
+            // Funktion zum Laden des aktuellen Ergebnisses für den ausgewählten Schüler und Runde
+            function loadCurrentResult() {
+                const schuelerDropdown =
+                    document.getElementById("schuelerDropdown");
+                const selectedSchuelerID = schuelerDropdown.value; // Das ist jetzt die SchuelerID
+                const selected_round =
+                    document.querySelector(".toggle-btn.active");
+                const resultDisplay = document.getElementById(
+                    "current-result-display",
+                );
+                const ergebnisInput = document.getElementById("ergebnis");
+                const riegenfuehrer =
+                    document.getElementById("riegenfuehrer").value;
+                const disziplin = "{{ station }}";
+
+                // Reset der Anzeige
+                resultDisplay.innerHTML = "";
+
+                if (
+                    !selectedSchuelerID ||
+                    !selected_round ||
+                    !riegenfuehrer ||
+                    !disziplin
+                ) {
+                    return; // Nicht genügend Informationen verfügbar
+                }
+
+                // Extrahiere die Rundennummer
+                const roundParts = selected_round.textContent.trim().split(" ");
+                if (roundParts.length < 2) return;
+                const selected_round_value = roundParts[1];
+
+                // Schülername aus data-attribute holen
+                const selectedOption =
+                    schuelerDropdown.options[schuelerDropdown.selectedIndex];
+                const selectedStudentName = selectedOption
+                    ? selectedOption.getAttribute("data-schueler-name")
+                    : "";
+
+                // API-Aufruf zum Laden des aktuellen Ergebnisses (mit SchuelerID und Name als Fallback)
+                fetch(
+                    `/get_current_result?riegenfuehrer=${encodeURIComponent(
+                        riegenfuehrer,
+                    )}&disziplin=${encodeURIComponent(
+                        disziplin,
+                    )}&schueler_id=${encodeURIComponent(
+                        selectedSchuelerID,
+                    )}&student_name=${encodeURIComponent(
+                        selectedStudentName,
+                    )}&runde=${selected_round_value}`,
+                )
+                    .then((response) => response.json())
+                    .then((data) => {
+                        if (data.has_result && data.result !== "NA") {
+                            resultDisplay.innerHTML = `<span class="text-success">${data.result}</span>`;
+                            // Eingabefeld bleibt leer - Benutzer kann neues Ergebnis eingeben
+                        } else {
+                            resultDisplay.innerHTML = `<span class="text-muted">NA</span>`;
+                            // Eingabefeld bleibt leer
+                        }
+                    })
+                    .catch((error) => {
+                        console.error(
+                            "Fehler beim Laden des Ergebnisses:",
+                            error,
+                        );
+                        resultDisplay.innerHTML = `<span class="text-danger">Fehler beim Laden</span>`;
+                        // Eingabefeld bleibt leer
+                    });
+            }
+
+            // Funktion zum Markieren eines Schülers als abwesend
+            function mark_abwesend() {
+                const schuelerDropdown =
+                    document.getElementById("schuelerDropdown");
+                const selectedSchuelerID = schuelerDropdown.value; // Das ist jetzt die SchuelerID
+                if (!selectedSchuelerID) {
+                    alert("Bitte wählen Sie einen Schüler aus.");
+                    return;
+                }
+
+                // Schülername aus data-attribute holen
+                const selectedOption =
+                    schuelerDropdown.options[schuelerDropdown.selectedIndex];
+                const selectedStudentName = selectedOption
+                    ? selectedOption.getAttribute("data-schueler-name")
+                    : "";
+
+                // Merke den aktuellen Index VOR der Backend-Anfrage
+                const currentIndex = schuelerDropdown.selectedIndex;
+
+                // SOFORT die lokale Anzeige aktualisieren (vor Backend-Call)
+                updateStudentAbsentStatus(currentIndex);
+
+                // POST-Anfrage zum Markieren des Schülers als abwesend
+                fetch("/mark_absent", {
+                    method: "POST",
+                    body: new URLSearchParams({
+                        selectedSchueler: selectedSchuelerID, // SchuelerID senden
+                        selectedStudentName: selectedStudentName, // Name als Fallback senden
+                    }),
+                    headers: {
+                        "Content-Type": "application/x-www-form-urlencoded",
+                    },
+                })
+                    .then((response) => response.json())
+                    .then((data) => {
+                        if (data.show_popup) {
+                            alert(data.message);
+                            return;
+                        }
+
+                        // Aktualisiere die Rundenzähler
+                        document.getElementById("runde1_fertig").innerText =
+                            data.runde1_fertig;
+                        document.getElementById("runde2_fertig").innerText =
+                            data.runde2_fertig;
+                        document.getElementById("runde3_fertig").innerText =
+                            data.runde3_fertig;
+                        document.getElementById("schueler_abwesend").innerText =
+                            data.schueler_abwesend;
+
+                        // Aktualisiere die Gesamtzahlen pro Runde (abzüglich Abwesende)
+                        document.getElementById(
+                            "schueler_gesamt_r1",
+                        ).innerText =
+                            data.schueler_gesamt - data.schueler_abwesend;
+                        document.getElementById(
+                            "schueler_gesamt_r2",
+                        ).innerText =
+                            data.schueler_gesamt - data.schueler_abwesend;
+                        document.getElementById(
+                            "schueler_gesamt_r3",
+                        ).innerText =
+                            data.schueler_gesamt - data.schueler_abwesend;
+
+                        // Zum nächsten nicht-abwesenden Schüler springen
+                        setTimeout(() => {
+                            // Check if we're at the end of the student list
+                            const isLastStudent =
+                                currentIndex >=
+                                schuelerDropdown.options.length - 1;
+
+                            if (isLastStudent) {
+                                // Show popup message about reaching end of student list
+                                alert(
+                                    "Ende der Schülerliste erreicht! Die Schülerliste wird von vorne begonnen.",
+                                );
+                                // Select first student
+                                schuelerDropdown.selectedIndex = 1; // Index 1 is first student (0 is placeholder)
+                            } else {
+                                // Normal case: find next non-absent student
+                                const nextNonAbsentIndex =
+                                    findNextNonAbsentStudent(currentIndex);
+                                schuelerDropdown.selectedIndex =
+                                    nextNonAbsentIndex;
+                            }
+
+                            updateSelectedSchueler(); // Anzeige des Namens aktualisieren und auto-select next round
+                            // Lade das aktuelle Ergebnis für den neuen Schüler/Runde
+                            loadCurrentResult();
+                        }, 100);
+                    })
+                    .catch((error) => {
+                        console.error(
+                            "Fehler beim Markieren als abwesend:",
+                            error,
+                        );
+
+                        // Fallback: Verwende die alte Methode wenn das Backend fehlschlägt
+                        setTimeout(() => {
+                            const isLastStudent =
+                                currentIndex >=
+                                schuelerDropdown.options.length - 1;
+                            if (isLastStudent) {
+                                alert(
+                                    "Ende der Schülerliste erreicht! Die Schülerliste wird von vorne begonnen.",
+                                );
+                                schuelerDropdown.selectedIndex = 1;
+                            } else {
+                                const nextNonAbsentIndex =
+                                    findNextNonAbsentStudent(currentIndex);
+                                schuelerDropdown.selectedIndex =
+                                    nextNonAbsentIndex;
+                            }
+                            updateSelectedSchueler();
+                            loadCurrentResult();
+                        }, 300);
+                    });
+            }
+
+            // Platzhalter für zusätzliche Event-Listener (z.B. "Nächster" Button)
+            // HINWEIS: Aktuell nicht implementiert, da die entsprechende Funktion fehlt
+            // document.getElementById("next_button").addEventListener("click", nextSchueler);
+
+            // Zeit-Eingabe: Auto-Format mm:ss + numerische Tastatur (iPad-freundlich)
+            /*(function setupTimeInput() {
+                function formatMmSs(input) {
+                    const digits = (input || "").replace(/\D/g, "").slice(0, 4);
+                    if (digits.length === 0) return "";
+                    let mm = "00";
+                    let ss = "00";
+
+                    if (digits.length <= 2) {
+                        ss = digits.padStart(2, "0");
+                    } else {
+                        mm = digits
+                            .slice(0, digits.length - 2)
+                            .padStart(2, "0")
+                            .slice(-2);
+                        ss = digits.slice(-2);
+                    }
+
+                    let secNum = parseInt(ss, 10);
+                    if (isNaN(secNum)) secNum = 0;
+                    if (secNum > 59) secNum = 59;
+                    ss = String(secNum).padStart(2, "0");
+
+                    return `${mm}:${ss}`;
+                }
+
+                function attachHandlers() {
+                    const el = document.getElementById("ergebnis");
+                    if (!el) return;
+
+                    // Sicherstellen, dass auf Touch-Geräten die numerische Tastatur erscheint
+                    el.setAttribute("inputmode", "numeric");
+                    el.setAttribute("enterkeyhint", "next");
+                    el.setAttribute("autocomplete", "off");
+                    el.setAttribute("autocorrect", "off");
+                    el.setAttribute("autocapitalize", "off");
+                    el.setAttribute("spellcheck", "false");
+                    el.setAttribute("pattern", "[0-9:]*");
+                    el.setAttribute("maxlength", "5");
+                    el.placeholder = "mm:ss";
+
+                    const formatAndSet = () => {
+                        const formatted = formatMmSs(el.value);
+                        el.value = formatted;
+                    };
+
+                    el.addEventListener("input", () => {
+                        const atEnd =
+                            el.selectionStart === el.value.length &&
+                            el.selectionEnd === el.value.length;
+                        const formatted = formatMmSs(el.value);
+                        el.value = formatted;
+                        if (atEnd) {
+                            const end = el.value.length;
+                            try {
+                                el.setSelectionRange(end, end);
+                            } catch (_) {
+                                // Auswahl nicht unterstützt – ignorieren
+                            }
+                        }
+                    });
+
+                    el.addEventListener("blur", formatAndSet);
+
+                    el.addEventListener("keydown", (e) => {
+                        const allowed = [
+                            "Backspace",
+                            "Delete",
+                            "ArrowLeft",
+                            "ArrowRight",
+                            "Tab",
+                            "Home",
+                            "End",
+                            "Escape",
+                            "Enter",
+                        ];
+                        if (allowed.includes(e.key)) {
+                            if (e.key === "Enter") {
+                                formatAndSet();
+                                // Direkt weiter zum nächsten Schüler
+                                if (typeof next_schueler === "function") {
+                                    next_schueler();
+                                }
+                            }
+                            return;
+                        }
+                        // Nur Ziffern erlauben
+                        if (!/^\d$/.test(e.key)) {
+                            e.preventDefault();
+                        }
+                    });
+
+                    el.addEventListener("paste", (e) => {
+                        e.preventDefault();
+                        const text =
+                            (e.clipboardData || window.clipboardData).getData(
+                                "text",
+                            ) || "";
+                        el.value = formatMmSs(text);
+                    });
+                }
+
+                if (document.readyState === "loading") {
+                    document.addEventListener(
+                        "DOMContentLoaded",
+                        attachHandlers,
+                    );
+                } else {
+                    attachHandlers();
+                }
+            })();*/
+            // Dynamische Eingabemodi für Ergebnisfeld je nach Disziplin (iPad-freundlich)
+            (function () {
+                function byId(id) {
+                    return document.getElementById(id);
+                }
+
+                // Ersetzt das Eingabefeld durch einen Klon, um alle bestehenden Listener zu entfernen
+                function resetInputNode() {
+                    const oldEl = byId("ergebnis");
+                    if (!oldEl) return oldEl;
+                    const clone = oldEl.cloneNode(true);
+                    clone.value = oldEl.value || "";
+                    if (oldEl.parentNode) {
+                        oldEl.parentNode.replaceChild(clone, oldEl);
+                    }
+                    return clone;
+                }
+
+                function formatMmSs(input) {
+                    // Nur Ziffern, auf die letzten 4 Stellen begrenzen
+                    let digits = (input || "").replace(/\D/g, "");
+                    digits = digits.slice(-4);
+                    if (digits.length === 0) return "";
+                    let mm = "00";
+                    let ss = "00";
+                    if (digits.length <= 2) {
+                        // 1 -> 00:01, 11 -> 00:11
+                        ss = digits.padStart(2, "0");
+                    } else {
+                        // 113 -> 01:13, 1134 -> 11:34, 11345 -> 113:45, usw.
+                        let mmRaw = digits.slice(0, digits.length - 2);
+                        // Führende Nullen links entfernen
+                        mmRaw = mmRaw.replace(/^0+/, "");
+                        if (mmRaw === "") {
+                            mm = "00";
+                        } else if (mmRaw.length === 1) {
+                            mm = "0" + mmRaw;
+                        } else {
+                            mm = mmRaw;
+                        }
+                        ss = digits.slice(-2);
+                    }
+                    let sec = parseInt(ss, 10);
+                    if (isNaN(sec)) sec = 0;
+                    ss = String(sec).padStart(2, "0");
+                    return `${mm}:${ss}`;
+                }
+
+                function setCommonAttrs(el) {
+                    el.setAttribute("enterkeyhint", "next");
+                    el.setAttribute("autocomplete", "off");
+                    el.setAttribute("autocorrect", "off");
+                    el.setAttribute("autocapitalize", "off");
+                    el.setAttribute("spellcheck", "false");
+                }
+
+                function setTimeMode(el) {
+                    // Attribute für mm:ss
+                    el.setAttribute("inputmode", "numeric");
+                    el.setAttribute("pattern", "[0-9:]*");
+
+                    el.placeholder = "mm:ss";
+
+                    // Event-Handler
+                    const onInput = () => {
+                        const atEnd =
+                            el.selectionStart === el.value.length &&
+                            el.selectionEnd === el.value.length;
+                        const formatted = formatMmSs(el.value);
+                        el.value = formatted;
+                        if (atEnd) {
+                            const end = el.value.length;
+                            try {
+                                el.setSelectionRange(end, end);
+                            } catch {}
+                        }
+                    };
+                    const onBlur = () => {
+                        el.value = formatMmSs(el.value);
+                    };
+                    const onKeyDown = (e) => {
+                        const allowed = [
+                            "Backspace",
+                            "Delete",
+                            "ArrowLeft",
+                            "ArrowRight",
+                            "Tab",
+                            "Home",
+                            "End",
+                            "Escape",
+                            "Enter",
+                        ];
+                        if (allowed.includes(e.key)) {
+                            if (
+                                e.key === "Enter" &&
+                                typeof next_schueler === "function"
+                            ) {
+                                el.value = formatMmSs(el.value);
+                                next_schueler();
+                            }
+                            return;
+                        }
+                        if (!/^\d$/.test(e.key)) e.preventDefault();
+                    };
+                    const onPaste = (e) => {
+                        e.preventDefault();
+                        const text =
+                            (e.clipboardData || window.clipboardData).getData(
+                                "text",
+                            ) || "";
+                        el.value = formatMmSs(text);
+                    };
+
+                    el.addEventListener("input", onInput);
+                    el.addEventListener("blur", onBlur);
+                    el.addEventListener("keydown", onKeyDown);
+                    el.addEventListener("paste", onPaste);
+                }
+
+                function setDecimalMode(el) {
+                    // Attribute für Dezimalwerte
+                    el.setAttribute("inputmode", "decimal");
+                    el.setAttribute("pattern", "[0-9.,]*");
+                    el.removeAttribute("maxlength");
+                    el.placeholder = "z. B. 12,34";
+
+                    // Event-Handler
+                    const onInput = () => {
+                        // Erlaube nur Ziffern, Punkt, Komma; max. ein Trennzeichen
+                        let v = el.value.replace(/[^\d.,]/g, "");
+                        const parts = v.split(/[.,]/);
+                        if (parts.length > 2) {
+                            v = parts[0] + "," + parts.slice(1).join("");
+                        }
+                        el.value = v;
+                    };
+                    const onKeyDown = (e) => {
+                        const allowed = [
+                            "Backspace",
+                            "Delete",
+                            "ArrowLeft",
+                            "ArrowRight",
+                            "Tab",
+                            "Home",
+                            "End",
+                            "Escape",
+                            "Enter",
+                        ];
+                        if (allowed.includes(e.key)) {
+                            if (
+                                e.key === "Enter" &&
+                                typeof next_schueler === "function"
+                            ) {
+                                next_schueler();
+                            }
+                            return;
+                        }
+                        if (!/^[0-9.,]$/.test(e.key)) e.preventDefault();
+                    };
+
+                    el.addEventListener("input", onInput);
+                    el.addEventListener("keydown", onKeyDown);
+                }
+
+                function determineModeFromDisziplin(value) {
+                    if (!value) return "decimal";
+                    const v = String(value).toLowerCase();
+                    if (v.includes("laufen") || v.includes("sprint"))
+                        return "time";
+                    return "decimal";
+                }
+
+                function applyMode() {
+                    // Erstelle frisches Input-Element ohne vorherige Listener
+                    let el = resetInputNode();
+                    if (!el) el = byId("ergebnis");
+                    if (!el) return;
+
+                    setCommonAttrs(el);
+
+                    const stationName = "{{ station }}";
+                    const mode = determineModeFromDisziplin(stationName);
+                    if (mode === "time") setTimeMode(el);
+                    else setDecimalMode(el);
+                }
+
+                function init() {
+                    applyMode();
+                    // Station kommt aus der Session (Login). Kein Dropdown-Change nötig.
+                }
+
+                if (document.readyState === "loading") {
+                    document.addEventListener("DOMContentLoaded", init);
+                } else {
+                    init();
+                }
+            })();
+        </script>
+    </body>
+</html>

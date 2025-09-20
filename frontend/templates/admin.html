@@ -1,0 +1,515 @@
+<!doctype html>
+<html lang="de">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Admin - Riegen-Verwaltung</title>
+        <link
+            href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+            rel="stylesheet"
+        />
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    </head>
+    <body>
+        <div class="container mt-5">
+            <div class="row">
+                <div class="col-12">
+                    <h2 class="text-center mb-4">
+                        Admin-Bereich - Riegen-Verwaltung
+                    </h2>
+
+                    <!-- Flash Messages -->
+                    {% with messages =
+                    get_flashed_messages(with_categories=true) %} {% if messages
+                    %} {% for category, message in messages %}
+                    <div
+                        class="alert alert-{{ 'success' if category == 'success' else 'danger' }} alert-dismissible fade show"
+                        role="alert"
+                    >
+                        {{ message }}
+                        <button
+                            type="button"
+                            class="btn-close"
+                            data-bs-dismiss="alert"
+                        ></button>
+                    </div>
+                    {% endfor %} {% endif %} {% endwith %}
+
+                    <!-- Navigation Tabs -->
+                    <ul class="nav nav-tabs" id="adminTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button
+                                class="nav-link active"
+                                id="database-tab"
+                                data-bs-toggle="tab"
+                                data-bs-target="#database-management"
+                                type="button"
+                                role="tab"
+                            >
+                                Datenbank-Verwaltung
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button
+                                class="nav-link"
+                                id="add-tab"
+                                data-bs-toggle="tab"
+                                data-bs-target="#add-riegenfuehrer"
+                                type="button"
+                                role="tab"
+                            >
+                                Riegenführer hinzufügen
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button
+                                class="nav-link"
+                                id="manage-tab"
+                                data-bs-toggle="tab"
+                                data-bs-target="#manage-riegen"
+                                type="button"
+                                role="tab"
+                            >
+                                Riegen verwalten
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button
+                                class="nav-link"
+                                id="statistics-tab"
+                                data-bs-toggle="tab"
+                                data-bs-target="#statistics"
+                                type="button"
+                                role="tab"
+                            >
+                                Statistiken
+                            </button>
+                        </li>
+                    </ul>
+
+                    <div class="tab-content mt-4" id="adminTabContent">
+                        <!-- Datenbank-Verwaltung -->
+                        <div
+                            class="tab-pane fade show active"
+                            id="database-management"
+                            role="tabpanel"
+                        >
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5>Datenbank aus CSV erstellen</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div
+                                        class="alert alert-warning"
+                                        role="alert"
+                                    >
+                                        <strong>Achtung:</strong> Diese Aktion
+                                        löscht alle bestehenden Daten in der
+                                        Datenbank und erstellt eine neue
+                                        Datenbank basierend auf der CSV-Datei
+                                        (backend/Mappe1.csv).
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <h6>Was passiert beim CSV-Import:</h6>
+                                        <ul>
+                                            <li>
+                                                Alle bestehenden Schüler- und
+                                                Disziplin-Daten werden gelöscht
+                                            </li>
+                                            <li>
+                                                Neue Schüler-Daten werden aus
+                                                der CSV-Datei geladen
+                                            </li>
+                                            <li>
+                                                Standarddisziplinen werden für
+                                                alle Schüler erstellt
+                                            </li>
+                                            <li>
+                                                Riegen-Zuordnungen müssen nach
+                                                dem Import neu konfiguriert
+                                                werden
+                                            </li>
+                                        </ul>
+                                    </div>
+
+                                    <form
+                                        action="/admin/import_csv"
+                                        method="POST"
+                                        onsubmit="return confirmImport()"
+                                    >
+                                        <button
+                                            type="submit"
+                                            class="btn btn-warning btn-lg"
+                                        >
+                                            <i
+                                                class="bi bi-database-fill-up"
+                                            ></i>
+                                            Datenbank aus CSV erstellen
+                                        </button>
+                                    </form>
+
+                                    <script>
+                                        function confirmImport() {
+                                            return confirm(
+                                                "Sind Sie sicher, dass Sie alle bestehenden Daten löschen und eine neue Datenbank aus der CSV-Datei erstellen möchten?\n\nDiese Aktion kann nicht rückgängig gemacht werden!",
+                                            );
+                                        }
+                                    </script>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Riegenführer hinzufügen -->
+                        <div
+                            class="tab-pane fade"
+                            id="add-riegenfuehrer"
+                            role="tabpanel"
+                        >
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5>Neuen Riegenführer hinzufügen</h5>
+                                </div>
+                                <div class="card-body">
+                                    <form
+                                        action="/admin/add_riegenfuehrer"
+                                        method="POST"
+                                    >
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <div class="mb-3">
+                                                    <label
+                                                        for="name"
+                                                        class="form-label"
+                                                        >Name des
+                                                        Riegenführers</label
+                                                    >
+                                                    <input
+                                                        type="text"
+                                                        class="form-control"
+                                                        id="name"
+                                                        name="name"
+                                                        required
+                                                    />
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <div class="mb-3">
+                                                    <label
+                                                        for="geschlecht"
+                                                        class="form-label"
+                                                        >Geschlecht</label
+                                                    >
+                                                    <select
+                                                        class="form-select"
+                                                        id="geschlecht"
+                                                        name="geschlecht"
+                                                        required
+                                                    >
+                                                        <option value="">
+                                                            Bitte wählen...
+                                                        </option>
+                                                        <option value="M">
+                                                            Männlich
+                                                        </option>
+                                                        <option value="W">
+                                                            Weiblich
+                                                        </option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <div class="mb-3">
+                                                    <label
+                                                        for="profil"
+                                                        class="form-label"
+                                                        >Profil</label
+                                                    >
+                                                    <select
+                                                        class="form-select"
+                                                        id="profil"
+                                                        name="profil"
+                                                        required
+                                                    >
+                                                        <option value="">
+                                                            Bitte wählen...
+                                                        </option>
+                                                        <option value="true">
+                                                            Ja (Profilklassen)
+                                                        </option>
+                                                        <option value="false">
+                                                            Nein (Regelklassen)
+                                                        </option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <div class="mb-3">
+                                                    <label
+                                                        for="stufe"
+                                                        class="form-label"
+                                                        >Stufe</label
+                                                    >
+                                                    <select
+                                                        class="form-select"
+                                                        id="stufe"
+                                                        name="stufe"
+                                                        required
+                                                    >
+                                                        <option value="">
+                                                            Bitte wählen...
+                                                        </option>
+                                                        <option value="5">
+                                                            5. Klasse
+                                                        </option>
+                                                        <option value="6">
+                                                            6. Klasse
+                                                        </option>
+                                                        <option value="7">
+                                                            7. Klasse
+                                                        </option>
+                                                        <option value="8">
+                                                            8. Klasse
+                                                        </option>
+                                                        <option value="9">
+                                                            9. Klasse
+                                                        </option>
+                                                        <option value="10">
+                                                            10. Klasse
+                                                        </option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="mb-3">
+                                            <label
+                                                for="klassenendungen"
+                                                class="form-label"
+                                                >Klassenendungen</label
+                                            >
+                                            <input
+                                                type="text"
+                                                class="form-control"
+                                                id="klassenendungen"
+                                                name="klassenendungen"
+                                                placeholder="z.B. a,b,c oder * für alle"
+                                                required
+                                            />
+                                            <div class="form-text">
+                                                Komma-getrennte Liste der
+                                                Klassenendungen (a,b,c) oder *
+                                                für alle Endungen
+                                            </div>
+                                        </div>
+
+                                        <button
+                                            type="submit"
+                                            class="btn btn-primary"
+                                        >
+                                            Riegenführer hinzufügen
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Riegen verwalten -->
+                        <div
+                            class="tab-pane fade"
+                            id="manage-riegen"
+                            role="tabpanel"
+                        >
+                            <div class="card">
+                                <div
+                                    class="card-header d-flex justify-content-between align-items-center"
+                                >
+                                    <h5>Bestehende Riegenführer</h5>
+                                    <form
+                                        action="/admin/assign_riegen"
+                                        method="POST"
+                                        class="d-inline"
+                                    >
+                                        <button
+                                            type="submit"
+                                            class="btn btn-success"
+                                            onclick="return confirm('Alle Riegen neu einteilen? Dies überschreibt bestehende Zuordnungen.')"
+                                        >
+                                            Riegen automatisch einteilen
+                                        </button>
+                                    </form>
+                                </div>
+                                <div class="card-body">
+                                    {% if riegenfuehrer %}
+                                    <div class="table-responsive">
+                                        <table class="table table-striped">
+                                            <thead>
+                                                <tr>
+                                                    <th>Name</th>
+                                                    <th>Geschlecht</th>
+                                                    <th>Profil</th>
+                                                    <th>Stufe</th>
+                                                    <th>Klassenendungen</th>
+                                                    <th>Aktionen</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for rf in riegenfuehrer %}
+                                                <tr>
+                                                    <td>{{ rf[1] }}</td>
+                                                    <td>
+                                                        <span
+                                                            class="badge bg-{{ 'primary' if rf[2] == 'M' else 'secondary' }}"
+                                                        >
+                                                            {{ 'Männlich' if
+                                                            rf[2] == 'M' else
+                                                            'Weiblich' }}
+                                                        </span>
+                                                    </td>
+                                                    <td>
+                                                        <span
+                                                            class="badge bg-{{ 'success' if rf[3] else 'warning' }}"
+                                                        >
+                                                            {{ 'Profil' if rf[3]
+                                                            else 'Regel' }}
+                                                        </span>
+                                                    </td>
+                                                    <td>{{ rf[4] }}. Klasse</td>
+                                                    <td>{{ rf[5] }}</td>
+                                                    <td>
+                                                        <form
+                                                            action="/admin/delete_riegenfuehrer/{{ rf[0] }}"
+                                                            method="POST"
+                                                            class="d-inline"
+                                                        >
+                                                            <button
+                                                                type="submit"
+                                                                class="btn btn-sm btn-danger"
+                                                                onclick="return confirm('Riegenführer {{ rf[1] }} wirklich löschen?')"
+                                                            >
+                                                                Löschen
+                                                            </button>
+                                                        </form>
+                                                    </td>
+                                                </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    {% else %}
+                                    <div class="text-center text-muted">
+                                        <p>
+                                            Noch keine Riegenführer hinzugefügt.
+                                        </p>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Statistiken -->
+                        <div
+                            class="tab-pane fade"
+                            id="statistics"
+                            role="tabpanel"
+                        >
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5>Riegen-Statistiken</h5>
+                                </div>
+                                <div class="card-body">
+                                    {% if statistics %}
+                                    <div class="table-responsive">
+                                        <table class="table table-striped">
+                                            <thead>
+                                                <tr>
+                                                    <th>Riegenführer</th>
+                                                    <th>Geschlecht</th>
+                                                    <th>Profil</th>
+                                                    <th>Stufe</th>
+                                                    <th>Anzahl Schüler</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for stat in statistics %}
+                                                <tr>
+                                                    <td>{{ stat[0] }}</td>
+                                                    <td>
+                                                        <span
+                                                            class="badge bg-{{ 'primary' if stat[1] == 'M' else 'secondary' }}"
+                                                        >
+                                                            {{ 'Männlich' if
+                                                            stat[1] == 'M' else
+                                                            'Weiblich' }}
+                                                        </span>
+                                                    </td>
+                                                    <td>
+                                                        <span
+                                                            class="badge bg-{{ 'success' if stat[2] else 'warning' }}"
+                                                        >
+                                                            {{ 'Profil' if
+                                                            stat[2] else 'Regel'
+                                                            }}
+                                                        </span>
+                                                    </td>
+                                                    <td>
+                                                        {{ stat[3] }}. Klasse
+                                                    </td>
+                                                    <td>
+                                                        <span
+                                                            class="badge bg-info"
+                                                            >{{ stat[4] }}</span
+                                                        >
+                                                    </td>
+                                                </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+
+                                    <div class="mt-4">
+                                        <h6>Zusammenfassung:</h6>
+                                        <p>
+                                            Gesamt Schüler:
+                                            <strong
+                                                >{{ statistics|sum(attribute=4)
+                                                }}</strong
+                                            >
+                                        </p>
+                                        <p>
+                                            Anzahl Riegen:
+                                            <strong
+                                                >{{ statistics|length }}</strong
+                                            >
+                                        </p>
+                                    </div>
+                                    {% else %}
+                                    <div class="text-center text-muted">
+                                        <p>
+                                            Keine Statistiken verfügbar. Fügen
+                                            Sie zuerst Riegenführer hinzu und
+                                            teilen Sie die Riegen ein.
+                                        </p>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="text-center mt-4">
+                        <button
+                            class="btn btn-danger"
+                            onclick="window.location.href='/logout'"
+                        >
+                            Logout
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </body>
+</html>
