@@ -10,7 +10,7 @@ def csv_to_list(csv_path: str) -> np.ndarray:
     data = np.array(df)
     return data
 
-def fill_db_from_array(data):
+def fill_schueler(data: np.ndarray):
     db = Database()
     db.add_riegenfuehrer('test')
     for element in data:
@@ -26,6 +26,8 @@ def fill_db_from_array(data):
             profil=element[5]
         )
 
+def fill_riegenfuehrer(data: np.ndarray):
+    pass
 
 if __name__ == '__main__':
-    fill_db_from_array(csv_to_list(r"old\app\backend\Mappe1.csv"))
+    fill_schueler(csv_to_list(r"old\app\backend\Mappe1.csv"))

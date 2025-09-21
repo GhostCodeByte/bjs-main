@@ -109,7 +109,6 @@ class Database:
             profil,
             stufe,
             klassenendung
-
         ):
         pass
 
