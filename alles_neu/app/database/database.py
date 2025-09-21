@@ -24,7 +24,7 @@ class Database:
     def datenbank_erstellen(self):
         self.cursor.execute(""" 
             CREATE TABLE IF NOT EXISTS Schueler (
-                SchuelerID        INTEGER PRIMARY KEY,
+                SchuelerID        INTEGER PRIMARY KEY AUTOINCREMENT,
                 Name              TEXT,
                 Vorname           TEXT,
                 Geschlecht        TEXT,
@@ -33,10 +33,11 @@ class Database:
                 Geburtsjahr       INTEGER,
                 Bundesjugentspielalter INTEGER,
                 Profil            BOOLEAN,
-                RiegenfuehrerName TEXT,
+                RiegenfuehrerID   INTEGER,
                 Gesamtpunktzahl   INTEGER,
                 Note              INTEGER,
-                Urkunde           TEXT
+                Urkunde           TEXT,
+                FOREIGN KEY (RiegenfuehrerID) REFERENCES Riegenfuehrer(ID)
         )""")
 
         self.cursor.execute("""
@@ -62,8 +63,9 @@ class Database:
                 Stufe           INTEGER NOT NULL,
                 Klassenendungen TEXT NOT NULL
         )""")
-    
-    print("neue Datenbank erstellt")
+        
+        print("neue Datenbank erstellt")
+
 
     def add_schueler(
             self,
