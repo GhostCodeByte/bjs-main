@@ -12,6 +12,9 @@ class Admin(MDApp):
         self.sm = Builder.load_file("main.kv")
         return self.sm
 
+    def change_screen(self, screen_name):
+        self.sm.current = screen_name
+
     def get_csv_all_classes(self):
         pass
 
