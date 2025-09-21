@@ -2,22 +2,38 @@
 <html lang="de">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Login</title>
-    <style>
-      body {
-        font-family: Arial, sans-serif;
-        text-align: center;
-        padding: 50px;
-      }
-      h1 {
-        color: #333;
-      }
-    </style>
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='auth.css') }}"
+    />
   </head>
   <body>
-    <h1>auth</h1>
-    <p>Hier könnte dein Login-Formular stehen.</p>
-    <a href="/input">Zur Hauptseite</a>
+    <div class="login-container">
+      <h1>Willkommen</h1>
+      <div style="height: 10px"></div>
+      <form method="POST" action="{{ url_for('auth.login') }}">
+        <label for="discipline">Disziplin:</label>
+        <select name="discipline" id="discipline" required>
+          <option value="" hidden></option>
+          <option value="Sprint">Sprint</option>
+          <option value="Weitsprung">Weitsprung</option>
+          <option value="Hochsprung">Hochsprung</option>
+          <option value="Kugelstoßen">Kugelstoßen</option>
+          <option value="Diskus">Diskus</option>
+        </select>
+
+        <label for="password">Passwort:</label>
+        <input
+          type="tel"
+          id="password"
+          name="password"
+          pattern="\d*"
+          required
+        />
+
+        <button type="submit">Login</button>
+      </form>
+    </div>
   </body>
 </html>

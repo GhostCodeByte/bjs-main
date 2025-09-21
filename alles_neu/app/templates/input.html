@@ -3,21 +3,152 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Hauptseite</title>
-    <style>
-      body {
-        font-family: Arial, sans-serif;
-        text-align: center;
-        padding: 50px;
-      }
-      h1 {
-        color: #333;
-      }
-    </style>
+    <title>Flask Layout</title>
+
+    <!-- Externe CSS-Dateien für Styling -->
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='input.css') }}"
+    />
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
   </head>
   <body>
-    <h1>input</h1>
-    <p>Hier ist die Hauptseite der App.</p>
-    <a href="/login">Zum Login</a>
+    <div class="container">
+      <!-- Oberer Navigationsbereich -->
+      <div class="d-flex justify-content-between mt-3">
+        <!-- Mittlerer Dropdown-Bereich -->
+        <div>
+          <select id="riegenfuehrer" class="form-select d-inline w-auto">
+            <option value="" selected disabled>Riegenführer</option>
+            {% for riegen in riegenfuehrer %}
+            <option>{{ riegen }}</option>
+            {% endfor %}
+          </select>
+          <button class="btn btn-info ms-2" type="button">Get</button>
+        </div>
+
+        <!-- Riege, Station und Logout rechts -->
+        <div class="d-flex align-items-center gap-2">
+          <div class="text-muted small ms-2">
+            Station: <strong>{{ station }}</strong>
+            <span class="ms-2"
+              >iPad: <strong>{{ ipad_stations_nummer }}</strong></span
+            >
+          </div>
+          <a class="btn btn-danger ms-2" href="/logout">Logout</a>
+        </div>
+      </div>
+
+      <!-- Hauptcontainer mit Informations- und Eingabebereichen -->
+      <div class="d-flex mt-4 gap-4">
+        <!-- Linker Informationscontainer -->
+        <div class="box p-3">
+          <p><strong>Klasse:</strong> <span id="klasse"></span></p>
+          <p><strong>Geschlecht:</strong> <span id="geschlecht"></span></p>
+
+          <div class="mt-3">
+            <p class="mb-1"><strong>Fortschritt pro Runde:</strong></p>
+            <p class="mb-1">
+              <span class="badge bg-secondary">Runde 1:</span>
+              <span id="runde1_fertig">{{ runde1_fertig }}</span>/<span
+                id="schueler_gesamt_r1"
+                >{{ schueler_gesamt - schueler_abwesend }}</span
+              >
+            </p>
+            <p class="mb-1">
+              <span class="badge bg-secondary">Runde 2:</span>
+              <span id="runde2_fertig">{{ runde2_fertig }}</span>/<span
+                id="schueler_gesamt_r2"
+                >{{ schueler_gesamt - schueler_abwesend }}</span
+              >
+            </p>
+            <p class="mb-1">
+              <span class="badge bg-secondary">Runde 3:</span>
+              <span id="runde3_fertig">{{ runde3_fertig }}</span>/<span
+                id="schueler_gesamt_r3"
+                >{{ schueler_gesamt - schueler_abwesend }}</span
+              >
+            </p>
+          </div>
+
+          <div class="mt-3">
+            <p class="mb-1">
+              <span class="badge bg-danger">Abwesend:</span>
+              <span id="schueler_abwesend">{{ schueler_abwesend }}</span>
+            </p>
+          </div>
+        </div>
+
+        <!-- Rechter Eingabecontainer -->
+        <div class="box p-3 flex-grow-1">
+          <div class="d-flex justify-content-between">
+            <div>
+              <p><strong>Name:</strong> <span id="selectedSchueler"></span></p>
+              <p><strong>Schwierigkeitsgrad:</strong></p>
+            </div>
+
+            <!-- Dropdown für Schülerselektion -->
+            <select
+              id="schuelerDropdown"
+              class="form-select w-auto"
+              style="height: 50%"
+            >
+              <option value="" selected disabled>Schüler</option>
+            </select>
+          </div>
+
+          <!-- Eingabefeld für Ergebnis mit Anzeige des gespeicherten Werts -->
+          <div class="d-flex align-items-center mt-2 gap-3">
+            <input
+              type="text"
+              id="ergebnis"
+              class="form-control w-50"
+              placeholder="mm:ss"
+              inputmode="numeric"
+              enterkeyhint="next"
+              autocomplete="off"
+              autocorrect="off"
+              autocapitalize="off"
+              spellcheck="false"
+              pattern="[0-9:]*"
+            />
+            <div
+              id="current-result-display"
+              class="text-muted"
+              style="min-width: 150px"
+            ></div>
+          </div>
+
+          <!-- Buttons für Navigation und Aktionen -->
+          <div class="d-flex justify-content-between mt-4">
+            <button class="btn btn-success" type="button">Nächster</button>
+            <div class="d-flex gap-2">
+              <button
+                class="toggle-btn btn btn-outline-secondary"
+                type="button"
+              >
+                Runde 1
+              </button>
+              <button
+                class="toggle-btn btn btn-outline-secondary"
+                type="button"
+              >
+                Runde 2
+              </button>
+              <button
+                class="toggle-btn btn btn-outline-secondary"
+                type="button"
+              >
+                Runde 3
+              </button>
+            </div>
+            <button class="btn btn-danger" type="button">Abwesend</button>
+          </div>
+        </div>
+      </div>
+    </div>
   </body>
 </html>
