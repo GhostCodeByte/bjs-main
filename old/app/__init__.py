@@ -1,6 +1,6 @@
 from flask import Flask
 from flask_session import Session
-import backend.backend as backend
+#import backend.backend as backend
 import os
 
 # Projektwurzel (Elternverzeichnis) bestimmen
