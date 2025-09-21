@@ -1,6 +1,9 @@
 import sqlite3
 from datetime import datetime
 import os
+from alles_neu.config import JAHR
+
+id_counter = 0
 
 class Database:
     # Die ID kann genuzt werden wen man mehrere datenbanken gleichzeitig haben will 
@@ -61,6 +64,45 @@ class Database:
         )""")
     
     print("neue Datenbank erstellt")
+
+    def add_schueler(
+            self,
+            name: str,
+            vorname: str,
+            geschlecht: str, #"m" oder "w"
+            klasse: int,
+            klassenbuchstabe: str,
+            geburtsjahr: int,
+            profil: bool
+        ):
+        alter = JAHR - geburtsjahr
+        global id_counter
+
+        self.cursor.execute('''
+        INSERT INTO Schueler (SchuelerID, Name, Vorname, Geschlecht, Klasse, Klassenbuchstabe,
+                            Geburtsjahr, Bundesjugentspielalter, Profil, RiegenfuehrerName,
+                            Gesamtpunktzahl, Note, Urkunde)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+        ''', (
+            id_counter,  # ID (hinzugefügter Index)
+            name,  # Name
+            vorname,  # Vorname
+            geschlecht,  # Geschlecht
+            klasse,  # Klasse (ohne letzten Buchstaben)
+            klassenbuchstabe,  # Klassenbuchstabe (letzter Buchstabe)
+            geburtsjahr,  # Geburtsjahr
+            alter,  # Alter (standardmäßig 12)
+            profil,  # Profil (Boolean)
+            None,  # Riegenführername (wird später über Admin zugewiesen)
+            None,  # Gesamtpunktzahl
+            None,  # Note
+            None   # Urkunde
+        ))
+        id_counter += 1
+
+
+    def add_riegenfuehrer(self, name):
+        pass
 
 if __name__ == "__main__":
     db = Database()

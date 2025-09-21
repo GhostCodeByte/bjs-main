@@ -1,0 +1,18 @@
+ScreenManager:
+    Home:
+
+
+<Home>:
+    name: 'home'
+    BoxLayout:
+        orientation: 'vertical'
+        padding: dp(20)
+        spacing: dp(10)
+        MDBoxLayout:
+            orientation: "horizontal"
+            size_hint_y: 0.1
+            MDRaisedButton:
+                text: "Ergebnisse aller Klassen als CSV"
+                size_hint: 1, None
+                on_release: app.get_csv_all_classes
+        Widget:
