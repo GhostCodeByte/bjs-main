@@ -1,5 +1,6 @@
 ScreenManager:
     Home:
+    Riegeneinteilung:
 
 
 <Home>:
@@ -15,4 +16,12 @@ ScreenManager:
                 text: "Ergebnisse aller Klassen als CSV"
                 size_hint: 1, None
                 on_release: app.get_csv_all_classes
+
+        MDBoxLayout:
+            orientation: "horizontal"
+            size_hint_y: 0.1
+            MDRaisedButton:
+                text: "Erstelle Riegen"
+                size_hint: 1, None
+                on_release: app.change_screen("riegeneinteilung")
         Widget:
