@@ -11,7 +11,8 @@ class Database:
 
         self.connection = sqlite3.connect(f"bjs_database_{id}.db")
         self.cursor = self.connection.cursor()
-
+        self.connection.execute("PRAGMA foreign_keys = ON")
+        
         self.cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
         
         if not self.cursor.fetchall():
@@ -31,11 +32,14 @@ class Database:
                 Geburtsjahr       INTEGER,
                 Bundesjugentspielalter INTEGER,
                 Profil            BOOLEAN,
-                RiegenfuehrerName TEXT,
+                RiegenfuehrerID   INTEGER,
                 Gesamtpunktzahl   INTEGER,
                 Note              INTEGER,
-                Urkunde           TEXT
-        )""")
+                Urkunde           TEXT,
+                FOREIGN KEY (RiegenfuehrerID) REFERENCES Riegenfuehrer(ID)
+            )
+        """)
+
 
         self.cursor.execute("""
             CREATE TABLE IF NOT EXISTS Schueler_Disziplin_Ergebnis (
