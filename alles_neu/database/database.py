@@ -1,7 +1,7 @@
 import sqlite3
 from datetime import datetime
-from alles_neu.config import JAHR
 
+JAHR = datetime.now().year
 id_counter = 0
 
 class Database:
@@ -9,7 +9,7 @@ class Database:
     def __init__(self, id = None):
 
         if id == None:
-            id = datetime.now().year
+            id = JAHR
 
         self.connection = sqlite3.connect(f"bjs_database_{id}.db")
         self.cursor = self.connection.cursor()
@@ -102,7 +102,15 @@ class Database:
         self.connection.commit()
 
 
-    def add_riegenfuehrer(self, name):
+    def add_riegenfuehrer(
+            self,
+            name,
+            geschlecht,
+            profil,
+            stufe,
+            klassenendung
+
+        ):
         pass
 
 if __name__ == "__main__":
