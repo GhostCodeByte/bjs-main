@@ -13,6 +13,7 @@ class Database:
         self.cursor = self.connection.cursor()
 
         self.cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
+        
         if not self.cursor.fetchall():
             self.datenbank_erstellen()
         else:
