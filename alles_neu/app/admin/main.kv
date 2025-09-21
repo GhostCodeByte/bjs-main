@@ -25,3 +25,90 @@ ScreenManager:
                 size_hint: 1, None
                 on_release: app.change_screen("riegeneinteilung")
         Widget:
+
+<Riegeneinteilung>:
+    name: 'riegeneinteilung'
+    BoxLayout:
+        orientation: 'vertical'
+        padding: dp(20)
+        MDBoxLayout:
+            size_hint_y: None
+            height: dp(48)
+            orientation: "horizontal"
+            MDLabel:
+                id: riegenfuehrer_label
+                text: "Name Riegenführer:"
+                size_hint_x: None
+                width: dp(180)
+                height: self.parent.height
+                valign: 'center'
+
+            MDTextField:
+                id: riegenfuehrer_text_input 
+                hint_text: "zusammenschreiben: z.B. MaxMustermann"
+                size_hint_x: 1
+                height: self.parent.height
+
+        MDBoxLayout:
+            size_hint_y: None
+            height: dp(48)
+            orientation: "horizontal"
+            MDLabel:
+                id: riegenfuehrer_label
+                text: "Klassen:"
+                size_hint_x: None
+                width: dp(180)
+                height: self.parent.height
+                valign: 'center'
+
+            MDTextField:
+                id: riegenfuehrer_text_input 
+                hint_text: "z.B. a,b,c"
+                size_hint_x: 1
+                height: self.parent.height
+
+        MDBoxLayout:
+            size_hint_y: None
+            height: dp(48)
+            orientation: "horizontal"
+            MDDropDownItem:
+                id: stufe_dropdown
+                text: 'Stufe'
+                size_hint_x: 1
+                height: self.parent.height
+                on_release: app.open_dropdown_stufe(self)
+
+        MDBoxLayout:
+            size_hint_y: None
+            height: dp(48)
+            orientation: "horizontal"
+            MDDropDownItem:
+                id: geschlecht_dropdown
+                text: 'Geschlecht der Athleten'
+                size_hint_x: 1
+                height: self.parent.height
+                on_release: app.open_dropdown_geschlecht(self)
+        
+        MDBoxLayout:
+            size_hint_y: None
+            height: dp(48)
+            orientation: "horizontal"
+            MDDropDownItem:
+                id: profil_dropdown
+                text: 'Sportprofil'
+                size_hint_x: 1
+                height: self.parent.height
+                on_release: app.open_dropdown_profil(self)
+
+        Widget:
+
+        MDBoxLayout:
+            size_hint_y: None
+            height: dp(48)
+            orientation: "horizontal"
+            MDRaisedButton:
+                id: auswerten
+                text: 'Riege erstellen'
+                size_hint_x: 1
+                height: self.parent.height
+                on_release: app.riege_erstellen()
