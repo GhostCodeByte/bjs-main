@@ -1,17 +1,18 @@
 import sqlite3
 from datetime import datetime
 
-JAHR = datetime.now().year
-id_counter = 0
 
 class Database:
     # Die ID kann genuzt werden wen man mehrere datenbanken gleichzeitig haben will 
-    def __init__(self, id = None):
+    def __init__(self, id = None, path = None):
 
         if id == None:
-            id = JAHR
+            id = datetime.now().year
 
-        self.connection = sqlite3.connect(f"bjs_database_{id}.db")
+        if path is None:
+            path = f"bjs_database_{id}.db"
+
+        self.connection = sqlite3.connect(path)
         self.cursor = self.connection.cursor()
         self.connection.commit()
 
@@ -77,8 +78,7 @@ class Database:
             geburtsjahr: int,
             profil: bool
         ):
-        alter = JAHR - geburtsjahr
-        global id_counter
+        alter = datetime.now().year - geburtsjahr
 
         self.cursor.execute('''
         INSERT INTO Schueler (SchuelerID, Name, Vorname, Geschlecht, Klasse, Klassenbuchstabe,
@@ -86,21 +86,20 @@ class Database:
                             Gesamtpunktzahl, Note, Urkunde)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
         ''', (
-            id_counter,  # ID (hinzugefügter Index)
+            None,  # ID (AUTOINCREMENT)
             name,  # Name
             vorname,  # Vorname
             geschlecht,  # Geschlecht
-            klasse,  # Klasse (ohne letzten Buchstaben)
-            klassenbuchstabe,  # Klassenbuchstabe (letzter Buchstabe)
+            klasse,  # Klasse
+            klassenbuchstabe,  # Klassenbuchstabe
             geburtsjahr,  # Geburtsjahr
-            alter,  # Alter (standardmäßig 12)
+            alter,  # Alter
             profil,  # Profil (Boolean)
             None,  # Riegenführername (wird später über Admin zugewiesen)
             None,  # Gesamtpunktzahl
             None,  # Note
             None   # Urkunde
         ))
-        id_counter += 1
         self.connection.commit()
 
 

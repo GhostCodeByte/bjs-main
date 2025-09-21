@@ -2,6 +2,7 @@ import os
 import sqlite3
 import random
 from datetime import datetime
+import database
 
 # Parameter
 klassenstufen = list(range(5, 10))  # Klassen 5–9
@@ -67,7 +68,7 @@ def generate_and_insert_schueler(db_path: str):
                     b,
                     geburtsjahr,
                     alter,
-                    1 if profil else 0,
+                    profil,
                     None,
                     None,
                     None,
@@ -89,6 +90,7 @@ def generate_and_insert_schueler(db_path: str):
 
 
 if __name__ == "__main__":
-    db_path = "alles_neu/app/database/bjs_database_2025.db"
+    db_path = f"alles_neu/app/database/bjs_database_{datetime.now().year}.db"
+    db = database.Database(path = db_path)
     generate_and_insert_schueler(db_path)
     print(f"Daten erfolgreich in die Datenbank eingefügt: {db_path}")
