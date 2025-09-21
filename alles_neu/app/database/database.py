@@ -10,7 +10,7 @@ class Database:
             id = datetime.now().year
 
         if path is None:
-            path = f"bjs_database_{id}.db"
+            path = f"alles_neu/app/database/bjs_database_{id}.db"
 
         self.connection = sqlite3.connect(path)
         self.cursor = self.connection.cursor()
@@ -67,7 +67,6 @@ class Database:
         
         print("neue Datenbank erstellt")
 
-
     def add_schueler(
             self,
             name: str,
@@ -102,7 +101,6 @@ class Database:
         ))
         self.connection.commit()
 
-
     def add_riegenfuehrer(
             self,
             name,
@@ -112,6 +110,17 @@ class Database:
             klassenendung
         ):
         pass
+
+    def get_riegenfuehrer(self):
+        self.cursor.execute("SELECT * FROM Riegenfuehrer")
+        return self.cursor.fetchall()
+    
+    def get_schueler(self, riegenfuehrer_id):
+        self.cursor.execute("SELECT SchuelerID, Name, Vorname, Geschlecht, Bundesjugendspielalter FROM Schueler WHERE RiegenfuehrerID = ?", (riegenfuehrer_id,))
+        return self.cursor.fetchall()
+
+    def close(self):
+        self.connection.close()
 
 if __name__ == "__main__":
     db = Database()

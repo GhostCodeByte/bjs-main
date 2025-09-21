@@ -24,7 +24,7 @@
           <select id="riegenfuehrer" class="form-select d-inline w-auto">
             <option value="" selected disabled>Riegenführer</option>
             {% for riegen in riegenfuehrer %}
-            <option>{{ riegen }}</option>
+            <option value="{{ riegen[0] }}">{{ riegen[1] }}</option>
             {% endfor %}
           </select>
           <button class="btn btn-info ms-2" type="button">Get</button>
