@@ -27,11 +27,11 @@ class Admin(MDApp):
         menu_items = [
             {
                 "text": "Jungen",
-                "on_release": lambda: self.set_geschlecht('Jungen')
+                "on_release": lambda: self.set_geschlecht('M')
             },
             {
                 "text": "Mädchen",
-                "on_release": lambda: self.set_geschlecht('Mädchen')
+                "on_release": lambda: self.set_geschlecht('W')
             },
             {
                 "text": "Beide",
@@ -67,17 +67,35 @@ class Admin(MDApp):
         MDDropdownMenu(caller=item, items=menu_items).open()
 
     def set_geschlecht(self, geschlecht):
-        self.root.get_screen('riegeneinteilung').ids.geschlecht_dropdown.text = f"Geschlecht der Schüler: {geschlecht}"
+        self.root.get_screen('riegeneinteilung').ids.geschlecht_dropdown.text = f"{geschlecht}"
 
     def set_profil(self, profil):
-        self.root.get_screen('riegeneinteilung').ids.profil_dropdown.text = f"Schüler mit: {profil}"
+        self.root.get_screen('riegeneinteilung').ids.profil_dropdown.text = f"{profil}"
 
     def set_stufe(self, stufe):
-        self.root.get_screen('riegeneinteilung').ids.stufe_dropdown.text = f"Stufe: {stufe}"
+        self.root.get_screen('riegeneinteilung').ids.stufe_dropdown.text = f"{stufe}"
 
+    def get_riegen_data(self):
+        name_rf = self.root.get_screen('riegeneinteilung').ids.riegenfuehrer_text_input.text
+        klasse = self.root.get_screen('riegeneinteilung').ids.klassen_text_input.text
+        stufe = int(self.root.get_screen('riegeneinteilung').ids.stufe_dropdown.text)
+        geschlecht = self.root.get_screen('riegeneinteilung').ids.geschlecht_dropdown.text
+        profil = self.root.get_screen('riegeneinteilung').ids.profil_dropdown.text
+
+        if geschlecht == 'Beide':
+            geschlecht = None
+
+        if profil == 'Profil':
+            profil = True
+        elif profil == 'Nicht-Profil':
+            profil = True
+        else:
+            profil = None
+        
+        print(name_rf, klasse, stufe, geschlecht, profil)
+    
     def riege_erstellen(self):
         pass
-
 
 if __name__ == "__main__":
     Admin().run()

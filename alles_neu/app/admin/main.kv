@@ -54,7 +54,7 @@ ScreenManager:
             height: dp(48)
             orientation: "horizontal"
             MDLabel:
-                id: riegenfuehrer_label
+                id: klasse_label
                 text: "Klassen:"
                 size_hint_x: None
                 width: dp(180)
@@ -62,7 +62,7 @@ ScreenManager:
                 valign: 'center'
 
             MDTextField:
-                id: riegenfuehrer_text_input 
+                id: klassen_text_input 
                 hint_text: "z.B. a,b,c"
                 size_hint_x: 1
                 height: self.parent.height
@@ -71,9 +71,17 @@ ScreenManager:
             size_hint_y: None
             height: dp(48)
             orientation: "horizontal"
+            MDLabel:
+                id: stufe_label
+                text: "Stufe:"
+                size_hint_x: None
+                width: dp(180)
+                height: self.parent.height
+                text_size: self.size
+                valign: 'bottom'
             MDDropDownItem:
                 id: stufe_dropdown
-                text: 'Stufe'
+                text: ''
                 size_hint_x: 1
                 height: self.parent.height
                 on_release: app.open_dropdown_stufe(self)
@@ -82,9 +90,17 @@ ScreenManager:
             size_hint_y: None
             height: dp(48)
             orientation: "horizontal"
+            MDLabel:
+                id: geschlecht_label
+                text: "Geschlecht der Schüler:"
+                size_hint_x: None
+                width: dp(180)
+                height: self.parent.height
+                text_size: self.size
+                valign: 'bottom'
             MDDropDownItem:
                 id: geschlecht_dropdown
-                text: 'Geschlecht der Athleten'
+                text: ''
                 size_hint_x: 1
                 height: self.parent.height
                 on_release: app.open_dropdown_geschlecht(self)
@@ -93,9 +109,17 @@ ScreenManager:
             size_hint_y: None
             height: dp(48)
             orientation: "horizontal"
+            MDLabel:
+                id: profil_label
+                text: "Sportprofil"
+                size_hint_x: None
+                width: dp(180)
+                height: self.parent.height
+                text_size: self.size
+                valign: 'bottom'
             MDDropDownItem:
                 id: profil_dropdown
-                text: 'Sportprofil'
+                text: ''
                 size_hint_x: 1
                 height: self.parent.height
                 on_release: app.open_dropdown_profil(self)
