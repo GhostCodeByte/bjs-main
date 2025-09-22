@@ -126,7 +126,13 @@
 
           <!-- Buttons für Navigation und Aktionen -->
           <div class="d-flex justify-content-between mt-4">
-            <button class="btn btn-success" type="button">Nächster</button>
+            <button
+              class="btn btn-success"
+              type="button"
+              onclick="nextStudent()"
+            >
+              Nächster
+            </button>
             <div class="d-flex gap-2">
               <button
                 class="toggle-btn btn btn-outline-secondary"
@@ -171,13 +177,43 @@
         schuelerDropdown.innerHTML =
           '<option value="" selected disabled>Schüler</option>';
 
-        data.forEach((schueler) => {
+        data.forEach((schuelerStr) => {
           const option = document.createElement("option");
-          option.value = schueler[0];
-          option.textContent = `${schueler[1]} ${schueler[2]}`;
+          // ID aus dem String vorne extrahieren (bis ":")
+          const [id, nameAndRounds] = schuelerStr.split(": ");
+          option.value = id;
+          option.textContent = nameAndRounds; // Name + Status
           schuelerDropdown.appendChild(option);
         });
       })
       .catch((error) => console.error("Error fetching schueler:", error));
+  }
+
+  function nextStudent() {
+    const schuelerDropdown = document.getElementById("schuelerDropdown");
+    const selectedOption =
+      schuelerDropdown.options[schuelerDropdown.selectedIndex];
+    const schuelerId = selectedOption.value;
+    const ergebnis = document.getElementById("ergebnis").value;
+
+    fetch(`/next_student`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ schueler_id: schuelerId, ergebnis: ergebnis }),
+    })
+      .then((response) => response.json())
+      .then((data) => {
+        // Update the dropdown to select the next student
+        const nextIndex = schuelerDropdown.selectedIndex + 1;
+        if (nextIndex < schuelerDropdown.options.length) {
+          schuelerDropdown.selectedIndex = nextIndex;
+          const nextOption = schuelerDropdown.options[nextIndex];
+          document.getElementById("selectedSchueler").textContent =
+            nextOption.textContent;
+        } else {
+          alert("Keine weiteren Schüler in der Riege.");
+        }
+      })
+      .catch((error) => console.error("Error fetching next student:", error));
   }
 </script>
