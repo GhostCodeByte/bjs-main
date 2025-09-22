@@ -115,8 +115,18 @@ class Database:
         self.cursor.execute("SELECT * FROM Riegenfuehrer")
         return self.cursor.fetchall()
     
-    def get_schueler(self, riegenfuehrer_id):
-        self.cursor.execute("SELECT SchuelerID, Name, Vorname, Geschlecht, Bundesjugendspielalter FROM Schueler WHERE RiegenfuehrerID = ?", (riegenfuehrer_id,))
+    def get_riege(self, riegenfuehrer_id):
+        ### SchuelerID, Name, Vorname, Geschlecht, Bundesjugendspielalter
+        self.cursor.execute("SELECT SchuelerID, Name, Vorname, Geschlecht, Bundesjugentspielalter FROM Schueler WHERE RiegenfuehrerID = ?", (riegenfuehrer_id,))
+        return self.cursor.fetchall()
+
+    def get_rounds_done(self, schueler_id, disziplin):
+        self.cursor.execute("""
+            SELECT Disziplin, COUNT(DISTINCT ErgebnisNR) as rounds_done
+            FROM Schueler_Disziplin_Ergebnis
+            WHERE SchuelerID = ? AND status = 'OK' AND Disziplin = ?
+            GROUP BY Disziplin
+        """, (schueler_id, disziplin))
         return self.cursor.fetchall()
 
     def close(self):
