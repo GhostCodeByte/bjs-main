@@ -1,3 +1,5 @@
-string = '19a'
+from alles_neu.app.database.database import Database
 
-print(string[-1:])
+db = Database()
+
+print(db.get_rounds_done(1, "Sprinten"))

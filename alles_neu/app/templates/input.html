@@ -24,10 +24,12 @@
           <select id="riegenfuehrer" class="form-select d-inline w-auto">
             <option value="" selected disabled>Riegenführer</option>
             {% for riegen in riegenfuehrer %}
-            <option>{{ riegen }}</option>
+            <option value="{{ riegen[0] }}">{{ riegen[1] }}</option>
             {% endfor %}
           </select>
-          <button class="btn btn-info ms-2" type="button">Get</button>
+          <button class="btn btn-info ms-2" type="button" onclick="get_riege()">
+            Get
+          </button>
         </div>
 
         <!-- Riege, Station und Logout rechts -->
@@ -124,7 +126,13 @@
 
           <!-- Buttons für Navigation und Aktionen -->
           <div class="d-flex justify-content-between mt-4">
-            <button class="btn btn-success" type="button">Nächster</button>
+            <button
+              class="btn btn-success"
+              type="button"
+              onclick="nextStudent()"
+            >
+              Nächster
+            </button>
             <div class="d-flex gap-2">
               <button
                 class="toggle-btn btn btn-outline-secondary"
@@ -152,3 +160,60 @@
     </div>
   </body>
 </html>
+
+<script>
+  function get_riege() {
+    const riegenfuehrerSelect = document.getElementById("riegenfuehrer");
+    const riegenfuehrerId = riegenfuehrerSelect.value;
+
+    fetch(`/get_riege`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ riegenfuehrer_id: riegenfuehrerId }),
+    })
+      .then((response) => response.json())
+      .then((data) => {
+        const schuelerDropdown = document.getElementById("schuelerDropdown");
+        schuelerDropdown.innerHTML =
+          '<option value="" selected disabled>Schüler</option>';
+
+        data.forEach((schuelerStr) => {
+          const option = document.createElement("option");
+          // ID aus dem String vorne extrahieren (bis ":")
+          const [id, nameAndRounds] = schuelerStr.split(": ");
+          option.value = id;
+          option.textContent = nameAndRounds; // Name + Status
+          schuelerDropdown.appendChild(option);
+        });
+      })
+      .catch((error) => console.error("Error fetching schueler:", error));
+  }
+
+  function nextStudent() {
+    const schuelerDropdown = document.getElementById("schuelerDropdown");
+    const selectedOption =
+      schuelerDropdown.options[schuelerDropdown.selectedIndex];
+    const schuelerId = selectedOption.value;
+    const ergebnis = document.getElementById("ergebnis").value;
+
+    fetch(`/next_student`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ schueler_id: schuelerId, ergebnis: ergebnis }),
+    })
+      .then((response) => response.json())
+      .then((data) => {
+        // Update the dropdown to select the next student
+        const nextIndex = schuelerDropdown.selectedIndex + 1;
+        if (nextIndex < schuelerDropdown.options.length) {
+          schuelerDropdown.selectedIndex = nextIndex;
+          const nextOption = schuelerDropdown.options[nextIndex];
+          document.getElementById("selectedSchueler").textContent =
+            nextOption.textContent;
+        } else {
+          alert("Keine weiteren Schüler in der Riege.");
+        }
+      })
+      .catch((error) => console.error("Error fetching next student:", error));
+  }
+</script>
