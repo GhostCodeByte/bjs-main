@@ -3,7 +3,9 @@ from kivymd.app import MDApp
 from kivy.core.window import Window
 from kivy.uix.screenmanager import Screen
 from kivymd.uix.menu import MDDropdownMenu
+import os
 
+from alles_neu.admin.utils import fill_schueler, csv_to_list
 
 class Home(Screen):
     pass
@@ -96,6 +98,12 @@ class Admin(MDApp):
     
     def riege_erstellen(self):
         pass
+
+    def create_db(self):
+        if os.path.exists(r"alles_neu/app/database/bjs_database_2025.db"):
+            raise FileExistsError('db has already been created')
+        else:
+            fill_schueler(csv_to_list(r"alles_neu/admin/test_data.csv"))
 
 if __name__ == "__main__":
     Admin().run()

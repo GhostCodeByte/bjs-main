@@ -24,6 +24,14 @@ ScreenManager:
                 text: "Erstelle Riegen"
                 size_hint: 1, None
                 on_release: app.change_screen("riegeneinteilung")
+
+        MDBoxLayout:
+            orientation: "horizontal"
+            size_hint_y: 0.1
+            MDRaisedButton:
+                text: "Erstelle Datenbank (basierend auf Beispieldaten)"
+                size_hint: 1, None
+                on_release: app.create_db()
         Widget:
 
 <Riegeneinteilung>:

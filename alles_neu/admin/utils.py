@@ -1,6 +1,6 @@
 import pandas as pd
 import numpy as np
-from alles_neu.admin.admin_database import Database
+from alles_neu.app.database.database import Database
 
 def csv_to_list(csv_path: str) -> np.ndarray:
     """
@@ -29,4 +29,4 @@ def fill_riegenfuehrer(data: np.ndarray):
     pass
 
 if __name__ == '__main__':
-    fill_schueler(csv_to_list(r"old\app\backend\Mappe1.csv"))
+    fill_schueler(csv_to_list(r"alles_neu/admin/test_data.csv"))
