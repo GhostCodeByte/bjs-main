@@ -1,6 +1,6 @@
 import sqlite3
 from datetime import datetime
-from alles_neu.admin.admin_database import Database as admin_db
+from admin.admin_database import Database as admin_db
 
 
 class Database:
@@ -54,18 +54,20 @@ class Database:
     def get_rounds_done(self, schueler_id, disziplin):
         self.cursor.execute("""
             SELECT
-                ErgebnisNR,
+                e.ErgebnisNR,
                 CASE
-                    WHEN SUM(CASE WHEN status = 'OK' THEN 1 ELSE 0 END) > 0 THEN 'OK'
-                    WHEN SUM(CASE WHEN status = 'ABWESEND' THEN 1 ELSE 0 END) > 0 THEN 'ABWESEND'
-                END AS round_status
-            FROM Schueler_Disziplin_Ergebnis
-            WHERE SchuelerID = ? AND Disziplin = ?
-            GROUP BY ErgebnisNR
-            HAVING
-                SUM(CASE WHEN status = 'OK' THEN 1 ELSE 0 END) > 0
-                OR SUM(CASE WHEN status = 'ABWESEND' THEN 1 ELSE 0 END) > 0
-            ORDER BY ErgebnisNR
+                    WHEN e.status = 'OK' THEN e.result_value
+                    WHEN e.status = 'ABWESEND' THEN 'ABWESEND'
+                    ELSE NULL
+                END AS round_value
+            FROM Schueler_Disziplin_Ergebnis e
+            JOIN (
+                SELECT ErgebnisNR, MAX(ID) AS max_id
+                FROM Schueler_Disziplin_Ergebnis
+                WHERE SchuelerID = ? AND Disziplin = ?
+                GROUP BY ErgebnisNR
+            ) latest ON latest.max_id = e.ID
+            ORDER BY e.ErgebnisNR
         """, (schueler_id, disziplin))
         return [(row[0], row[1]) for row in self.cursor.fetchall()]
 

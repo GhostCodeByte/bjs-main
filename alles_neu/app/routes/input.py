@@ -25,22 +25,38 @@ def update_schueler_liste(schueler_liste):
 
 
 def update_status_liste(schueler_liste):
-    symbol_map = {
-        None: "⬜",
-        "OK": "✅",
-        "ABWESEND": "❌"
-    }
+    def to_symbol(val):
+        if val is None:
+            return "⬜"
+        if val == "ABWESEND":
+            return "❌"
+        # bei jedem anderen String (OK-Fall mit Wert) -> Häkchen
+        return "✅"
+
     status_list = []
     for schueler in schueler_liste:
         schueler_id = schueler['SchuelerID']
         name = f"{schueler['Vorname']} {schueler['Name']}"
         rounds = [
-            symbol_map.get(schueler.get('Round1')),
-            symbol_map.get(schueler.get('Round2')),
-            symbol_map.get(schueler.get('Round3')),
+            to_symbol(schueler.get('Round1')),
+            to_symbol(schueler.get('Round2')),
+            to_symbol(schueler.get('Round3')),
         ]
         status_list.append(f"{schueler_id}: {name} {''.join(rounds)}")
     return status_list
+
+
+def build_status_list_from_session():
+    """
+    Aktualisiert die in der Session gespeicherte Schülerliste aus der DB
+    und gibt die formatierte Statusliste für das Dropdown zurück.
+    """
+    schueler_liste = session.get('schueler', [])
+    if not schueler_liste:
+        return []
+    schueler_liste = update_schueler_liste(schueler_liste)
+    session['schueler'] = schueler_liste
+    return update_status_liste(schueler_liste)
 
 
 @input_bp.route('/input')
@@ -71,17 +87,11 @@ def get_riege():
     riegenfuehrer_id = data.get('riegenfuehrer_id')
     db = get_db()
 
-    # Schülerliste aus der DB holen
     schueler_liste = db.get_riege(riegenfuehrer_id)
 
-    # Runde-Status aktualisieren
-    schueler_liste = update_schueler_liste(schueler_liste)
-
-    # In Session speichern
     session['schueler'] = schueler_liste
 
-    status_list = update_status_liste(schueler_liste)
-    # Liste als JSON zurückgeben
+    status_list = build_status_list_from_session()
     return jsonify(status_list)
 
 
@@ -90,19 +100,20 @@ def next_student():
     data = request.get_json()
     schueler_id = data.get('schueler_id')
     ergebnis = data.get('ergebnis')
-    db = get_db()
+    round = data.get('round')
 
-    for schueler in session['schueler']:
-        session["schueler"]
+    db = get_db()
 
     db.add_entry(
         schueler_id=schueler_id,
         disziplin=session.get('discipline'),
-        ergebnis_nr=3,
+        ergebnis_nr=round,
         result_value=ergebnis,
-        status='ABWESEND',
+        status='OK',
         source_ipad_number=1,
         source_station=1
     )
 
-    return jsonify({"status": "ok"})
+    status_list = build_status_list_from_session()
+
+    return jsonify(status_list)
