@@ -67,9 +67,19 @@ class Admin(MDApp):
                 geschlecht = None
         
             print(name_rf, klasse, stufe, geschlecht, profil)
+            self.root.get_screen('riegeneinteilung').ids.label_data_not_complete.text = 'Data has been added.'
+            self.reset_entries()
+
         except:
-            print('Daten unvollständig!')
-    
+            self.root.get_screen('riegeneinteilung').ids.label_data_not_complete.text = 'Data is not complete or in the wrong format.'
+
+    def reset_entries(self):
+        self.root.get_screen('riegeneinteilung').ids.riegenfuehrer_text_input.text = ''
+        self.root.get_screen('riegeneinteilung').ids.klassen_text_input.text = ''
+        self.root.get_screen('riegeneinteilung').ids.stufe_dropdown.text = ''
+        self.root.get_screen('riegeneinteilung').ids.geschlecht_dropdown.text = ''
+        self.root.get_screen('riegeneinteilung').ids.checkbox_profil.active = False
+
     def riege_erstellen(self):
         pass
 
