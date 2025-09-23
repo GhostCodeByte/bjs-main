@@ -117,12 +117,8 @@ ScreenManager:
                 height: self.parent.height
                 text_size: self.size
                 valign: 'bottom'
-            MDDropDownItem:
-                id: profil_dropdown
-                text: ''
-                size_hint_x: 1
-                height: self.parent.height
-                on_release: app.open_dropdown_profil(self)
+            MDCheckbox:
+                id: checkbox_profil
 
         Widget:
 
@@ -135,4 +131,4 @@ ScreenManager:
                 text: 'Riege erstellen'
                 size_hint_x: 1
                 height: self.parent.height
-                on_release: app.riege_erstellen()
+                on_release: app.get_riegen_data()

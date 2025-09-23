@@ -10,7 +10,7 @@ class Database:
             id = datetime.now().year
 
         if path is None:
-            path = f"alles_neu/app/database/bjs_database_{id}.db"
+            path = f"alles_neu/admin/bjs_database_{id}.db"
 
         self.connection = sqlite3.connect(path)
         self.cursor = self.connection.cursor()
@@ -82,7 +82,7 @@ class Database:
 
         self.cursor.execute('''
         INSERT INTO Schueler (SchuelerID, Name, Vorname, Geschlecht, Klasse, Klassenbuchstabe,
-                            Geburtsjahr, Bundesjugentspielalter, Profil, RiegenfuehrerName,
+                            Geburtsjahr, Bundesjugentspielalter, Profil, RiegenfuehrerID,
                             Gesamtpunktzahl, Note, Urkunde)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
         ''', (

@@ -1,6 +1,6 @@
 import pandas as pd
 import numpy as np
-from alles_neu.app.database.database import Database
+from alles_neu.admin.admin_database import Database
 
 def csv_to_list(csv_path: str) -> np.ndarray:
     """
@@ -12,7 +12,6 @@ def csv_to_list(csv_path: str) -> np.ndarray:
 
 def fill_schueler(data: np.ndarray):
     db = Database()
-    db.add_riegenfuehrer('test')
     for element in data:
         stufe = element[1][:-1]
         klasse = element[1][-1:]
