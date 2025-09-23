@@ -40,23 +40,6 @@ class Admin(MDApp):
         ]
         MDDropdownMenu(caller=item, items=menu_items).open()
     
-    def open_dropdown_profil(self, item):
-        menu_items = [
-            {
-                "text": "Profil",
-                "on_release": lambda: self.set_profil('Profil')
-            },
-            {
-                "text": "Nicht-Profil",
-                "on_release": lambda: self.set_profil('Nicht-Profil')
-            },
-            {
-                "text": "Beide",
-                "on_release": lambda: self.set_profil('Beide')
-            }
-        ]
-        MDDropdownMenu(caller=item, items=menu_items).open()
-
     def open_dropdown_stufe(self, item):
         menu_items = [
             {
@@ -69,30 +52,23 @@ class Admin(MDApp):
     def set_geschlecht(self, geschlecht):
         self.root.get_screen('riegeneinteilung').ids.geschlecht_dropdown.text = f"{geschlecht}"
 
-    def set_profil(self, profil):
-        self.root.get_screen('riegeneinteilung').ids.profil_dropdown.text = f"{profil}"
-
     def set_stufe(self, stufe):
         self.root.get_screen('riegeneinteilung').ids.stufe_dropdown.text = f"{stufe}"
 
     def get_riegen_data(self):
-        name_rf = self.root.get_screen('riegeneinteilung').ids.riegenfuehrer_text_input.text
-        klasse = self.root.get_screen('riegeneinteilung').ids.klassen_text_input.text
-        stufe = int(self.root.get_screen('riegeneinteilung').ids.stufe_dropdown.text)
-        geschlecht = self.root.get_screen('riegeneinteilung').ids.geschlecht_dropdown.text
-        profil = self.root.get_screen('riegeneinteilung').ids.profil_dropdown.text
+        try:
+            name_rf = self.root.get_screen('riegeneinteilung').ids.riegenfuehrer_text_input.text
+            klasse = self.root.get_screen('riegeneinteilung').ids.klassen_text_input.text
+            stufe = int(self.root.get_screen('riegeneinteilung').ids.stufe_dropdown.text)
+            geschlecht = self.root.get_screen('riegeneinteilung').ids.geschlecht_dropdown.text
+            profil = self.root.get_screen('riegeneinteilung').ids.checkbox_profil.active
 
-        if geschlecht == 'Beide':
-            geschlecht = None
-
-        if profil == 'Profil':
-            profil = True
-        elif profil == 'Nicht-Profil':
-            profil = True
-        else:
-            profil = None
+            if geschlecht == 'Beide':
+                geschlecht = None
         
-        print(name_rf, klasse, stufe, geschlecht, profil)
+            print(name_rf, klasse, stufe, geschlecht, profil)
+        except:
+            print('Daten unvollständig!')
     
     def riege_erstellen(self):
         pass
