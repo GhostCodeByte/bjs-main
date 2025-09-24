@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Flask Layout</title>
 
-    <!-- Externe CSS-Dateien für Styling -->
     <link
       rel="stylesheet"
       href="{{ url_for('static', filename='input.css') }}"
@@ -17,9 +16,7 @@
   </head>
   <body>
     <div class="container">
-      <!-- Oberer Navigationsbereich -->
       <div class="d-flex justify-content-between mt-3">
-        <!-- Mittlerer Dropdown-Bereich -->
         <div>
           <select id="riegenfuehrer" class="form-select d-inline w-auto">
             <option value="" selected disabled>Riegenführer</option>
@@ -31,8 +28,6 @@
             Get
           </button>
         </div>
-
-        <!-- Riege, Station und Logout rechts -->
         <div class="d-flex align-items-center gap-2">
           <div class="text-muted small ms-2">
             Station: <strong>{{ station }}</strong>
@@ -44,9 +39,7 @@
         </div>
       </div>
 
-      <!-- Hauptcontainer mit Informations- und Eingabebereichen -->
       <div class="d-flex mt-4 gap-4">
-        <!-- Linker Informationscontainer -->
         <div class="box p-3">
           <p><strong>Klasse:</strong> <span id="klasse"></span></p>
           <p><strong>Geschlecht:</strong> <span id="geschlecht"></span></p>
@@ -83,16 +76,12 @@
             </p>
           </div>
         </div>
-
-        <!-- Rechter Eingabecontainer -->
         <div class="box p-3 flex-grow-1">
           <div class="d-flex justify-content-between">
             <div>
               <p><strong>Name:</strong> <span id="selectedSchueler"></span></p>
               <p><strong>Schwierigkeitsgrad:</strong></p>
             </div>
-
-            <!-- Dropdown für Schülerselektion -->
             <select
               id="schuelerDropdown"
               class="form-select w-auto"
@@ -101,8 +90,6 @@
               <option value="" selected disabled>Schüler</option>
             </select>
           </div>
-
-          <!-- Eingabefeld für Ergebnis mit Anzeige des gespeicherten Werts -->
           <div class="d-flex align-items-center mt-2 gap-3">
             <input
               type="text"
@@ -123,8 +110,6 @@
               style="min-width: 150px"
             ></div>
           </div>
-
-          <!-- Buttons für Navigation und Aktionen -->
           <div class="d-flex justify-content-between mt-4">
             <button
               class="btn btn-success"
@@ -172,7 +157,7 @@
         const [id, nameAndRounds] = schuelerStr.split(": ");
         const option = document.createElement("option");
         option.value = id;
-        option.textContent = nameAndRounds; // Name + Status
+        option.textContent = nameAndRounds;
         schuelerDropdown.appendChild(option);
       });
 
@@ -200,8 +185,6 @@
         .then((response) => response.json())
         .then((data) => {
           updateSchuelerDropdown(data);
-
-          // optional: ersten Schüler vorauswählen
           const schuelerDropdown = document.getElementById("schuelerDropdown");
           if (schuelerDropdown.options.length > 1) {
             schuelerDropdown.selectedIndex = 1;
@@ -231,7 +214,6 @@
       })
         .then((response) => response.json())
         .then((data) => {
-          // Dropdown mit aktualisiertem Status neu aufbauen
           updateSchuelerDropdown(data, schuelerId);
 
           const sd = document.getElementById("schuelerDropdown");
@@ -246,11 +228,19 @@
             document.getElementById("selectedSchueler").textContent =
               nextOption.textContent;
             document.getElementById("ergebnis").value = "";
+          } else if (getActiveRound() < 3) {
+            setActiveRound(getActiveRound() + 1);
+            schuelerDropdown.selectedIndex = 1;
+            document.getElementById("selectedSchueler").textContent =
+              schuelerDropdown.options[1].textContent;
           } else {
-            alert("Keine weiteren Schüler in der Riege.");
+            schuelerDropdown.selectedIndex = 0;
+            document.getElementById("selectedSchueler").textContent = "";
+            document.getElementById("ergebnis").value = "";
+            setActiveRound(1);
           }
         })
-        .catch((error) => console.error("Error fetching next student:", error));
+        .catch((error) => console.error("Error in nextStudent:", error));
     }
 
     const buttons = document.querySelectorAll(".toggle-btn");
