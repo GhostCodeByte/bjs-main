@@ -102,16 +102,47 @@ class Database:
         ))
         self.connection.commit()
 
-    def add_riegenfuehrer(
-        self,
-        name,
-        geschlecht,
-        profil,
-        stufe,
-        klassenendung
-    ):
-        pass
+    def add_riegenfuehrer(self, name, geschlecht, profil, stufe, klassenendung):
+        # First, check if the name already exists in the table.
+        self.cursor.execute('''
+            INSERT INTO Riegenfuehrer (ID, Name, Geschlecht, Profil, Stufe, Klassenendungen)
+            VALUES (?, ?, ?, ?, ?, ?);
+        ''', (
+            None, 
+            name, 
+            geschlecht, 
+            profil, 
+            stufe, 
+            klassenendung
+        ))
+        new_id = self.cursor.lastrowid
+        self.connection.commit()
+        print(new_id)
+        return new_id
 
+    def add_riegenfuehrer_to_schueler(
+            self,
+            rf_id,
+            klassenbuchstabe,
+            stufe,
+            geschlecht,
+            profil
+        ):
+        self.cursor.execute('''
+            UPDATE Schueler
+            SET RiegenfuehrerID = ?
+            WHERE Klassenbuchstabe = ?
+            AND Klasse = ?
+            AND Geschlecht = ?
+            AND Profil = ?;
+        ''', (
+            rf_id,
+            klassenbuchstabe,
+            stufe,
+            geschlecht,
+            profil
+        ))
+        self.connection.commit()
 
 if __name__ == "__main__":
     db = Database()

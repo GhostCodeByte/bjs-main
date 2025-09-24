@@ -1,14 +1,9 @@
 import pandas as pd
 import numpy as np
+import os
 from alles_neu.admin.admin_database import Database
+from datetime import datetime
 
-def csv_to_list(csv_path: str) -> np.ndarray:
-    """
-    Extract data from a csv file and return a list
-    """
-    df = pd.read_csv(csv_path, delimiter=';')
-    data = np.array(df)
-    return data
 
 def fill_schueler(data: np.ndarray):
     db = Database()
@@ -25,8 +20,31 @@ def fill_schueler(data: np.ndarray):
             profil=element[5]
         )
 
-def fill_riegenfuehrer(data: np.ndarray):
-    pass
+def create_riege(rf_id, stufe, klassenendungen, geschlechter, profil):
+    print('adding')
+    db = Database()
+    id = db.add_riegenfuehrer(
+        rf_id,
+        geschlechter,
+        profil,
+        stufe,
+        klassenendungen
+    )
+    for kl_end in klassenendungen:
+        for geschlecht in geschlechter:
+            db.add_riegenfuehrer_to_schueler(
+                id,
+                kl_end,
+                stufe,
+                geschlecht,
+                profil
+            )
 
-if __name__ == '__main__':
-    fill_schueler(csv_to_list(r"old\app\backend\Mappe1.csv"))
+def create_db_from_csv(csv_path):
+    try:
+        os.remove(f"alles_neu/admin/bjs_database_{datetime.now().year}.db")
+    except Exception:
+        print(f"Failed to delete database: alles_neu/admin/bjs_database_{datetime.now().year}.db")
+    df = pd.read_csv(csv_path, delimiter=';')
+    data = np.array(df)
+    fill_schueler(data)

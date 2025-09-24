@@ -15,7 +15,7 @@ ScreenManager:
             MDRaisedButton:
                 text: "Ergebnisse aller Klassen als CSV"
                 size_hint: 1, None
-                on_release: app.get_csv_all_classes
+                on_release: app.get_csv_all_classes()
 
         MDBoxLayout:
             orientation: "horizontal"
@@ -24,6 +24,14 @@ ScreenManager:
                 text: "Erstelle Riegen"
                 size_hint: 1, None
                 on_release: app.change_screen("riegeneinteilung")
+        MDBoxLayout:
+            orientation: "horizontal"
+            size_hint_y: 0.1
+            MDRaisedButton:
+                text: "Create DB from CSV"
+                size_hint: 1, None
+                on_release: app.create_db()
+
         Widget:
 
 <Riegeneinteilung>:
@@ -115,10 +123,9 @@ ScreenManager:
                 size_hint_x: None
                 width: dp(180)
                 height: self.parent.height
-                text_size: self.size
-                valign: 'bottom'
             MDCheckbox:
                 id: checkbox_profil
+                ripple_scale: 0
 
         Widget:
 
@@ -131,7 +138,7 @@ ScreenManager:
                 text: 'Riege erstellen'
                 size_hint_x: 1
                 height: self.parent.height
-                on_release: app.get_riegen_data()
+                on_release: app.create_riege_kv()
 
         MDLabel:
             id: label_data_not_complete

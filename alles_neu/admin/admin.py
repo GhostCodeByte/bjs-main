@@ -3,7 +3,7 @@ from kivymd.app import MDApp
 from kivy.core.window import Window
 from kivy.uix.screenmanager import Screen
 from kivymd.uix.menu import MDDropdownMenu
-
+from alles_neu.admin.utils import create_db_from_csv, create_riege
 
 class Home(Screen):
     pass
@@ -56,22 +56,15 @@ class Admin(MDApp):
         self.root.get_screen('riegeneinteilung').ids.stufe_dropdown.text = f"{stufe}"
 
     def get_riegen_data(self):
-        try:
             name_rf = self.root.get_screen('riegeneinteilung').ids.riegenfuehrer_text_input.text
-            klasse = self.root.get_screen('riegeneinteilung').ids.klassen_text_input.text
+            klassenendung = self.root.get_screen('riegeneinteilung').ids.klassen_text_input.text.replace(",", "").replace(" ", "")
             stufe = int(self.root.get_screen('riegeneinteilung').ids.stufe_dropdown.text)
             geschlecht = self.root.get_screen('riegeneinteilung').ids.geschlecht_dropdown.text
             profil = self.root.get_screen('riegeneinteilung').ids.checkbox_profil.active
-
             if geschlecht == 'Beide':
-                geschlecht = None
-        
-            print(name_rf, klasse, stufe, geschlecht, profil)
-            self.root.get_screen('riegeneinteilung').ids.label_data_not_complete.text = 'Data has been added.'
-            self.reset_entries()
+                geschlecht = 'mw'
+            return name_rf, stufe, klassenendung, geschlecht, profil
 
-        except:
-            self.root.get_screen('riegeneinteilung').ids.label_data_not_complete.text = 'Data is not complete or in the wrong format.'
 
     def reset_entries(self):
         self.root.get_screen('riegeneinteilung').ids.riegenfuehrer_text_input.text = ''
@@ -79,9 +72,21 @@ class Admin(MDApp):
         self.root.get_screen('riegeneinteilung').ids.stufe_dropdown.text = ''
         self.root.get_screen('riegeneinteilung').ids.geschlecht_dropdown.text = ''
         self.root.get_screen('riegeneinteilung').ids.checkbox_profil.active = False
+    
+    def create_riege_kv(self):
+        try:
+            data = self.get_riegen_data()
+        except Exception:
+            self.root.get_screen('riegeneinteilung').ids.label_data_not_complete.text = 'Data is not complete or in the wrong format.'
+            return
 
-    def riege_erstellen(self):
-        pass
+        create_riege(*data)
+        self.root.get_screen('riegeneinteilung').ids.label_data_not_complete.text = 'Data has been added.'
+        self.reset_entries()
+
+    def create_db(self):
+        create_db_from_csv('alles_neu/admin/test_data.csv')
+
 
 if __name__ == "__main__":
     Admin().run()
