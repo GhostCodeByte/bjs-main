@@ -6,9 +6,6 @@ from kivymd.uix.menu import MDDropdownMenu
 from alles_neu.admin.utils import create_db_from_csv, create_riege
 from plyer import filechooser
 
-class Home(Screen):
-    pass
-
 class Riegeneinteilung(Screen):
     pass
 
