@@ -1,6 +1,6 @@
 import sqlite3
 from datetime import datetime
-
+import os
 
 class Database:
     # Die ID kann genuzt werden wen man mehrere datenbanken gleichzeitig haben will
@@ -10,7 +10,8 @@ class Database:
             id = datetime.now().year
 
         if path is None:
-            path = f"alles_neu/admin/bjs_database_{id}.db"
+            base_dir = os.path.dirname(os.path.abspath(__file__))
+            path = os.path.join(base_dir, f"bjs_database_{id}.db")
 
         self.connection = sqlite3.connect(path)
         self.cursor = self.connection.cursor()

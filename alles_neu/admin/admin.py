@@ -4,6 +4,7 @@ from kivy.core.window import Window
 from kivy.uix.screenmanager import Screen
 from kivymd.uix.menu import MDDropdownMenu
 from alles_neu.admin.utils import create_db_from_csv, create_riege
+from plyer import filechooser
 
 class Home(Screen):
     pass
@@ -19,9 +20,6 @@ class Admin(MDApp):
 
     def change_screen(self, screen_name):
         self.sm.current = screen_name
-
-    def get_csv_all_classes(self):
-        pass
 
     def open_dropdown_geschlecht(self, item):
         menu_items = [
@@ -72,20 +70,25 @@ class Admin(MDApp):
         self.root.get_screen('riegeneinteilung').ids.stufe_dropdown.text = ''
         self.root.get_screen('riegeneinteilung').ids.geschlecht_dropdown.text = ''
         self.root.get_screen('riegeneinteilung').ids.checkbox_profil.active = False
-    
+
     def create_riege_kv(self):
         try:
             data = self.get_riegen_data()
         except Exception:
-            self.root.get_screen('riegeneinteilung').ids.label_data_not_complete.text = 'Data is not complete or in the wrong format.'
+            self.root.get_screen('riegeneinteilung').ids.label_data_not_complete.text = 'Eintrag ist im falschen Format.'
             return
 
         create_riege(*data)
-        self.root.get_screen('riegeneinteilung').ids.label_data_not_complete.text = 'Data has been added.'
+        self.root.get_screen('riegeneinteilung').ids.label_data_not_complete.text = 'Riege wurde hinzugefügt.'
         self.reset_entries()
 
     def create_db(self):
-        create_db_from_csv('alles_neu/admin/test_data.csv')
+        filechooser.open_file(on_selection=self.call_create_db_from_csv)
+
+    def call_create_db_from_csv(self, selection):
+        if selection:
+            print(selection[0])
+            create_db_from_csv(selection[0])
 
 
 if __name__ == "__main__":

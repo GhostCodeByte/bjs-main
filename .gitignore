@@ -5,3 +5,5 @@
 __pycache__/
 *.pyc
 *.pyo
+test.py
+data_end.xls
