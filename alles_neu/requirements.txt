@@ -1,0 +1,13 @@
+# Web-App
+Flask==2.3.3
+Flask-WTF==1.2.1
+python-dotenv==1.0.1
+
+# WSGI (Prod)
+gunicorn==21.2.0
+
+# Admin-Tool (Kivy GUI/CLI)
+kivy==2.2.1
+
+# Tests/Quality
+pytest==7.4.4

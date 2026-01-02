@@ -5,7 +5,6 @@ from datetime import datetime
 class Database:
     # Die ID kann genuzt werden wen man mehrere datenbanken gleichzeitig haben will
     def __init__(self, id=None, path=None):
-
         if id == None:
             id = datetime.now().year
 
@@ -16,15 +15,15 @@ class Database:
         self.cursor = self.connection.cursor()
         self.connection.commit()
 
-        self.cursor.execute(
-            "SELECT name FROM sqlite_master WHERE type='table';")
+        self.cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
         if not self.cursor.fetchall():
             self.datenbank_erstellen()
         else:
             print("Datenbank existiert bereits und wird verwendet")
+        self.ensure_indexes()
 
     def datenbank_erstellen(self):
-        self.cursor.execute(""" 
+        self.cursor.execute("""
             CREATE TABLE IF NOT EXISTS Schueler (
                 SchuelerID        INTEGER PRIMARY KEY AUTOINCREMENT,
                 Name              TEXT,
@@ -66,7 +65,66 @@ class Database:
                 Klassenendungen TEXT NOT NULL
         )""")
 
+        self.cursor.execute("""
+            CREATE TABLE IF NOT EXISTS Station_Pin (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                station TEXT NOT NULL,
+                pin TEXT NOT NULL UNIQUE,
+                max_logins INTEGER NOT NULL DEFAULT 1,
+                active INTEGER NOT NULL DEFAULT 1,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )""")
+
+        self.cursor.execute("""
+            CREATE TABLE IF NOT EXISTS Station_Session (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                pin TEXT NOT NULL,
+                device_id TEXT NOT NULL,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                active INTEGER NOT NULL DEFAULT 1,
+                FOREIGN KEY (pin) REFERENCES Station_Pin(pin)
+        )""")
+
+        self.ensure_indexes()
+
         print("neue Datenbank erstellt")
+
+    def ensure_indexes(self):
+        # defensive: Tabellen anlegen, falls DB aus alter Version kommt
+        self.cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS Station_Pin (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                station TEXT NOT NULL,
+                pin TEXT NOT NULL UNIQUE,
+                max_logins INTEGER NOT NULL DEFAULT 1,
+                active INTEGER NOT NULL DEFAULT 1,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+            """
+        )
+        self.cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS Station_Session (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                pin TEXT NOT NULL,
+                device_id TEXT NOT NULL,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                active INTEGER NOT NULL DEFAULT 1,
+                FOREIGN KEY (pin) REFERENCES Station_Pin(pin)
+            )
+            """
+        )
+        self.cursor.execute(
+            "CREATE INDEX IF NOT EXISTS idx_station_session_pin_active ON Station_Session(pin, active)"
+        )
+        self.cursor.execute(
+            "CREATE INDEX IF NOT EXISTS idx_station_pin_active ON Station_Pin(pin, active)"
+        )
+        self.cursor.execute(
+            "CREATE INDEX IF NOT EXISTS idx_ergebnis_lookup ON Schueler_Disziplin_Ergebnis (SchuelerID, Disziplin, ErgebnisNR, created_at DESC)"
+        )
+        self.connection.commit()
 
     def add_schueler(
         self,
@@ -76,73 +134,65 @@ class Database:
         klasse: int,
         klassenbuchstabe: str,
         geburtsjahr: int,
-        profil: bool
+        profil: bool,
     ):
         alter = datetime.now().year - geburtsjahr
 
-        self.cursor.execute('''
+        self.cursor.execute(
+            """
         INSERT INTO Schueler (SchuelerID, Name, Vorname, Geschlecht, Klasse, Klassenbuchstabe,
                             Geburtsjahr, Bundesjugentspielalter, Profil, RiegenfuehrerID,
                             Gesamtpunktzahl, Note, Urkunde)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
-        ''', (
-            None,  # ID (AUTOINCREMENT)
-            name,  # Name
-            vorname,  # Vorname
-            geschlecht,  # Geschlecht
-            klasse,  # Klasse
-            klassenbuchstabe,  # Klassenbuchstabe
-            geburtsjahr,  # Geburtsjahr
-            alter,  # Alter
-            profil,  # Profil (Boolean)
-            None,  # Riegenführername (wird später über Admin zugewiesen)
-            None,  # Gesamtpunktzahl
-            None,  # Note
-            None   # Urkunde
-        ))
+        """,
+            (
+                None,  # ID (AUTOINCREMENT)
+                name,  # Name
+                vorname,  # Vorname
+                geschlecht,  # Geschlecht
+                klasse,  # Klasse
+                klassenbuchstabe,  # Klassenbuchstabe
+                geburtsjahr,  # Geburtsjahr
+                alter,  # Alter
+                profil,  # Profil (Boolean)
+                None,  # Riegenführername (wird später über Admin zugewiesen)
+                None,  # Gesamtpunktzahl
+                None,  # Note
+                None,  # Urkunde
+            ),
+        )
         self.connection.commit()
 
     def add_riegenfuehrer(self, name, geschlecht, profil, stufe, klassenendung):
         # First, check if the name already exists in the table.
-        self.cursor.execute('''
+        self.cursor.execute(
+            """
             INSERT INTO Riegenfuehrer (ID, Name, Geschlecht, Profil, Stufe, Klassenendungen)
             VALUES (?, ?, ?, ?, ?, ?);
-        ''', (
-            None, 
-            name, 
-            geschlecht, 
-            profil, 
-            stufe, 
-            klassenendung
-        ))
+        """,
+            (None, name, geschlecht, profil, stufe, klassenendung),
+        )
         new_id = self.cursor.lastrowid
         self.connection.commit()
         print(new_id)
         return new_id
 
     def add_riegenfuehrer_to_schueler(
-            self,
-            rf_id,
-            klassenbuchstabe,
-            stufe,
-            geschlecht,
-            profil
-        ):
-        self.cursor.execute('''
+        self, rf_id, klassenbuchstabe, stufe, geschlecht, profil
+    ):
+        self.cursor.execute(
+            """
             UPDATE Schueler
             SET RiegenfuehrerID = ?
             WHERE Klassenbuchstabe = ?
             AND Klasse = ?
             AND Geschlecht = ?
             AND Profil = ?;
-        ''', (
-            rf_id,
-            klassenbuchstabe,
-            stufe,
-            geschlecht,
-            profil
-        ))
+        """,
+            (rf_id, klassenbuchstabe, stufe, geschlecht, profil),
+        )
         self.connection.commit()
+
 
 if __name__ == "__main__":
     db = Database()

@@ -3,9 +3,11 @@ from flask import redirect, url_for
 
 app = create_app()
 
-@app.route('/')
+
+@app.route("/")
 def index():
-    return redirect(url_for('auth.login'))
+    return redirect(url_for("auth.login"))
+
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(debug=app.config.get("DEBUG", False))

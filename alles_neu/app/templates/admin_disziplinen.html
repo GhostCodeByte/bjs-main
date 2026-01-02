@@ -1,0 +1,648 @@
+<!doctype html>
+<html lang="de">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Disziplin-Verwaltung</title>
+        <style>
+            :root {
+                --primary: #2563eb;
+                --success: #15803d;
+                --danger: #b91c1c;
+                --warning: #d97706;
+                --gray-100: #f3f4f6;
+                --gray-200: #e5e7eb;
+                --gray-600: #4b5563;
+                --gray-800: #1f2937;
+            }
+            * {
+                box-sizing: border-box;
+            }
+            body {
+                font-family:
+                    system-ui,
+                    -apple-system,
+                    sans-serif;
+                margin: 0;
+                background: #f7f7f8;
+                color: var(--gray-800);
+            }
+            header {
+                background: #111827;
+                color: #fff;
+                padding: 12px 16px;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+            }
+            header a {
+                color: #fff;
+                text-decoration: none;
+                margin-left: 16px;
+            }
+            header a:hover {
+                text-decoration: underline;
+            }
+            main {
+                padding: 16px;
+                max-width: 1200px;
+                margin: 0 auto;
+            }
+            h1 {
+                margin: 0 0 16px;
+            }
+            h2 {
+                margin: 24px 0 12px;
+                font-size: 1.25rem;
+            }
+            .grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+                gap: 16px;
+            }
+            .card {
+                background: #fff;
+                border: 1px solid var(--gray-200);
+                border-radius: 10px;
+                padding: 16px;
+            }
+            .card h3 {
+                margin: 0 0 12px;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+            }
+            .card p {
+                margin: 4px 0;
+                color: var(--gray-600);
+                font-size: 0.9rem;
+            }
+            .badge {
+                display: inline-block;
+                padding: 2px 8px;
+                border-radius: 999px;
+                font-size: 0.75rem;
+                font-weight: 700;
+                color: #fff;
+            }
+            .badge.time {
+                background: var(--primary);
+            }
+            .badge.distance {
+                background: var(--success);
+            }
+            .actions {
+                display: flex;
+                gap: 8px;
+                margin-top: 12px;
+            }
+            button {
+                border: none;
+                border-radius: 6px;
+                padding: 8px 12px;
+                font-weight: 600;
+                cursor: pointer;
+                font-size: 0.9rem;
+            }
+            .btn-primary {
+                background: var(--primary);
+                color: #fff;
+            }
+            .btn-secondary {
+                background: var(--gray-200);
+                color: var(--gray-800);
+            }
+            .btn-danger {
+                background: var(--danger);
+                color: #fff;
+            }
+            .btn-success {
+                background: var(--success);
+                color: #fff;
+            }
+            /* Modal */
+            .modal-overlay {
+                display: none;
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: rgba(0, 0, 0, 0.5);
+                z-index: 100;
+                align-items: center;
+                justify-content: center;
+            }
+            .modal-overlay.active {
+                display: flex;
+            }
+            .modal {
+                background: #fff;
+                border-radius: 12px;
+                padding: 24px;
+                width: 90%;
+                max-width: 500px;
+                max-height: 90vh;
+                overflow-y: auto;
+            }
+            .modal h2 {
+                margin: 0 0 16px;
+            }
+            .form-group {
+                margin-bottom: 12px;
+            }
+            .form-group label {
+                display: block;
+                font-weight: 600;
+                margin-bottom: 4px;
+                font-size: 0.9rem;
+            }
+            .form-group input,
+            .form-group select,
+            .form-group textarea {
+                width: 100%;
+                padding: 10px 12px;
+                border: 1px solid var(--gray-200);
+                border-radius: 6px;
+                font-size: 1rem;
+            }
+            .form-group textarea {
+                resize: vertical;
+                min-height: 80px;
+            }
+            .form-row {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 12px;
+            }
+            .form-actions {
+                display: flex;
+                gap: 8px;
+                justify-content: flex-end;
+                margin-top: 16px;
+            }
+            /* Toast */
+            .toast {
+                position: fixed;
+                bottom: 20px;
+                right: 20px;
+                padding: 12px 20px;
+                border-radius: 8px;
+                color: #fff;
+                font-weight: 600;
+                z-index: 200;
+                transform: translateY(100px);
+                opacity: 0;
+                transition: all 0.3s ease;
+            }
+            .toast.show {
+                transform: translateY(0);
+                opacity: 1;
+            }
+            .toast.success {
+                background: var(--success);
+            }
+            .toast.error {
+                background: var(--danger);
+            }
+            /* Import/Export */
+            .toolbar {
+                display: flex;
+                gap: 8px;
+                margin-bottom: 16px;
+                flex-wrap: wrap;
+            }
+            .file-input-wrapper {
+                position: relative;
+                overflow: hidden;
+                display: inline-block;
+            }
+            .file-input-wrapper input[type="file"] {
+                position: absolute;
+                left: 0;
+                top: 0;
+                opacity: 0;
+                cursor: pointer;
+                width: 100%;
+                height: 100%;
+            }
+            .empty-state {
+                text-align: center;
+                padding: 40px;
+                color: var(--gray-600);
+            }
+            .empty-state svg {
+                width: 64px;
+                height: 64px;
+                margin-bottom: 16px;
+                opacity: 0.5;
+            }
+        </style>
+    </head>
+    <body>
+        <header>
+            <div><strong>Disziplin-Verwaltung</strong></div>
+            <nav>
+                <a href="/admin">Dashboard</a>
+                <a href="/dashboard">Fortschritt</a>
+                <a href="/stats">Bestenliste</a>
+                <a href="/logout">Logout</a>
+            </nav>
+        </header>
+
+        <main>
+            <div class="toolbar">
+                <button class="btn-primary" onclick="openCreateModal()">
+                    + Neue Disziplin
+                </button>
+                <a
+                    href="/admin/disziplinen/export"
+                    class="btn-secondary"
+                    style="
+                        text-decoration: none;
+                        display: inline-flex;
+                        align-items: center;
+                    "
+                >
+                    ⬇ Export JSON
+                </a>
+                <div class="file-input-wrapper">
+                    <button class="btn-secondary">⬆ Import JSON</button>
+                    <input
+                        type="file"
+                        accept=".json"
+                        onchange="importDisziplinen(this)"
+                    />
+                </div>
+            </div>
+
+            <h2>Alle Disziplinen</h2>
+
+            {% if disziplinen %}
+            <div class="grid" id="disziplinen-grid">
+                {% for d in disziplinen %}
+                <div class="card" data-id="{{ d.id }}">
+                    <h3>
+                        <span>{{ d.display_name or d.name }}</span>
+                        <span class="badge {{ d.result_format }}">
+                            {{ 'Zeit' if d.result_format == 'time' else
+                            'Distanz' }}
+                        </span>
+                    </h3>
+                    <p><strong>Name:</strong> {{ d.name }}</p>
+                    <p><strong>Runden:</strong> {{ d.num_rounds }}</p>
+                    <p><strong>Einheit:</strong> {{ d.unit }}</p>
+                    {% if d.description %}
+                    <p><strong>Beschreibung:</strong> {{ d.description }}</p>
+                    {% endif %}
+                    <div class="actions">
+                        <button
+                            class="btn-secondary"
+                            onclick="openEditModal({{ d.id }})"
+                        >
+                            Bearbeiten
+                        </button>
+                        <button
+                            class="btn-danger"
+                            onclick="deleteDisziplin({{ d.id }}, '{{ d.name }}')"
+                        >
+                            Löschen
+                        </button>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="empty-state">
+                <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                >
+                    <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
+                    />
+                </svg>
+                <h3>Keine Disziplinen vorhanden</h3>
+                <p>
+                    Erstelle deine erste Disziplin oder importiere eine
+                    JSON-Datei.
+                </p>
+                <button class="btn-primary" onclick="openCreateModal()">
+                    + Neue Disziplin erstellen
+                </button>
+            </div>
+            {% endif %}
+        </main>
+
+        <!-- Modal -->
+        <div
+            class="modal-overlay"
+            id="modal-overlay"
+            onclick="closeModal(event)"
+        >
+            <div class="modal" onclick="event.stopPropagation()">
+                <h2 id="modal-title">Disziplin erstellen</h2>
+                <form id="disziplin-form" onsubmit="saveDisziplin(event)">
+                    <input type="hidden" id="disziplin-id" />
+
+                    <div class="form-group">
+                        <label for="name">Name (intern)</label>
+                        <input
+                            type="text"
+                            id="name"
+                            name="name"
+                            required
+                            placeholder="z.B. Sprint50m"
+                        />
+                    </div>
+
+                    <div class="form-group">
+                        <label for="display_name">Anzeigename</label>
+                        <input
+                            type="text"
+                            id="display_name"
+                            name="display_name"
+                            placeholder="z.B. Sprint 50m"
+                        />
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="result_format">Ergebnis-Format</label>
+                            <select id="result_format" name="result_format">
+                                <option value="distance">
+                                    Distanz (Meter)
+                                </option>
+                                <option value="time">Zeit (mm:ss)</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="num_rounds">Anzahl Runden</label>
+                            <select id="num_rounds" name="num_rounds">
+                                <option value="1">1</option>
+                                <option value="2">2</option>
+                                <option value="3" selected>3</option>
+                                <option value="4">4</option>
+                                <option value="5">5</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="unit">Einheit</label>
+                            <input
+                                type="text"
+                                id="unit"
+                                name="unit"
+                                value="m"
+                                placeholder="z.B. m, s, min:s"
+                            />
+                        </div>
+
+                        <div class="form-group">
+                            <label for="sort_order">Sortierung</label>
+                            <input
+                                type="number"
+                                id="sort_order"
+                                name="sort_order"
+                                value="0"
+                                min="0"
+                            />
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="description">Beschreibung</label>
+                        <textarea
+                            id="description"
+                            name="description"
+                            placeholder="Optionale Beschreibung..."
+                        ></textarea>
+                    </div>
+
+                    <div class="form-actions">
+                        <button
+                            type="button"
+                            class="btn-secondary"
+                            onclick="closeModal()"
+                        >
+                            Abbrechen
+                        </button>
+                        <button
+                            type="submit"
+                            class="btn-primary"
+                            id="submit-btn"
+                        >
+                            Speichern
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Toast -->
+        <div class="toast" id="toast"></div>
+
+        <script>
+            const csrfToken = "{{ csrf_token() }}";
+
+            function showToast(message, type = "success") {
+                const toast = document.getElementById("toast");
+                toast.textContent = message;
+                toast.className = `toast ${type} show`;
+                setTimeout(() => {
+                    toast.classList.remove("show");
+                }, 3000);
+            }
+
+            async function fetchAPI(url, method = "GET", data = null) {
+                const options = {
+                    method,
+                    headers: {
+                        "X-CSRFToken": csrfToken,
+                    },
+                };
+
+                if (data) {
+                    options.headers["Content-Type"] = "application/json";
+                    options.body = JSON.stringify(data);
+                }
+
+                const res = await fetch(url, options);
+                const json = await res.json();
+
+                if (!res.ok) {
+                    throw new Error(json.error || "Fehler");
+                }
+
+                return json;
+            }
+
+            function openCreateModal() {
+                document.getElementById("modal-title").textContent =
+                    "Disziplin erstellen";
+                document.getElementById("disziplin-id").value = "";
+                document.getElementById("disziplin-form").reset();
+                document
+                    .getElementById("modal-overlay")
+                    .classList.add("active");
+            }
+
+            async function openEditModal(id) {
+                try {
+                    const data = await fetchAPI(`/admin/disziplinen/${id}`);
+
+                    document.getElementById("modal-title").textContent =
+                        "Disziplin bearbeiten";
+                    document.getElementById("disziplin-id").value = id;
+                    document.getElementById("name").value = data.name || "";
+                    document.getElementById("display_name").value =
+                        data.display_name || "";
+                    document.getElementById("result_format").value =
+                        data.result_format || "distance";
+                    document.getElementById("num_rounds").value =
+                        data.num_rounds || 3;
+                    document.getElementById("unit").value = data.unit || "m";
+                    document.getElementById("sort_order").value =
+                        data.sort_order || 0;
+                    document.getElementById("description").value =
+                        data.description || "";
+
+                    document
+                        .getElementById("modal-overlay")
+                        .classList.add("active");
+                } catch (err) {
+                    showToast(err.message, "error");
+                }
+            }
+
+            function closeModal(event) {
+                if (!event || event.target === event.currentTarget) {
+                    document
+                        .getElementById("modal-overlay")
+                        .classList.remove("active");
+                }
+            }
+
+            async function saveDisziplin(event) {
+                event.preventDefault();
+
+                const id = document.getElementById("disziplin-id").value;
+                const data = {
+                    name: document.getElementById("name").value,
+                    display_name: document.getElementById("display_name").value,
+                    result_format:
+                        document.getElementById("result_format").value,
+                    num_rounds: parseInt(
+                        document.getElementById("num_rounds").value,
+                    ),
+                    unit: document.getElementById("unit").value,
+                    sort_order: parseInt(
+                        document.getElementById("sort_order").value,
+                    ),
+                    description: document.getElementById("description").value,
+                };
+
+                try {
+                    const submitBtn = document.getElementById("submit-btn");
+                    submitBtn.disabled = true;
+                    submitBtn.textContent = "Speichern...";
+
+                    if (id) {
+                        await fetchAPI(`/admin/disziplinen/${id}`, "PUT", data);
+                        showToast("Disziplin aktualisiert");
+                    } else {
+                        await fetchAPI(
+                            "/admin/disziplinen/create",
+                            "POST",
+                            data,
+                        );
+                        showToast("Disziplin erstellt");
+                    }
+
+                    closeModal();
+                    setTimeout(() => window.location.reload(), 500);
+                } catch (err) {
+                    showToast(err.message, "error");
+                } finally {
+                    const submitBtn = document.getElementById("submit-btn");
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = "Speichern";
+                }
+            }
+
+            async function deleteDisziplin(id, name) {
+                if (!confirm(`Disziplin "${name}" wirklich löschen?`)) {
+                    return;
+                }
+
+                try {
+                    await fetchAPI(`/admin/disziplinen/${id}`, "DELETE");
+                    showToast("Disziplin gelöscht");
+
+                    const card = document.querySelector(
+                        `.card[data-id="${id}"]`,
+                    );
+                    if (card) {
+                        card.remove();
+                    }
+                } catch (err) {
+                    showToast(err.message, "error");
+                }
+            }
+
+            async function importDisziplinen(input) {
+                const file = input.files[0];
+                if (!file) return;
+
+                const replace = confirm(
+                    "Bestehende Disziplinen mit gleichem Namen überschreiben?",
+                );
+
+                try {
+                    const text = await file.text();
+                    const data = JSON.parse(text);
+
+                    const res = await fetch(
+                        `/admin/disziplinen/import?replace=${replace}`,
+                        {
+                            method: "POST",
+                            headers: {
+                                "Content-Type": "application/json",
+                                "X-CSRFToken": csrfToken,
+                            },
+                            body: JSON.stringify(data),
+                        },
+                    );
+
+                    const json = await res.json();
+
+                    if (!res.ok) {
+                        throw new Error(json.error || "Import fehlgeschlagen");
+                    }
+
+                    showToast(json.message);
+                    setTimeout(() => window.location.reload(), 500);
+                } catch (err) {
+                    showToast(err.message, "error");
+                }
+
+                input.value = "";
+            }
+
+            // ESC zum Schließen
+            document.addEventListener("keydown", (e) => {
+                if (e.key === "Escape") {
+                    closeModal();
+                }
+            });
+        </script>
+    </body>
+</html>

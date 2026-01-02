@@ -1,0 +1,737 @@
+<!doctype html>
+<html lang="de">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Admin Dashboard</title>
+        <style>
+            :root {
+                --primary: #2563eb;
+                --success: #15803d;
+                --danger: #b91c1c;
+                --warning: #d97706;
+                --gray-100: #f3f4f6;
+                --gray-200: #e5e7eb;
+                --gray-600: #4b5563;
+                --gray-800: #1f2937;
+            }
+            * {
+                box-sizing: border-box;
+            }
+            body {
+                font-family:
+                    system-ui,
+                    -apple-system,
+                    sans-serif;
+                margin: 0;
+                background: #f7f7f8;
+            }
+            header {
+                background: #111827;
+                color: #fff;
+                padding: 12px 16px;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+            }
+            header a {
+                color: #fff;
+                text-decoration: none;
+                margin-left: 16px;
+            }
+            header a:hover {
+                text-decoration: underline;
+            }
+            main {
+                padding: 16px;
+                max-width: 1200px;
+                margin: 0 auto;
+            }
+            h1 {
+                margin: 0 0 16px;
+            }
+            h2 {
+                margin: 20px 0 12px;
+                font-size: 1.1rem;
+                color: var(--gray-800);
+            }
+            .stats-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+                gap: 12px;
+                margin-bottom: 24px;
+            }
+            .stat-card {
+                background: #fff;
+                border: 1px solid var(--gray-200);
+                border-radius: 10px;
+                padding: 16px;
+                text-align: center;
+            }
+            .stat-value {
+                font-size: 1.75rem;
+                font-weight: 700;
+                color: var(--primary);
+            }
+            .stat-label {
+                font-size: 0.85rem;
+                color: var(--gray-600);
+                margin-top: 4px;
+            }
+            .grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+                gap: 12px;
+                margin-bottom: 16px;
+            }
+            form.card,
+            .card {
+                background: #fff;
+                border: 1px solid var(--gray-200);
+                border-radius: 8px;
+                padding: 16px;
+                display: flex;
+                flex-direction: column;
+                gap: 10px;
+            }
+            form.card h3,
+            .card h3 {
+                margin: 0 0 8px;
+                font-size: 1rem;
+            }
+            label {
+                font-weight: 600;
+                font-size: 0.9rem;
+            }
+            input {
+                padding: 8px 10px;
+                border: 1px solid #d1d5db;
+                border-radius: 6px;
+                font-size: 0.95rem;
+            }
+            button {
+                border: none;
+                border-radius: 6px;
+                padding: 10px 14px;
+                font-weight: 700;
+                color: #fff;
+                cursor: pointer;
+                font-size: 0.9rem;
+            }
+            .primary {
+                background: var(--primary);
+            }
+            .secondary {
+                background: #374151;
+            }
+            .danger {
+                background: var(--danger);
+            }
+            .success {
+                background: var(--success);
+            }
+            table {
+                width: 100%;
+                border-collapse: collapse;
+                background: #fff;
+                border: 1px solid var(--gray-200);
+                border-radius: 8px;
+                overflow: hidden;
+                margin-bottom: 16px;
+            }
+            th,
+            td {
+                padding: 10px 12px;
+                border-bottom: 1px solid var(--gray-200);
+                text-align: left;
+                font-size: 0.9rem;
+            }
+            th {
+                background: var(--gray-100);
+                font-weight: 600;
+            }
+            .badge {
+                padding: 2px 8px;
+                border-radius: 999px;
+                color: #fff;
+                font-size: 0.75rem;
+                font-weight: 700;
+            }
+            .green {
+                background: var(--success);
+            }
+            .red {
+                background: var(--danger);
+            }
+            .flash {
+                padding: 10px;
+                border-radius: 6px;
+                margin-bottom: 10px;
+                font-weight: 600;
+            }
+            .flash.success {
+                background: #e8f5e9;
+                color: #1b5e20;
+            }
+            .flash.error {
+                background: #ffebee;
+                color: #b71c1c;
+            }
+            .flash.info {
+                background: #e3f2fd;
+                color: #0d47a1;
+            }
+            .muted {
+                color: var(--gray-600);
+                font-size: 0.85rem;
+            }
+            .nav-cards {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+                gap: 12px;
+                margin-bottom: 24px;
+            }
+            .nav-card {
+                background: #fff;
+                border: 1px solid var(--gray-200);
+                border-radius: 10px;
+                padding: 20px;
+                text-decoration: none;
+                color: var(--gray-800);
+                transition: all 0.2s;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                text-align: center;
+            }
+            .nav-card:hover {
+                border-color: var(--primary);
+                box-shadow: 0 4px 12px rgba(37, 99, 235, 0.15);
+                transform: translateY(-2px);
+            }
+            .nav-card .icon {
+                font-size: 2rem;
+                margin-bottom: 8px;
+            }
+            .nav-card .title {
+                font-weight: 600;
+                margin-bottom: 4px;
+            }
+            .nav-card .desc {
+                font-size: 0.85rem;
+                color: var(--gray-600);
+            }
+            /* Toast */
+            .toast {
+                position: fixed;
+                bottom: 20px;
+                right: 20px;
+                padding: 12px 20px;
+                border-radius: 8px;
+                color: #fff;
+                font-weight: 600;
+                z-index: 200;
+                transform: translateY(100px);
+                opacity: 0;
+                transition: all 0.3s ease;
+            }
+            .toast.show {
+                transform: translateY(0);
+                opacity: 1;
+            }
+            .toast.success {
+                background: var(--success);
+            }
+            .toast.error {
+                background: var(--danger);
+            }
+            .backup-config {
+                display: flex;
+                gap: 12px;
+                flex-wrap: wrap;
+                align-items: flex-end;
+            }
+            .backup-config .form-group {
+                display: flex;
+                flex-direction: column;
+                gap: 4px;
+            }
+            .backup-config label {
+                font-size: 0.8rem;
+            }
+            .backup-config input {
+                width: 80px;
+            }
+            .checkbox-label {
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                cursor: pointer;
+            }
+            .checkbox-label input[type="checkbox"] {
+                width: auto;
+            }
+        </style>
+    </head>
+    <body>
+        <header>
+            <div><strong>Admin Dashboard</strong></div>
+            <nav>
+                <a href="/dashboard">Fortschritt</a>
+                <a href="/stats">Bestenliste</a>
+                <a href="/admin/disziplinen">Disziplinen</a>
+                <a href="/logout">Logout</a>
+            </nav>
+        </header>
+
+        <main>
+            {% with messages = get_flashed_messages(with_categories=True) %} {%
+            if messages %} {% for category, message in messages %}
+            <div class="flash {{ category }}">{{ message }}</div>
+            {% endfor %} {% endif %} {% endwith %}
+
+            <h1>Admin Dashboard</h1>
+
+            <!-- Quick Nav -->
+            <div class="nav-cards">
+                <a href="/dashboard" class="nav-card">
+                    <div class="icon">📊</div>
+                    <div class="title">Fortschritt</div>
+                    <div class="desc">Riegen-Übersicht</div>
+                </a>
+                <a href="/stats" class="nav-card">
+                    <div class="icon">🏆</div>
+                    <div class="title">Bestenliste</div>
+                    <div class="desc">Live-Ergebnisse</div>
+                </a>
+                <a href="/admin/disziplinen" class="nav-card">
+                    <div class="icon">⚙️</div>
+                    <div class="title">Disziplinen</div>
+                    <div class="desc">Konfiguration</div>
+                </a>
+            </div>
+
+            <!-- Stats Overview -->
+            <h2>Übersicht</h2>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-value">{{ stats.total_riegen or 0 }}</div>
+                    <div class="stat-label">Riegen</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">
+                        {{ stats.total_schueler or 0 }}
+                    </div>
+                    <div class="stat-label">Schüler</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">
+                        {{ stats.total_ergebnisse or 0 }}
+                    </div>
+                    <div class="stat-label">Ergebnisse</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">
+                        {{ stats.active_sessions or 0 }}
+                    </div>
+                    <div class="stat-label">Aktive Stationen</div>
+                </div>
+            </div>
+
+            <!-- Admin Actions -->
+            <h2>Verwaltung</h2>
+            <div class="grid">
+                <form class="card" id="generate-pin-form">
+                    <h3>Station-PIN generieren</h3>
+                    <input
+                        type="hidden"
+                        name="csrf_token"
+                        value="{{ csrf_token() }}"
+                    />
+
+                    <label for="station">Station</label>
+                    <input
+                        id="station"
+                        name="station"
+                        type="text"
+                        placeholder="Station"
+                    />
+
+                    <label for="max_logins">Max. Logins</label>
+                    <input
+                        id="max_logins"
+                        name="max_logins"
+                        type="number"
+                        min="1"
+                        value="1"
+                        required
+                    />
+
+                    <label for="pin_length">PIN-Länge</label>
+                    <input
+                        id="pin_length"
+                        name="pin_length"
+                        type="number"
+                        min="4"
+                        max="10"
+                        value="6"
+                        required
+                    />
+
+                    <button class="primary" type="submit">PIN erzeugen</button>
+                    <div class="muted" id="generate-result"></div>
+                </form>
+
+                <form class="card" id="revoke-pin-form">
+                    <h3>PIN widerrufen</h3>
+                    <input
+                        type="hidden"
+                        name="csrf_token"
+                        value="{{ csrf_token() }}"
+                    />
+
+                    <label for="revoke_pin">PIN</label>
+                    <input
+                        id="revoke_pin"
+                        name="pin"
+                        type="text"
+                        placeholder="PIN"
+                        required
+                    />
+
+                    <label for="revoke_device">Geräte-ID (optional)</label>
+                    <input
+                        id="revoke_device"
+                        name="device_id"
+                        type="text"
+                        placeholder="Geräte-ID"
+                    />
+
+                    <button class="danger" type="submit">Widerrufen</button>
+                    <div class="muted" id="revoke-result"></div>
+                </form>
+
+                <form
+                    class="card"
+                    id="upload-db-form"
+                    method="POST"
+                    action="{{ url_for('auth.admin_upload_db') }}"
+                    enctype="multipart/form-data"
+                >
+                    <h3>DB hochladen</h3>
+                    <input
+                        type="hidden"
+                        name="csrf_token"
+                        value="{{ csrf_token() }}"
+                    />
+
+                    <label for="db_file">SQLite .db Datei</label>
+                    <input
+                        id="db_file"
+                        name="db_file"
+                        type="file"
+                        accept=".db"
+                        required
+                    />
+
+                    <label for="label">Backup-Label (optional)</label>
+                    <input
+                        id="label"
+                        name="label"
+                        type="text"
+                        placeholder="upload"
+                    />
+
+                    <button class="secondary" type="submit">Upload</button>
+                    <div class="muted">Es wird vorher ein Backup erzeugt.</div>
+                </form>
+
+                <div class="card">
+                    <h3>Manuelles Backup</h3>
+                    <p class="muted">
+                        Erstellt sofort ein Backup der aktuellen Datenbank.
+                    </p>
+                    <button class="success" onclick="createBackup()">
+                        Backup erstellen
+                    </button>
+                    <div class="muted" id="backup-result"></div>
+                </div>
+            </div>
+
+            <!-- Backup Configuration -->
+            <h2>Backup-Konfiguration</h2>
+            <div class="card">
+                <div class="backup-config">
+                    <div class="form-group">
+                        <label for="backup-interval">Intervall (Min.)</label>
+                        <input
+                            type="number"
+                            id="backup-interval"
+                            min="5"
+                            value="{{ backup_config.interval_minutes or 60 }}"
+                        />
+                    </div>
+                    <div class="form-group">
+                        <label for="backup-max">Max. Backups</label>
+                        <input
+                            type="number"
+                            id="backup-max"
+                            min="1"
+                            value="{{ backup_config.max_backups or 10 }}"
+                        />
+                    </div>
+                    <div class="form-group">
+                        <label class="checkbox-label">
+                            <input
+                                type="checkbox"
+                                id="backup-enabled"
+                                {%
+                                if
+                                backup_config.enabled
+                                %}checked{%
+                                endif
+                                %}
+                            />
+                            Auto-Backup aktiv
+                        </label>
+                    </div>
+                    <button class="primary" onclick="updateBackupConfig()">
+                        Speichern
+                    </button>
+                </div>
+                <div class="muted">
+                    Letztes Backup: {{ backup_config.last_backup or 'Noch keins'
+                    }}
+                </div>
+            </div>
+
+            <!-- Backup History -->
+            {% if backup_history %}
+            <h2>Letzte Backups</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Zeitpunkt</th>
+                        <th>Typ</th>
+                        <th>Größe</th>
+                        <th>Pfad</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for b in backup_history %}
+                    <tr>
+                        <td>{{ b.created_at }}</td>
+                        <td>
+                            <span
+                                class="badge {% if b.backup_type == 'auto' %}green{% else %}secondary{% endif %}"
+                                >{{ b.backup_type }}</span
+                            >
+                        </td>
+                        <td>{{ (b.file_size / 1024)|round(1) }} KB</td>
+                        <td class="muted">{{ b.file_path }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% endif %}
+
+            <!-- Active PINs -->
+            <h2>Aktive Station-PINs</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Station</th>
+                        <th>PIN</th>
+                        <th>Max Logins</th>
+                        <th>Status</th>
+                        <th>Erstellt</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if pins %} {% for pin in pins %}
+                    <tr>
+                        <td>{{ pin.id }}</td>
+                        <td>{{ pin.station }}</td>
+                        <td><code>{{ pin.pin }}</code></td>
+                        <td>{{ pin.max_logins }}</td>
+                        <td>
+                            {% if pin.active %}
+                            <span class="badge green">aktiv</span>
+                            {% else %}
+                            <span class="badge red">inaktiv</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ pin.created_at }}</td>
+                    </tr>
+                    {% endfor %} {% else %}
+                    <tr>
+                        <td colspan="6" class="muted">Keine PINs vorhanden.</td>
+                    </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+
+            <!-- Sessions -->
+            <h2>Sessions</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>PIN</th>
+                        <th>Geräte-ID</th>
+                        <th>Status</th>
+                        <th>Erstellt</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if sessions %} {% for sess in sessions %}
+                    <tr>
+                        <td>{{ sess.id }}</td>
+                        <td><code>{{ sess.pin }}</code></td>
+                        <td class="muted">{{ sess.device_id[:20] }}...</td>
+                        <td>
+                            {% if sess.active %}
+                            <span class="badge green">aktiv</span>
+                            {% else %}
+                            <span class="badge red">inaktiv</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ sess.created_at }}</td>
+                    </tr>
+                    {% endfor %} {% else %}
+                    <tr>
+                        <td colspan="5" class="muted">
+                            Keine Sessions vorhanden.
+                        </td>
+                    </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </main>
+
+        <!-- Toast -->
+        <div class="toast" id="toast"></div>
+
+        <script>
+            const csrfToken = "{{ csrf_token() }}";
+
+            function showToast(message, type = "success") {
+                const toast = document.getElementById("toast");
+                toast.textContent = message;
+                toast.className = `toast ${type} show`;
+                setTimeout(() => {
+                    toast.classList.remove("show");
+                }, 3000);
+            }
+
+            async function postJSON(url, payload) {
+                const res = await fetch(url, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "X-CSRFToken": csrfToken,
+                    },
+                    body: JSON.stringify(payload),
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error || "Fehler");
+                return data;
+            }
+
+            async function putJSON(url, payload) {
+                const res = await fetch(url, {
+                    method: "PUT",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "X-CSRFToken": csrfToken,
+                    },
+                    body: JSON.stringify(payload),
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error || "Fehler");
+                return data;
+            }
+
+            // Generate PIN
+            const genForm = document.getElementById("generate-pin-form");
+            const genResult = document.getElementById("generate-result");
+            genForm?.addEventListener("submit", async (e) => {
+                e.preventDefault();
+                genResult.textContent = "Wird erzeugt...";
+                try {
+                    const payload = {
+                        station: genForm.station.value,
+                        max_logins: genForm.max_logins.value,
+                        length: genForm.pin_length.value,
+                    };
+                    const data = await postJSON("/admin/generate_pin", payload);
+                    genResult.textContent = `PIN: ${data.pin}`;
+                    showToast("PIN erstellt: " + data.pin);
+                    setTimeout(() => window.location.reload(), 1000);
+                } catch (err) {
+                    genResult.textContent = err.message;
+                    showToast(err.message, "error");
+                }
+            });
+
+            // Revoke PIN
+            const revokeForm = document.getElementById("revoke-pin-form");
+            const revokeResult = document.getElementById("revoke-result");
+            revokeForm?.addEventListener("submit", async (e) => {
+                e.preventDefault();
+                revokeResult.textContent = "Widerrufe...";
+                try {
+                    const payload = {
+                        pin: revokeForm.revoke_pin.value,
+                        device_id: revokeForm.revoke_device.value || undefined,
+                    };
+                    const data = await postJSON("/admin/revoke_pin", payload);
+                    revokeResult.textContent = `Widerrufen: ${data.revoked}`;
+                    showToast("PIN widerrufen");
+                    setTimeout(() => window.location.reload(), 1000);
+                } catch (err) {
+                    revokeResult.textContent = err.message;
+                    showToast(err.message, "error");
+                }
+            });
+
+            // Create Backup
+            async function createBackup() {
+                const result = document.getElementById("backup-result");
+                result.textContent = "Erstelle Backup...";
+                try {
+                    const data = await postJSON("/admin/backup", {
+                        label: "manual",
+                    });
+                    result.textContent = "Backup erstellt!";
+                    showToast("Backup erstellt");
+                    setTimeout(() => window.location.reload(), 1000);
+                } catch (err) {
+                    result.textContent = err.message;
+                    showToast(err.message, "error");
+                }
+            }
+
+            // Update Backup Config
+            async function updateBackupConfig() {
+                try {
+                    const payload = {
+                        interval_minutes: parseInt(
+                            document.getElementById("backup-interval").value,
+                        ),
+                        max_backups: parseInt(
+                            document.getElementById("backup-max").value,
+                        ),
+                        enabled:
+                            document.getElementById("backup-enabled").checked,
+                    };
+                    await putJSON("/admin/backup/config", payload);
+                    showToast("Konfiguration gespeichert");
+                } catch (err) {
+                    showToast(err.message, "error");
+                }
+            }
+        </script>
+    </body>
+</html>

@@ -1,0 +1,598 @@
+<!doctype html>
+<html lang="de">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Fortschritts-Dashboard</title>
+        <style>
+            :root {
+                --primary: #2563eb;
+                --success: #15803d;
+                --danger: #b91c1c;
+                --warning: #d97706;
+                --gray-100: #f3f4f6;
+                --gray-200: #e5e7eb;
+                --gray-400: #9ca3af;
+                --gray-600: #4b5563;
+                --gray-800: #1f2937;
+            }
+            * {
+                box-sizing: border-box;
+            }
+            body {
+                font-family:
+                    system-ui,
+                    -apple-system,
+                    sans-serif;
+                margin: 0;
+                background: #f7f7f8;
+                color: var(--gray-800);
+            }
+            header {
+                background: #111827;
+                color: #fff;
+                padding: 12px 16px;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+            }
+            header a {
+                color: #fff;
+                text-decoration: none;
+                margin-left: 16px;
+            }
+            header a:hover {
+                text-decoration: underline;
+            }
+            main {
+                padding: 16px;
+                max-width: 1400px;
+                margin: 0 auto;
+            }
+            h1 {
+                margin: 0 0 8px;
+            }
+            h2 {
+                margin: 24px 0 12px;
+                font-size: 1.25rem;
+            }
+            .subtitle {
+                color: var(--gray-600);
+                margin-bottom: 16px;
+            }
+            /* Stats Overview */
+            .stats-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+                gap: 12px;
+                margin-bottom: 24px;
+            }
+            .stat-card {
+                background: #fff;
+                border: 1px solid var(--gray-200);
+                border-radius: 10px;
+                padding: 16px;
+                text-align: center;
+            }
+            .stat-value {
+                font-size: 2rem;
+                font-weight: 700;
+                color: var(--primary);
+            }
+            .stat-label {
+                font-size: 0.85rem;
+                color: var(--gray-600);
+                margin-top: 4px;
+            }
+            /* Filter */
+            .filter-bar {
+                display: flex;
+                gap: 12px;
+                align-items: center;
+                margin-bottom: 16px;
+                flex-wrap: wrap;
+            }
+            .filter-bar label {
+                font-weight: 600;
+            }
+            .filter-bar select {
+                padding: 8px 12px;
+                border: 1px solid var(--gray-200);
+                border-radius: 6px;
+                font-size: 1rem;
+                min-width: 200px;
+            }
+            .filter-bar button {
+                padding: 8px 16px;
+                border: none;
+                border-radius: 6px;
+                background: var(--primary);
+                color: #fff;
+                font-weight: 600;
+                cursor: pointer;
+            }
+            .refresh-btn {
+                background: var(--gray-200) !important;
+                color: var(--gray-800) !important;
+            }
+            /* Table */
+            .table-wrapper {
+                overflow-x: auto;
+                background: #fff;
+                border: 1px solid var(--gray-200);
+                border-radius: 10px;
+            }
+            table {
+                width: 100%;
+                border-collapse: collapse;
+                min-width: 800px;
+            }
+            th,
+            td {
+                padding: 12px 16px;
+                text-align: left;
+                border-bottom: 1px solid var(--gray-200);
+            }
+            th {
+                background: var(--gray-100);
+                font-weight: 600;
+                font-size: 0.9rem;
+                color: var(--gray-600);
+            }
+            tr:last-child td {
+                border-bottom: none;
+            }
+            tr:hover {
+                background: #fafafa;
+            }
+            /* Progress Bar */
+            .progress-bar {
+                width: 100%;
+                height: 8px;
+                background: var(--gray-200);
+                border-radius: 999px;
+                overflow: hidden;
+            }
+            .progress-fill {
+                height: 100%;
+                border-radius: 999px;
+                transition: width 0.3s ease;
+            }
+            .progress-fill.low {
+                background: var(--danger);
+            }
+            .progress-fill.medium {
+                background: var(--warning);
+            }
+            .progress-fill.high {
+                background: var(--success);
+            }
+            .progress-text {
+                font-size: 0.85rem;
+                color: var(--gray-600);
+                margin-top: 4px;
+            }
+            /* Rounds */
+            .round-badges {
+                display: flex;
+                gap: 6px;
+            }
+            .round-badge {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                width: 28px;
+                height: 28px;
+                border-radius: 6px;
+                font-size: 0.8rem;
+                font-weight: 600;
+            }
+            .round-badge.r1 {
+                background: #dbeafe;
+                color: #1e40af;
+            }
+            .round-badge.r2 {
+                background: #fef3c7;
+                color: #92400e;
+            }
+            .round-badge.r3 {
+                background: #d1fae5;
+                color: #065f46;
+            }
+            /* Status badges */
+            .status-badge {
+                display: inline-block;
+                padding: 4px 10px;
+                border-radius: 999px;
+                font-size: 0.8rem;
+                font-weight: 600;
+            }
+            .status-badge.complete {
+                background: #d1fae5;
+                color: #065f46;
+            }
+            .status-badge.in-progress {
+                background: #fef3c7;
+                color: #92400e;
+            }
+            .status-badge.not-started {
+                background: var(--gray-200);
+                color: var(--gray-600);
+            }
+            /* Empty State */
+            .empty-state {
+                text-align: center;
+                padding: 60px 20px;
+                color: var(--gray-600);
+            }
+            .empty-state svg {
+                width: 80px;
+                height: 80px;
+                opacity: 0.4;
+                margin-bottom: 16px;
+            }
+            /* Live indicator */
+            .live-indicator {
+                display: inline-flex;
+                align-items: center;
+                gap: 6px;
+                font-size: 0.85rem;
+                color: var(--gray-600);
+            }
+            .live-dot {
+                width: 8px;
+                height: 8px;
+                background: var(--success);
+                border-radius: 50%;
+                animation: pulse 2s infinite;
+            }
+            @keyframes pulse {
+                0%,
+                100% {
+                    opacity: 1;
+                }
+                50% {
+                    opacity: 0.5;
+                }
+            }
+            /* Toast */
+            .toast {
+                position: fixed;
+                bottom: 20px;
+                right: 20px;
+                padding: 12px 20px;
+                border-radius: 8px;
+                color: #fff;
+                font-weight: 600;
+                z-index: 200;
+                transform: translateY(100px);
+                opacity: 0;
+                transition: all 0.3s ease;
+            }
+            .toast.show {
+                transform: translateY(0);
+                opacity: 1;
+            }
+            .toast.success {
+                background: var(--success);
+            }
+            .toast.info {
+                background: var(--primary);
+            }
+        </style>
+    </head>
+    <body>
+        <header>
+            <div><strong>Fortschritts-Dashboard</strong></div>
+            <nav>
+                <a href="/admin">Admin</a>
+                <a href="/admin/disziplinen">Disziplinen</a>
+                <a href="/stats">Bestenliste</a>
+                <a href="/logout">Logout</a>
+            </nav>
+        </header>
+
+        <main>
+            <h1>Fortschritt aller Riegen</h1>
+            <p class="subtitle">
+                Übersicht über den Erfassungsstand aller Riegen
+                <span class="live-indicator">
+                    <span class="live-dot"></span>
+                    Live-Aktualisierung aktiv
+                </span>
+            </p>
+
+            <!-- Stats Overview -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-value">{{ stats.total_riegen or 0 }}</div>
+                    <div class="stat-label">Riegen gesamt</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">
+                        {{ stats.total_schueler or 0 }}
+                    </div>
+                    <div class="stat-label">Schüler gesamt</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">
+                        {{ stats.total_ergebnisse or 0 }}
+                    </div>
+                    <div class="stat-label">Ergebnisse erfasst</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">
+                        {{ stats.total_abwesend or 0 }}
+                    </div>
+                    <div class="stat-label">Abwesend markiert</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">
+                        {{ stats.active_sessions or 0 }}
+                    </div>
+                    <div class="stat-label">Aktive Stationen</div>
+                </div>
+            </div>
+
+            <!-- Filter -->
+            <div class="filter-bar">
+                <label for="disziplin-filter">Disziplin:</label>
+                <select id="disziplin-filter" onchange="applyFilter()">
+                    <option value="">Alle Disziplinen</option>
+                    {% for d in disziplinen %}
+                    <option
+                        value="{{ d.name }}"
+                        {%
+                        if
+                        selected_disziplin=""
+                        ="d.name"
+                        %}selected{%
+                        endif
+                        %}
+                    >
+                        {{ d.display_name or d.name }}
+                    </option>
+                    {% endfor %}
+                </select>
+                <button class="refresh-btn" onclick="refreshData()">
+                    🔄 Aktualisieren
+                </button>
+            </div>
+
+            <!-- Table -->
+            {% if riegen %}
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Riegenführer</th>
+                            <th>Stufe</th>
+                            <th>Geschlecht</th>
+                            <th>Schüler</th>
+                            <th>Runden (1/2/3)</th>
+                            <th>Fortschritt</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="riegen-tbody">
+                        {% for r in riegen %}
+                        <tr data-id="{{ r.id }}">
+                            <td><strong>{{ r.name }}</strong></td>
+                            <td>{{ r.stufe }}</td>
+                            <td>{{ r.geschlecht }}</td>
+                            <td>{{ r.total_schueler }}</td>
+                            <td>
+                                <div class="round-badges">
+                                    <span class="round-badge r1" title="Runde 1"
+                                        >{{ r.progress.rounds.get(1, 0) }}</span
+                                    >
+                                    <span class="round-badge r2" title="Runde 2"
+                                        >{{ r.progress.rounds.get(2, 0) }}</span
+                                    >
+                                    <span class="round-badge r3" title="Runde 3"
+                                        >{{ r.progress.rounds.get(3, 0) }}</span
+                                    >
+                                </div>
+                            </td>
+                            <td style="min-width: 150px">
+                                {% set percent = r.progress.percent or 0 %}
+                                <div class="progress-bar">
+                                    <div
+                                        class="progress-fill {% if percent < 30 %}low{% elif percent < 70 %}medium{% else %}high{% endif %}"
+                                        style="width: {{ percent }}%"
+                                    ></div>
+                                </div>
+                                <div class="progress-text">
+                                    {{ r.progress.completed }}/{{
+                                    r.progress.total }} ({{ percent }}%) {% if
+                                    r.progress.absent > 0 %} · {{
+                                    r.progress.absent }} abwesend {% endif %}
+                                </div>
+                            </td>
+                            <td>
+                                {% if percent == 100 %}
+                                <span class="status-badge complete"
+                                    >✓ Fertig</span
+                                >
+                                {% elif percent > 0 %}
+                                <span class="status-badge in-progress"
+                                    >In Arbeit</span
+                                >
+                                {% else %}
+                                <span class="status-badge not-started"
+                                    >Offen</span
+                                >
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="empty-state">
+                <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                >
+                    <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
+                    />
+                </svg>
+                <h3>Keine Riegen vorhanden</h3>
+                <p>
+                    Es wurden noch keine Riegen angelegt. Bitte importiere
+                    zuerst die Schülerdaten.
+                </p>
+            </div>
+            {% endif %}
+        </main>
+
+        <!-- Toast -->
+        <div class="toast" id="toast"></div>
+
+        <script>
+            const csrfToken = "{{ csrf_token() }}";
+            let autoRefreshInterval = null;
+
+            function showToast(message, type = "success") {
+                const toast = document.getElementById("toast");
+                toast.textContent = message;
+                toast.className = `toast ${type} show`;
+                setTimeout(() => {
+                    toast.classList.remove("show");
+                }, 3000);
+            }
+
+            function applyFilter() {
+                const disziplin =
+                    document.getElementById("disziplin-filter").value;
+                const url = new URL(window.location.href);
+                if (disziplin) {
+                    url.searchParams.set("disziplin", disziplin);
+                } else {
+                    url.searchParams.delete("disziplin");
+                }
+                window.location.href = url.toString();
+            }
+
+            async function refreshData() {
+                const disziplin =
+                    document.getElementById("disziplin-filter").value;
+                const url = `/dashboard/data${disziplin ? "?disziplin=" + encodeURIComponent(disziplin) : ""}`;
+
+                try {
+                    const res = await fetch(url, {
+                        headers: {
+                            "X-CSRFToken": csrfToken,
+                        },
+                    });
+                    const data = await res.json();
+
+                    if (!res.ok) {
+                        throw new Error(data.error || "Fehler beim Laden");
+                    }
+
+                    updateTable(data.riegen);
+                    updateStats(data.stats);
+                    showToast("Daten aktualisiert", "info");
+                } catch (err) {
+                    console.error("Refresh error:", err);
+                }
+            }
+
+            function updateTable(riegen) {
+                const tbody = document.getElementById("riegen-tbody");
+                if (!tbody) return;
+
+                riegen.forEach((r) => {
+                    const row = tbody.querySelector(`tr[data-id="${r.id}"]`);
+                    if (!row) return;
+
+                    // Update round badges
+                    const badges = row.querySelectorAll(".round-badge");
+                    if (badges.length >= 3) {
+                        badges[0].textContent = r.progress.rounds[1] || 0;
+                        badges[1].textContent = r.progress.rounds[2] || 0;
+                        badges[2].textContent = r.progress.rounds[3] || 0;
+                    }
+
+                    // Update progress bar
+                    const percent = r.progress.percent || 0;
+                    const fill = row.querySelector(".progress-fill");
+                    if (fill) {
+                        fill.style.width = `${percent}%`;
+                        fill.className = `progress-fill ${percent < 30 ? "low" : percent < 70 ? "medium" : "high"}`;
+                    }
+
+                    // Update progress text
+                    const progressText = row.querySelector(".progress-text");
+                    if (progressText) {
+                        let text = `${r.progress.completed}/${r.progress.total} (${percent}%)`;
+                        if (r.progress.absent > 0) {
+                            text += ` · ${r.progress.absent} abwesend`;
+                        }
+                        progressText.textContent = text;
+                    }
+
+                    // Update status badge
+                    const statusCell = row.querySelector("td:last-child");
+                    if (statusCell) {
+                        if (percent === 100) {
+                            statusCell.innerHTML =
+                                '<span class="status-badge complete">✓ Fertig</span>';
+                        } else if (percent > 0) {
+                            statusCell.innerHTML =
+                                '<span class="status-badge in-progress">In Arbeit</span>';
+                        } else {
+                            statusCell.innerHTML =
+                                '<span class="status-badge not-started">Offen</span>';
+                        }
+                    }
+                });
+            }
+
+            function updateStats(stats) {
+                const statCards = document.querySelectorAll(".stat-card");
+                if (statCards.length >= 5) {
+                    statCards[0].querySelector(".stat-value").textContent =
+                        stats.total_riegen || 0;
+                    statCards[1].querySelector(".stat-value").textContent =
+                        stats.total_schueler || 0;
+                    statCards[2].querySelector(".stat-value").textContent =
+                        stats.total_ergebnisse || 0;
+                    statCards[3].querySelector(".stat-value").textContent =
+                        stats.total_abwesend || 0;
+                    statCards[4].querySelector(".stat-value").textContent =
+                        stats.active_sessions || 0;
+                }
+            }
+
+            // Auto-refresh every 30 seconds
+            function startAutoRefresh() {
+                autoRefreshInterval = setInterval(refreshData, 30000);
+            }
+
+            // Stop auto-refresh when page is hidden
+            document.addEventListener("visibilitychange", () => {
+                if (document.hidden) {
+                    if (autoRefreshInterval) {
+                        clearInterval(autoRefreshInterval);
+                        autoRefreshInterval = null;
+                    }
+                } else {
+                    refreshData();
+                    startAutoRefresh();
+                }
+            });
+
+            // Start auto-refresh on page load
+            startAutoRefresh();
+        </script>
+    </body>
+</html>
