@@ -1,44 +1,21 @@
 ScreenManager:
-    Home:
     Riegeneinteilung:
-
-
-<Home>:
-    name: 'home'
-    BoxLayout:
-        orientation: 'vertical'
-        padding: dp(20)
-        spacing: dp(10)
-        MDBoxLayout:
-            orientation: "horizontal"
-            size_hint_y: 0.1
-            MDRaisedButton:
-                text: "Ergebnisse aller Klassen als CSV"
-                size_hint: 1, None
-                on_release: app.get_csv_all_classes()
-
-        MDBoxLayout:
-            orientation: "horizontal"
-            size_hint_y: 0.1
-            MDRaisedButton:
-                text: "Erstelle Riegen"
-                size_hint: 1, None
-                on_release: app.change_screen("riegeneinteilung")
-        MDBoxLayout:
-            orientation: "horizontal"
-            size_hint_y: 0.1
-            MDRaisedButton:
-                text: "Create DB from CSV"
-                size_hint: 1, None
-                on_release: app.create_db()
-
-        Widget:
 
 <Riegeneinteilung>:
     name: 'riegeneinteilung'
     BoxLayout:
         orientation: 'vertical'
         padding: dp(20)
+
+        MDBoxLayout:
+            orientation: "horizontal"
+            MDRaisedButton:
+                text: "Neue DB (löscht alte)"
+                size_hint: 1, None
+                on_release: app.create_db()
+
+        Widget:
+
         MDBoxLayout:
             size_hint_y: None
             height: dp(48)

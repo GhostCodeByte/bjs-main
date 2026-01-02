@@ -41,10 +41,12 @@ def create_riege(rf_id, stufe, klassenendungen, geschlechter, profil):
             )
 
 def create_db_from_csv(csv_path):
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    db_path = os.path.join(base_dir, f"bjs_database_{datetime.now().year}.db")
     try:
-        os.remove(f"alles_neu/admin/bjs_database_{datetime.now().year}.db")
+        os.remove(db_path)
     except Exception:
-        print(f"Failed to delete database: alles_neu/admin/bjs_database_{datetime.now().year}.db")
+        print(f"Failed to delete database: {db_path}")
     df = pd.read_csv(csv_path, delimiter=';')
     data = np.array(df)
     fill_schueler(data)
