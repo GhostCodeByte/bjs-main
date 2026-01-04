@@ -285,8 +285,10 @@
         <header>
             <div><strong>Fortschritts-Dashboard</strong></div>
             <nav>
+                {% if session.get('role') == 'admin' %}
                 <a href="/admin">Admin</a>
                 <a href="/admin/disziplinen">Disziplinen</a>
+                {% endif %}
                 <a href="/stats">Bestenliste</a>
                 <a href="/logout">Logout</a>
             </nav>

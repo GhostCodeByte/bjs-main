@@ -4,34 +4,49 @@
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <title>Station Login</title>
+        <link
+            rel="stylesheet"
+            href="{{ url_for('static', filename='auth.css') }}"
+        />
         <style>
-            /* CSS remains unchanged – assume valid */
+            .hidden {
+                display: none !important;
+            }
+            .popup {
+                position: fixed;
+                bottom: 80px;
+                right: 22px;
+                width: 260px;
+                z-index: 20;
+                padding-top: 14px;
+            }
+            .popup h3 {
+                margin: 0 0 12px;
+                font-size: 16px;
+                color: #e5e7eb;
+            }
+            .close-btn {
+                position: absolute;
+                top: 6px;
+                right: 10px;
+                border: none;
+                background: transparent;
+                color: #9ca3af;
+                font-size: 18px;
+                cursor: pointer;
+                line-height: 1;
+                padding: 4px;
+            }
+            .close-btn:hover {
+                color: #e5e7eb;
+            }
         </style>
     </head>
     <body>
         <div class="shell">
-            <div class="admin-toggle">
-                <button
-                    class="pill"
-                    type="button"
-                    onclick="toggleForm('admin')"
-                >
-                    Admin
-                </button>
-                <button
-                    class="pill"
-                    type="button"
-                    onclick="toggleForm('event')"
-                >
-                    Event
-                </button>
-            </div>
             <header>
                 <h1>Station-Login</h1>
-                <p>
-                    Disziplin wählen, 6-stelligen PIN eingeben. Admin/Event oben
-                    rechts.
-                </p>
+                <p>Disziplin wählen, 6-stelligen PIN eingeben.</p>
             </header>
 
             {% with messages = get_flashed_messages(with_categories=True) %} {%
@@ -39,134 +54,195 @@
             <div class="flash {{ category }}">{{ message }}</div>
             {% endfor %} {% endif %} {% endwith %}
 
-            <div class="layout">
-                <form
-                    class="card"
-                    method="POST"
-                    action="{{ url_for('auth.login') }}"
-                    id="station-form"
+            <form
+                class="card"
+                method="POST"
+                action="{{ url_for('auth.login') }}"
+                id="station-form"
+            >
+                <input
+                    type="hidden"
+                    name="csrf_token"
+                    value="{{ csrf_token() }}"
+                />
+                <input type="hidden" name="mode" value="station" />
+                <h2>Station</h2>
+
+                <label for="discipline">Disziplin</label>
+                <select
+                    id="discipline"
+                    name="discipline"
+                    required
+                    onchange="updateDisziplinInfo()"
                 >
-                    <input
-                        type="hidden"
-                        name="csrf_token"
-                        value="{{ csrf_token() }}"
-                    />
-                    <input type="hidden" name="mode" value="station" />
-                    <h2>Station</h2>
-                    <label for="discipline">Disziplin</label>
-                    <select
-                        id="discipline"
-                        name="discipline"
-                        required
-                        onchange="updateDisziplinInfo()"
+                    <option value="" disabled selected>Bitte wählen</option>
+                    {% if disziplinen %} {% for d in disziplinen %}
+                    <option
+                        value="{{ d.name }}"
+                        data-format="{{ d.result_format }}"
+                        data-rounds="{{ d.num_rounds }}"
+                        data-unit="{{ d.unit }}"
                     >
-                        <option value="" disabled selected>Bitte wählen</option>
-                        {% if disziplinen %} {% for d in disziplinen %}
-                        <option
-                            value="{{ d.name }}"
-                            data-format="{{ d.result_format }}"
-                            data-rounds="{{ d.num_rounds }}"
-                            data-unit="{{ d.unit }}"
-                        >
-                            {{ d.display_name or d.name }}
-                        </option>
-                        {% endfor %} {% else %}
-                        <option value="Sprinten">Sprinten</option>
-                        <option value="Weitsprung">Weitsprung</option>
-                        <option value="Wurf">Wurf</option>
-                        {% endif %}
-                    </select>
+                        {{ d.display_name or d.name }}
+                    </option>
+                    {% endfor %} {% else %}
+                    <option value="Sprinten">Sprinten</option>
+                    <option value="Weitsprung">Weitsprung</option>
+                    <option value="Wurf">Wurf</option>
+                    {% endif %}
+                </select>
 
-                    <div class="disziplin-info" id="disziplin-info">
-                        <strong>Format:</strong>
-                        <span id="info-format">-</span> ·
-                        <strong>Runden:</strong>
-                        <span id="info-rounds">-</span> ·
-                        <strong>Einheit:</strong> <span id="info-unit">-</span>
-                    </div>
+                <label for="password_station">PIN (6-stellig)</label>
+                <input
+                    id="password_station"
+                    name="password"
+                    type="password"
+                    inputmode="numeric"
+                    pattern="[0-9]{6}"
+                    minlength="6"
+                    maxlength="6"
+                    placeholder="******"
+                    required
+                />
 
-                    <label for="password_station">PIN (6-stellig)</label>
-                    <input
-                        id="password_station"
-                        name="password"
-                        type="password"
-                        inputmode="numeric"
-                        pattern="\\d{6}"
-                        minlength="6"
-                        maxlength="6"
-                        placeholder="******"
-                        required
-                    />
+                <button
+                    class="btn btn-primary"
+                    type="submit"
+                    id="station-submit"
+                >
+                    Login Station
+                </button>
+                <div class="meta" id="device-id-display"></div>
+            </form>
+        </div>
 
-                    <button
-                        class="btn btn-primary"
-                        type="submit"
-                        id="station-submit"
-                    >
-                        Login Station
-                    </button>
-                    <div class="meta" id="device-id-display"></div>
-                </form>
+        <div class="admin-toggle">
+            <button class="pill" type="button" onclick="openPopup('admin')">
+                Admin
+            </button>
+            <button class="pill" type="button" onclick="openPopup('event')">
+                Event
+            </button>
+        </div>
 
-                <div class="card hidden" id="admin-form">
-                    <form method="POST" action="{{ url_for('auth.login') }}">
-                        <input
-                            type="hidden"
-                            name="csrf_token"
-                            value="{{ csrf_token() }}"
-                        />
-                        <input type="hidden" name="mode" value="admin" />
-                        <h2>Admin</h2>
-                        <label for="password_admin">Admin-Passwort</label>
-                        <input
-                            id="password_admin"
-                            name="password"
-                            type="password"
-                            autocomplete="current-password"
-                            required
-                        />
-                        <button
-                            class="btn btn-primary"
-                            type="submit"
-                            id="admin-submit"
-                        >
-                            Login Admin
-                        </button>
-                    </form>
-                </div>
+        <div id="auth-popup" class="card popup hidden">
+            <button
+                type="button"
+                class="close-btn"
+                aria-label="Schließen"
+                onclick="closePopup()"
+            >
+                ×
+            </button>
+            <h3 id="popup-title">Admin Login</h3>
 
-                <div class="card hidden" id="event-form">
-                    <form method="POST" action="{{ url_for('auth.login') }}">
-                        <input
-                            type="hidden"
-                            name="csrf_token"
-                            value="{{ csrf_token() }}"
-                        />
-                        <input type="hidden" name="mode" value="event" />
-                        <h2>Event</h2>
-                        <label for="password_event">Event-Passwort</label>
-                        <input
-                            id="password_event"
-                            name="password"
-                            type="password"
-                            autocomplete="current-password"
-                            required
-                        />
-                        <button
-                            class="btn btn-primary"
-                            type="submit"
-                            id="event-submit"
-                        >
-                            Login Event
-                        </button>
-                    </form>
-                </div>
-            </div>
+            <form
+                id="admin-form"
+                method="POST"
+                action="{{ url_for('auth.login') }}"
+            >
+                <input
+                    type="hidden"
+                    name="csrf_token"
+                    value="{{ csrf_token() }}"
+                />
+                <input type="hidden" name="mode" value="admin" />
+                <label for="password_admin">Admin-Passwort</label>
+                <input
+                    id="password_admin"
+                    name="password"
+                    type="password"
+                    autocomplete="current-password"
+                    required
+                />
+                <button class="btn btn-primary" type="submit" id="admin-submit">
+                    Login Admin
+                </button>
+            </form>
+
+            <form
+                id="event-form"
+                class="hidden"
+                method="POST"
+                action="{{ url_for('auth.login') }}"
+            >
+                <input
+                    type="hidden"
+                    name="csrf_token"
+                    value="{{ csrf_token() }}"
+                />
+                <input type="hidden" name="mode" value="event" />
+                <label for="password_event">Event-Passwort</label>
+                <input
+                    id="password_event"
+                    name="password"
+                    type="password"
+                    autocomplete="current-password"
+                    required
+                />
+                <button class="btn btn-primary" type="submit" id="event-submit">
+                    Login Event
+                </button>
+            </form>
         </div>
 
         <div class="toast" id="toast"></div>
+
         <script>
-            /* JS unchanged – assume valid */
+            function updateDisziplinInfo() {
+                // Meta-Info (Format/Runden/Einheit) wird auf der Login-Seite nicht angezeigt.
+                // Funktion bleibt absichtlich leer, falls später wieder genutzt.
+            }
+
+            function openPopup(mode) {
+                const popup = document.getElementById("auth-popup");
+                const adminForm = document.getElementById("admin-form");
+                const eventForm = document.getElementById("event-form");
+                const title = document.getElementById("popup-title");
+
+                popup.classList.remove("hidden");
+                if (mode === "admin") {
+                    title.textContent = "Admin Login";
+                    adminForm.classList.remove("hidden");
+                    eventForm.classList.add("hidden");
+                    const input = adminForm.querySelector(
+                        'input[name="password"]',
+                    );
+                    if (input) input.focus();
+                } else {
+                    title.textContent = "Event Login";
+                    eventForm.classList.remove("hidden");
+                    adminForm.classList.add("hidden");
+                    const input = eventForm.querySelector(
+                        'input[name="password"]',
+                    );
+                    if (input) input.focus();
+                }
+            }
+
+            function closePopup() {
+                document.getElementById("auth-popup").classList.add("hidden");
+            }
+
+            document.addEventListener("click", (e) => {
+                const popup = document.getElementById("auth-popup");
+                const toggle = e.target.closest(".admin-toggle");
+                const insidePopup = e.target.closest("#auth-popup");
+                if (!popup.classList.contains("hidden")) {
+                    if (!insidePopup && !toggle) {
+                        closePopup();
+                    }
+                }
+            });
+
+            const disciplineSelect = document.getElementById("discipline");
+            if (disciplineSelect) {
+                disciplineSelect.addEventListener(
+                    "change",
+                    updateDisziplinInfo,
+                );
+                updateDisziplinInfo();
+            }
         </script>
     </body>
 </html>

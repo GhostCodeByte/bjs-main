@@ -205,26 +205,11 @@
             .toast.error {
                 background: var(--danger);
             }
-            /* Import/Export */
             .toolbar {
                 display: flex;
                 gap: 8px;
                 margin-bottom: 16px;
                 flex-wrap: wrap;
-            }
-            .file-input-wrapper {
-                position: relative;
-                overflow: hidden;
-                display: inline-block;
-            }
-            .file-input-wrapper input[type="file"] {
-                position: absolute;
-                left: 0;
-                top: 0;
-                opacity: 0;
-                cursor: pointer;
-                width: 100%;
-                height: 100%;
             }
             .empty-state {
                 text-align: center;
@@ -244,8 +229,6 @@
             <div><strong>Disziplin-Verwaltung</strong></div>
             <nav>
                 <a href="/admin">Dashboard</a>
-                <a href="/dashboard">Fortschritt</a>
-                <a href="/stats">Bestenliste</a>
                 <a href="/logout">Logout</a>
             </nav>
         </header>
@@ -255,25 +238,6 @@
                 <button class="btn-primary" onclick="openCreateModal()">
                     + Neue Disziplin
                 </button>
-                <a
-                    href="/admin/disziplinen/export"
-                    class="btn-secondary"
-                    style="
-                        text-decoration: none;
-                        display: inline-flex;
-                        align-items: center;
-                    "
-                >
-                    ⬇ Export JSON
-                </a>
-                <div class="file-input-wrapper">
-                    <button class="btn-secondary">⬆ Import JSON</button>
-                    <input
-                        type="file"
-                        accept=".json"
-                        onchange="importDisziplinen(this)"
-                    />
-                </div>
             </div>
 
             <h2>Alle Disziplinen</h2>
@@ -328,10 +292,7 @@
                     />
                 </svg>
                 <h3>Keine Disziplinen vorhanden</h3>
-                <p>
-                    Erstelle deine erste Disziplin oder importiere eine
-                    JSON-Datei.
-                </p>
+                <p>Erstelle deine erste Disziplin.</p>
                 <button class="btn-primary" onclick="openCreateModal()">
                     + Neue Disziplin erstellen
                 </button>
@@ -596,45 +557,6 @@
                 } catch (err) {
                     showToast(err.message, "error");
                 }
-            }
-
-            async function importDisziplinen(input) {
-                const file = input.files[0];
-                if (!file) return;
-
-                const replace = confirm(
-                    "Bestehende Disziplinen mit gleichem Namen überschreiben?",
-                );
-
-                try {
-                    const text = await file.text();
-                    const data = JSON.parse(text);
-
-                    const res = await fetch(
-                        `/admin/disziplinen/import?replace=${replace}`,
-                        {
-                            method: "POST",
-                            headers: {
-                                "Content-Type": "application/json",
-                                "X-CSRFToken": csrfToken,
-                            },
-                            body: JSON.stringify(data),
-                        },
-                    );
-
-                    const json = await res.json();
-
-                    if (!res.ok) {
-                        throw new Error(json.error || "Import fehlgeschlagen");
-                    }
-
-                    showToast(json.message);
-                    setTimeout(() => window.location.reload(), 500);
-                } catch (err) {
-                    showToast(err.message, "error");
-                }
-
-                input.value = "";
             }
 
             // ESC zum Schließen

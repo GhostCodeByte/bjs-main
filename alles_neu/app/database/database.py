@@ -6,7 +6,7 @@ import threading
 import time
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Literal, Optional, Tuple
 
 from admin.admin_database import Database as admin_db
 
@@ -129,24 +129,7 @@ class Database:
             """
         )
 
-        # Seed default disciplines if table is empty
-        self.cursor.execute("SELECT COUNT(*) FROM Disziplinen")
-        if self.cursor.fetchone()[0] == 0:
-            default_disziplinen = [
-                ("Sprinten", "Sprint", "time", 3, "s", "50m/75m Sprint", 1),
-                ("Laufen", "Ausdauerlauf", "time", 1, "min:s", "800m/1000m Lauf", 2),
-                ("Weitsprung", "Weitsprung", "distance", 3, "m", "Weitsprung", 3),
-                ("Kugelstoßen", "Kugelstoßen", "distance", 3, "m", "Kugelstoßen", 4),
-                ("Werfen", "Ballwurf/Schleuderball", "distance", 3, "m", "Werfen", 5),
-            ]
-            self.cursor.executemany(
-                """
-                INSERT INTO Disziplinen (name, display_name, result_format, num_rounds, unit, description, sort_order)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-                """,
-                default_disziplinen,
-            )
-
+        # Kein Auto-Seeding: Admin soll Disziplinen selbst anlegen.
         self.connection.commit()
 
     def _ensure_unique_constraints(self):
@@ -657,59 +640,6 @@ class Database:
             (disziplin_id, key, value),
         )
 
-    def export_disziplinen(self) -> str:
-        """Exportiert alle Disziplinen als JSON."""
-        disziplinen = self.get_disziplinen()
-        return json.dumps(disziplinen, indent=2, default=str)
-
-    def import_disziplinen(self, json_data: str, replace: bool = False) -> int:
-        """
-        Importiert Disziplinen aus JSON.
-        Bei replace=True werden bestehende Disziplinen ersetzt.
-        Gibt Anzahl importierter Disziplinen zurück.
-        """
-        try:
-            data = json.loads(json_data)
-        except json.JSONDecodeError as e:
-            raise ValueError(f"Ungültiges JSON: {e}")
-
-        if not isinstance(data, list):
-            raise ValueError("JSON muss eine Liste von Disziplinen sein")
-
-        count = 0
-        for item in data:
-            name = item.get("name")
-            if not name:
-                continue
-
-            existing = self.get_disziplin_by_name(name)
-            if existing and not replace:
-                continue
-
-            if existing:
-                self.update_disziplin(
-                    existing["id"],
-                    display_name=item.get("display_name"),
-                    result_format=item.get("result_format"),
-                    num_rounds=item.get("num_rounds"),
-                    unit=item.get("unit"),
-                    description=item.get("description"),
-                    sort_order=item.get("sort_order"),
-                )
-            else:
-                self.create_disziplin(
-                    name=name,
-                    display_name=item.get("display_name"),
-                    result_format=item.get("result_format", "distance"),
-                    num_rounds=item.get("num_rounds", 3),
-                    unit=item.get("unit", "m"),
-                    description=item.get("description"),
-                    sort_order=item.get("sort_order", 0),
-                )
-            count += 1
-
-        return count
-
     # ============================================
     # Station-PIN Methoden
     # ============================================
@@ -724,6 +654,7 @@ class Database:
         pin = None
         attempts = 0
         discipline_val = discipline or station
+
         while pin is None and attempts < 20:
             candidate = "".join(secrets.choice(string.digits) for _ in range(length))
             try:
@@ -750,12 +681,15 @@ class Database:
         discipline: Optional[str] = None,
     ) -> str:
         discipline_val = discipline or station
+
         row = self.cursor.execute(
             "SELECT pin FROM Station_Pin WHERE station = ? AND active = 1 AND (discipline = ? OR discipline IS NULL) LIMIT 1",
             (station, discipline_val),
         ).fetchone()
+
         if row:
             return row[0]
+
         return self.generate_station_pin(
             station=station,
             max_logins=max_logins,
@@ -774,8 +708,10 @@ class Database:
             return False, "PIN nicht aktiv oder unbekannt"
 
         pin_discipline = row[3]
+
+        # If station is selected on the login form, enforce mapping.
         if discipline and pin_discipline and pin_discipline != discipline:
-            return False, "PIN gehört zu einer anderen Disziplin"
+            return False, "PIN gehört zu einer anderen Station/Disziplin"
 
         active_sessions = self.cursor.execute(
             "SELECT device_id FROM Station_Session WHERE pin = ? AND active = 1",

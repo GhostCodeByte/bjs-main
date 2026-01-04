@@ -1,4 +1,5 @@
 import json
+import secrets
 import shutil
 import tempfile
 import time
@@ -49,6 +50,10 @@ def _require_admin():
 
 def _require_admin_or_event():
     return session.get("role") in ("admin", "event")
+
+
+def _require_event():
+    return session.get("role") == "event"
 
 
 def _get_device_id() -> str:
@@ -245,21 +250,26 @@ def logout():
 
 @auth_bp.route("/admin", methods=["GET"])
 def admin_dashboard():
+    """
+    Admin-UI soll aufgeräumt sein:
+    - Event-PIN Verwaltung
+    - Stations-PIN Generierung + Verwaltung (aktiv/inaktiv, löschen)
+    Keine Fortschritts-/Bestenlisten-Stats hier (gehört auf Event-Page).
+    """
     if not _require_admin():
         return redirect(url_for("auth.login"))
 
     db = get_db()
+
     pins = db.cursor.execute(
-        "SELECT id, station, discipline, pin, max_logins, active, created_at FROM Station_Pin"
-    ).fetchall()
-    sessions_rows = db.cursor.execute(
-        "SELECT id, pin, device_id, discipline, active, created_at FROM Station_Session"
+        """
+        SELECT id, station, discipline, pin, max_logins, active, created_at
+        FROM Station_Pin
+        ORDER BY created_at DESC
+        """
     ).fetchall()
 
-    stats = db.get_stats()
-    backup_config = db.get_backup_config()
-    backup_history = db.get_backup_history(limit=5)
-    disziplinen = db.get_disziplinen()
+    event_pin = db.get_setting(_EVENT_PASSWORD_KEY, None)
 
     data = {
         "pins": [
@@ -274,43 +284,98 @@ def admin_dashboard():
             }
             for row in pins
         ],
-        "sessions": [
-            {
-                "id": row[0],
-                "pin": row[1],
-                "device_id": row[2],
-                "discipline": row[3],
-                "active": bool(row[4]),
-                "created_at": row[5],
-            }
-            for row in sessions_rows
-        ],
-        "stats": stats,
-        "backup_config": backup_config,
-        "backup_history": backup_history,
-        "event_password_set": bool(db.get_setting(_EVENT_PASSWORD_KEY, None)),
-        "disziplinen": disziplinen,
+        "event_password_set": bool(event_pin),
+        "event_pin": event_pin,
     }
+
     return render_template("admin_dashboard.html", **data)
+
+
+@auth_bp.route("/admin/stations", methods=["GET"])
+def admin_list_stations():
+    """
+    Stations == Disziplinen:
+    Diese Route liefert die Disziplinen als "stations" für Dropdowns (Admin UI / Login UI).
+    """
+    if not _require_admin():
+        return jsonify({"error": "Unauthorized"}), 401
+
+    db = get_db()
+    disziplinen = db.get_disziplinen()
+
+    stations = [
+        {
+            "id": d["id"],
+            "name": d["name"],
+            "display_name": d.get("display_name"),
+            "result_format": d.get("result_format"),
+            "unit": d.get("unit"),
+            "num_rounds": d.get("num_rounds"),
+            "active": True,
+        }
+        for d in disziplinen or []
+    ]
+    return jsonify({"stations": stations})
+
+
+@auth_bp.route("/admin/stations", methods=["POST"])
+def admin_create_station():
+    """
+    Stations == Disziplinen:
+    Stationen werden nicht mehr separat erstellt. Bitte Disziplinen-Verwaltung nutzen.
+    """
+    if not _require_admin():
+        return jsonify({"error": "Unauthorized"}), 401
+    return jsonify({"error": "Stationen werden über Disziplinen verwaltet."}), 410
+
+
+# NOTE:
+# Stations == Disziplinen: Stationen werden nicht mehr separat verwaltet.
+# Änderungen passieren über die Disziplinen-Verwaltung (/admin/disziplinen).
 
 
 @auth_bp.route("/admin/generate_pin", methods=["POST"])
 def admin_generate_pin():
+    """
+    Generiert einen 6-stelligen Stations-PIN für eine bestehende Disziplin (Stations == Disziplinen).
+    Erwartet station_id (= disziplin_id) aus Dropdown.
+    """
     if not _require_admin():
         return jsonify({"error": "Unauthorized"}), 401
     payload = request.get_json(silent=True) or {}
-    discipline = payload.get("discipline") or payload.get("station")
-    if not discipline:
-        return jsonify({"error": "discipline erforderlich"}), 400
+
+    station_id = payload.get("station_id")
+    if station_id is None:
+        return jsonify({"error": "station_id erforderlich"}), 400
 
     db = get_db()
-    pin = db.generate_station_pin(
-        station=discipline,
-        discipline=discipline,
-        max_logins=1,
-        length=6,
+    disziplin_id = int(station_id)
+
+    # disziplin_id -> name (für Speicherung in Station_Pin.station / Station_Pin.discipline)
+    disziplin = db.get_disziplin(disziplin_id)
+    if not disziplin:
+        return jsonify({"error": "Disziplin nicht gefunden"}), 404
+
+    try:
+        pin = db.generate_station_pin(
+            station=disziplin["name"],
+            discipline=disziplin["name"],
+            max_logins=1,
+            length=6,
+        )
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    except Exception as e:
+        return jsonify({"error": f"Fehler: {e}"}), 500
+
+    return jsonify(
+        {
+            "pin": pin,
+            "station_id": disziplin_id,
+            "station": disziplin["name"],
+            "max_logins": 1,
+        }
     )
-    return jsonify({"pin": pin, "discipline": discipline, "station": discipline, "max_logins": 1})
 
 
 @auth_bp.route("/admin/revoke_pin", methods=["POST"])
@@ -382,6 +447,9 @@ def admin_delete_session():
 
 @auth_bp.route("/admin/event_password", methods=["POST"])
 def admin_set_event_password():
+    """
+    Setzt das Event-Passwort manuell (legacy).
+    """
     if not _require_admin():
         return jsonify({"error": "Unauthorized"}), 401
     payload = request.get_json(silent=True) or {}
@@ -391,6 +459,22 @@ def admin_set_event_password():
     db = get_db()
     db.set_setting(_EVENT_PASSWORD_KEY, password)
     return jsonify({"status": "ok"})
+
+
+@auth_bp.route("/admin/event_pin/generate", methods=["POST"])
+def admin_generate_event_pin():
+    """
+    Generiert eine neue 6-stellige Event-PIN und ersetzt die bisherige.
+    """
+    if not _require_admin():
+        return jsonify({"error": "Unauthorized"}), 401
+
+    # 6-stellig, kryptografisch zufällig (führende Nullen erlaubt)
+    new_pin = "".join(secrets.choice("0123456789") for _ in range(6))
+
+    db = get_db()
+    db.set_setting(_EVENT_PASSWORD_KEY, new_pin)
+    return jsonify({"status": "ok", "event_pin": new_pin})
 
 
 @auth_bp.route("/admin/backup", methods=["POST"])
@@ -566,35 +650,6 @@ def admin_disziplinen_delete(disziplin_id: int):
     return jsonify({"deleted": True})
 
 
-@auth_bp.route("/admin/disziplinen/export", methods=["GET"])
-def admin_disziplinen_export():
-    if not _require_admin():
-        return redirect(url_for("auth.login"))
-    db = get_db()
-    data = db.export_disziplinen()
-    resp = make_response(data)
-    resp.headers["Content-Type"] = "application/json"
-    resp.headers["Content-Disposition"] = "attachment; filename=disziplinen.json"
-    return resp
-
-
-@auth_bp.route("/admin/disziplinen/import", methods=["POST"])
-def admin_disziplinen_import():
-    if not _require_admin():
-        return jsonify({"error": "Unauthorized"}), 401
-    file = request.files.get("file")
-    replace = request.form.get("replace", "false").lower() == "true"
-    if not file:
-        return jsonify({"error": "Datei erforderlich"}), 400
-    content = file.read().decode("utf-8")
-    db = get_db()
-    try:
-        count = db.import_disziplinen(content, replace=replace)
-        return jsonify({"imported": count})
-    except Exception as e:
-        return jsonify({"error": str(e)}), 400
-
-
 # ============================================
 # Dashboard & Stats (Event + Admin)
 # ============================================
@@ -602,6 +657,10 @@ def admin_disziplinen_import():
 
 def _require_dashboard_access():
     return session.get("role") in ("admin", "event")
+
+
+def _require_event_access():
+    return session.get("role") == "event"
 
 
 @auth_bp.route("/dashboard", methods=["GET"])
@@ -640,7 +699,7 @@ def dashboard_data():
 
 @auth_bp.route("/event/overview", methods=["GET"])
 def event_overview():
-    if not _require_dashboard_access():
+    if not _require_event_access():
         return redirect(url_for("auth.login"))
 
     db = get_db()
@@ -672,7 +731,7 @@ def event_overview():
 
 @auth_bp.route("/stats", methods=["GET"])
 def stats_page():
-    if not _require_dashboard_access():
+    if not _require_event_access():
         return redirect(url_for("auth.login"))
 
     db = get_db()
@@ -699,7 +758,7 @@ def stats_page():
 
 @auth_bp.route("/stats/bestenliste", methods=["GET"])
 def stats_bestenliste():
-    if not _require_dashboard_access():
+    if not _require_event_access():
         return jsonify({"error": "Unauthorized"}), 401
 
     db = get_db()
