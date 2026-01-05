@@ -145,7 +145,7 @@ def login():
                 resp = make_response(render_template("auth.html"))
                 resp.status_code = 401
                 return resp
-            if password != _get_event_password():
+            if password != str(_get_event_password() or "").strip():
                 flash("Ungültiges Event-Passwort.", "error")
                 resp = make_response(render_template("auth.html"))
                 resp.status_code = 401

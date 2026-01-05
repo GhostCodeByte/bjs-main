@@ -4,14 +4,9 @@
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <title>Station Login</title>
-        <link
-            rel="stylesheet"
-            href="{{ url_for('static', filename='auth.css') }}"
-        />
+        <link rel="stylesheet" href="{{ url_for('static', filename='auth.css') }}" />
         <style>
-            .hidden {
-                display: none !important;
-            }
+            .hidden { display: none !important; }
             .popup {
                 position: fixed;
                 bottom: 80px;
@@ -19,27 +14,33 @@
                 width: 260px;
                 z-index: 20;
                 padding-top: 14px;
+                background: #fff;
+                border: 1px solid #e5e7eb;
+                border-radius: 12px;
+                box-shadow: 0 10px 30px rgba(17, 24, 39, 0.12);
             }
             .popup h3 {
                 margin: 0 0 12px;
                 font-size: 16px;
-                color: #e5e7eb;
+                color: #111827;
+                padding: 0 16px;
+            }
+            .popup form {
+                padding: 0 16px 16px;
             }
             .close-btn {
                 position: absolute;
-                top: 6px;
+                top: 10px;
                 right: 10px;
                 border: none;
                 background: transparent;
-                color: #9ca3af;
+                color: #6b7280;
                 font-size: 18px;
                 cursor: pointer;
                 line-height: 1;
                 padding: 4px;
             }
-            .close-btn:hover {
-                color: #e5e7eb;
-            }
+            .close-btn:hover { color: #111827; }
         </style>
     </head>
     <body>
@@ -49,43 +50,29 @@
                 <p>Disziplin wählen, 6-stelligen PIN eingeben.</p>
             </header>
 
-            {% with messages = get_flashed_messages(with_categories=True) %} {%
-            if messages %} {% for category, message in messages %}
+            {% with messages = get_flashed_messages(with_categories=True) %}
+            {% if messages %}
+            {% for category, message in messages %}
             <div class="flash {{ category }}">{{ message }}</div>
-            {% endfor %} {% endif %} {% endwith %}
+            {% endfor %}
+            {% endif %}
+            {% endwith %}
 
-            <form
-                class="card"
-                method="POST"
-                action="{{ url_for('auth.login') }}"
-                id="station-form"
-            >
-                <input
-                    type="hidden"
-                    name="csrf_token"
-                    value="{{ csrf_token() }}"
-                />
+            <form class="card" method="POST" action="{{ url_for('auth.login') }}" id="station-form">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
                 <input type="hidden" name="mode" value="station" />
                 <h2>Station</h2>
 
                 <label for="discipline">Disziplin</label>
-                <select
-                    id="discipline"
-                    name="discipline"
-                    required
-                    onchange="updateDisziplinInfo()"
-                >
+                <select id="discipline" name="discipline" required onchange="updateDisziplinInfo()">
                     <option value="" disabled selected>Bitte wählen</option>
-                    {% if disziplinen %} {% for d in disziplinen %}
-                    <option
-                        value="{{ d.name }}"
-                        data-format="{{ d.result_format }}"
-                        data-rounds="{{ d.num_rounds }}"
-                        data-unit="{{ d.unit }}"
-                    >
+                    {% if disziplinen %}
+                    {% for d in disziplinen %}
+                    <option value="{{ d.name }}" data-format="{{ d.result_format }}" data-rounds="{{ d.num_rounds }}" data-unit="{{ d.unit }}">
                         {{ d.display_name or d.name }}
                     </option>
-                    {% endfor %} {% else %}
+                    {% endfor %}
+                    {% else %}
                     <option value="Sprinten">Sprinten</option>
                     <option value="Weitsprung">Weitsprung</option>
                     <option value="Wurf">Wurf</option>
@@ -93,96 +80,36 @@
                 </select>
 
                 <label for="password_station">PIN (6-stellig)</label>
-                <input
-                    id="password_station"
-                    name="password"
-                    type="password"
-                    inputmode="numeric"
-                    pattern="[0-9]{6}"
-                    minlength="6"
-                    maxlength="6"
-                    placeholder="******"
-                    required
-                />
+                <input id="password_station" name="password" type="password" inputmode="numeric" pattern="[0-9]{6}" minlength="6" maxlength="6" placeholder="******" required />
 
-                <button
-                    class="btn btn-primary"
-                    type="submit"
-                    id="station-submit"
-                >
-                    Login Station
-                </button>
+                <button class="btn btn-primary" type="submit" id="station-submit">Login Station</button>
                 <div class="meta" id="device-id-display"></div>
             </form>
         </div>
 
         <div class="admin-toggle">
-            <button class="pill" type="button" onclick="openPopup('admin')">
-                Admin
-            </button>
-            <button class="pill" type="button" onclick="openPopup('event')">
-                Event
-            </button>
+            <button class="pill" type="button" onclick="openPopup('admin')">Admin</button>
+            <button class="pill" type="button" onclick="openPopup('event')">Event</button>
         </div>
 
-        <div id="auth-popup" class="card popup hidden">
-            <button
-                type="button"
-                class="close-btn"
-                aria-label="Schließen"
-                onclick="closePopup()"
-            >
-                ×
-            </button>
+        <div id="auth-popup" class="popup hidden">
+            <button type="button" class="close-btn" aria-label="Schließen" onclick="closePopup()">×</button>
             <h3 id="popup-title">Admin Login</h3>
 
-            <form
-                id="admin-form"
-                method="POST"
-                action="{{ url_for('auth.login') }}"
-            >
-                <input
-                    type="hidden"
-                    name="csrf_token"
-                    value="{{ csrf_token() }}"
-                />
+            <form id="admin-form" method="POST" action="{{ url_for('auth.login') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
                 <input type="hidden" name="mode" value="admin" />
                 <label for="password_admin">Admin-Passwort</label>
-                <input
-                    id="password_admin"
-                    name="password"
-                    type="password"
-                    autocomplete="current-password"
-                    required
-                />
-                <button class="btn btn-primary" type="submit" id="admin-submit">
-                    Login Admin
-                </button>
+                <input id="password_admin" name="password" type="password" autocomplete="current-password" required />
+                <button class="btn btn-primary" type="submit" id="admin-submit">Login Admin</button>
             </form>
 
-            <form
-                id="event-form"
-                class="hidden"
-                method="POST"
-                action="{{ url_for('auth.login') }}"
-            >
-                <input
-                    type="hidden"
-                    name="csrf_token"
-                    value="{{ csrf_token() }}"
-                />
+            <form id="event-form" class="hidden" method="POST" action="{{ url_for('auth.login') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
                 <input type="hidden" name="mode" value="event" />
                 <label for="password_event">Event-Passwort</label>
-                <input
-                    id="password_event"
-                    name="password"
-                    type="password"
-                    autocomplete="current-password"
-                    required
-                />
-                <button class="btn btn-primary" type="submit" id="event-submit">
-                    Login Event
-                </button>
+                <input id="password_event" name="password" type="password" autocomplete="current-password" required />
+                <button class="btn btn-primary" type="submit" id="event-submit">Login Event</button>
             </form>
         </div>
 
@@ -191,7 +118,6 @@
         <script>
             function updateDisziplinInfo() {
                 // Meta-Info (Format/Runden/Einheit) wird auf der Login-Seite nicht angezeigt.
-                // Funktion bleibt absichtlich leer, falls später wieder genutzt.
             }
 
             function openPopup(mode) {
@@ -205,17 +131,13 @@
                     title.textContent = "Admin Login";
                     adminForm.classList.remove("hidden");
                     eventForm.classList.add("hidden");
-                    const input = adminForm.querySelector(
-                        'input[name="password"]',
-                    );
+                    const input = adminForm.querySelector('input[name="password"]');
                     if (input) input.focus();
                 } else {
                     title.textContent = "Event Login";
                     eventForm.classList.remove("hidden");
                     adminForm.classList.add("hidden");
-                    const input = eventForm.querySelector(
-                        'input[name="password"]',
-                    );
+                    const input = eventForm.querySelector('input[name="password"]');
                     if (input) input.focus();
                 }
             }
@@ -237,10 +159,7 @@
 
             const disciplineSelect = document.getElementById("discipline");
             if (disciplineSelect) {
-                disciplineSelect.addEventListener(
-                    "change",
-                    updateDisziplinInfo,
-                );
+                disciplineSelect.addEventListener("change", updateDisziplinInfo);
                 updateDisziplinInfo();
             }
         </script>
