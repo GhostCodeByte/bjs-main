@@ -11,7 +11,10 @@ import io
 
 from app.db_registry import DbRegistry, default_meta_db_path
 from app.services_csv_import import import_students_csv_to_new_db
-from app.services_riegen import create_riege_and_assign
+from app.services_riegen import (
+    auto_create_riegen_and_assign,
+    parse_riegenfuehrer_names_csv,
+)
 
 
 from flask import (
@@ -576,17 +579,32 @@ def admin_riegeneinteilung():
     dbs = registry.list_dbs()
 
     db = get_db()
-    riegen = []
     try:
         riegen = db.get_all_riegen_with_progress()
     except Exception:
         riegen = []
+
+    try:
+        stats = db.get_riegen_stats()
+        classes = db.get_present_classes()
+    except Exception:
+        stats = {
+            "students_total": 0,
+            "students_assigned": 0,
+            "students_unassigned": 0,
+            "riegen_total": 0,
+            "profil_total": 0,
+            "profil_assigned": 0,
+        }
+        classes = []
 
     return render_template(
         "admin_riegeneinteilung.html",
         dbs=dbs,
         active_db_path=active_db,
         riegen=riegen,
+        stats=stats,
+        classes=classes,
     )
 
 
@@ -671,40 +689,133 @@ def admin_import_csv_to_new_db():
     return redirect(url_for("auth.admin_riegeneinteilung"))
 
 
-@auth_bp.route("/admin/riegeneinteilung/create_riege", methods=["POST"])
-def admin_create_riege():
+@auth_bp.route("/admin/riegeneinteilung/einteilen", methods=["POST"])
+def admin_riegen_einteilen():
     if not _require_admin():
         return redirect(url_for("auth.login"))
 
+    delimiter = (request.form.get("delimiter") or ";")[:1]
+    keep_existing = (request.form.get("keep_existing") or "") == "1"
+
+    leader_file = request.files.get("leaders_file")
+    leader_names = []
+    if leader_file and (leader_file.filename or "").strip():
+        try:
+            raw = leader_file.stream.read().decode("utf-8-sig", errors="replace")
+            leader_names = parse_riegenfuehrer_names_csv(csv_text=raw, delimiter=delimiter)
+        except Exception as exc:
+            flash(f"Leiter-CSV konnte nicht gelesen werden: {exc}", "error")
+            return redirect(url_for("auth.admin_riegeneinteilung"))
+
+    db = get_db()
+    try:
+        result = auto_create_riegen_and_assign(
+            db=db,
+            leader_names=leader_names,
+            keep_existing_riegen=keep_existing,
+        )
+        stats = db.get_riegen_stats()
+    except Exception as exc:
+        flash(f"Einteilen fehlgeschlagen: {exc}", "error")
+        return redirect(url_for("auth.admin_riegeneinteilung"))
+
+    flash(
+        "Einteilung fertig: "
+        f"Riegen erstellt: {result.created_riegen}, "
+        f"Schüler zugeordnet: {stats['students_assigned']}/{stats['students_total']}, "
+        f"Leiter-Namen genutzt: {result.used_leader_names}.",
+        "success",
+    )
+    return redirect(url_for("auth.admin_riegeneinteilung"))
+
+
+@auth_bp.route("/admin/riegeneinteilung/update_riege", methods=["POST"])
+def admin_update_riege():
+    if not _require_admin():
+        return redirect(url_for("auth.login"))
+
+    riegen_id_raw = (request.form.get("riegen_id") or "").strip()
     name = (request.form.get("name") or "").strip()
     stufe_raw = (request.form.get("stufe") or "").strip()
     klassen = (request.form.get("klassenendungen") or "").strip()
     geschlecht = (request.form.get("geschlecht") or "").strip()
     profil = (request.form.get("profil") or "") == "1"
+    reassign = (request.form.get("reassign") or "") == "1"
 
     try:
+        riegen_id = int(riegen_id_raw)
         stufe = int(stufe_raw)
-        db = get_db()
-        res = create_riege_and_assign(
-            db=db,
+    except Exception:
+        flash("Ungültige Eingaben.", "error")
+        return redirect(url_for("auth.admin_riegeneinteilung"))
+
+    db = get_db()
+    try:
+        updated = db.update_riege(
+            riegen_id=riegen_id,
             name=name,
             stufe=stufe,
             klassenendungen=klassen,
             geschlecht=geschlecht,
             profil=profil,
         )
+        if not updated:
+            flash("Riege nicht gefunden.", "error")
+            return redirect(url_for("auth.admin_riegeneinteilung"))
+
+        if reassign:
+            # Entkoppeln und neu zuweisen für diese Riege
+            db._execute_tx(
+                "UPDATE Schueler SET RiegenfuehrerID = NULL WHERE RiegenfuehrerID = ?", (riegen_id,)
+            )
+            for kl_end in klassen or "":
+                if kl_end.strip():
+                    db.add_riegenfuehrer_to_schueler(
+                        rf_id=riegen_id,
+                        klassenbuchstabe=kl_end.strip().lower(),
+                        stufe=stufe,
+                        geschlecht=geschlecht or "mw",
+                        profil=bool(profil),
+                    )
+            db.connection.commit()
     except Exception as exc:
-        flash(f"Riege anlegen fehlgeschlagen: {exc}", "error")
+        flash(f"Update fehlgeschlagen: {exc}", "error")
         return redirect(url_for("auth.admin_riegeneinteilung"))
 
-    flash(f"Riege erstellt (ID {res.rf_id}). Zugewiesen: {res.assigned}", "success")
+    flash("Riege gespeichert.", "success")
+    return redirect(url_for("auth.admin_riegeneinteilung"))
+
+
+@auth_bp.route("/admin/riegeneinteilung/delete_riege", methods=["POST"])
+def admin_delete_riege():
+    if not _require_admin():
+        return redirect(url_for("auth.login"))
+
+    riegen_id_raw = (request.form.get("riegen_id") or "").strip()
+    try:
+        riegen_id = int(riegen_id_raw)
+    except Exception:
+        flash("Ungültige Riegen-ID.", "error")
+        return redirect(url_for("auth.admin_riegeneinteilung"))
+
+    db = get_db()
+    try:
+        unassigned, deleted = db.delete_riege(riegenfuehrer_id=riegen_id)
+    except Exception as exc:
+        flash(f"Löschen fehlgeschlagen: {exc}", "error")
+        return redirect(url_for("auth.admin_riegeneinteilung"))
+
+    if deleted:
+        flash(f"Riege gelöscht. Zuweisungen entfernt: {unassigned}", "success")
+    else:
+        flash("Riege nicht gefunden.", "error")
+
     return redirect(url_for("auth.admin_riegeneinteilung"))
 
 
 # ============================================
 # Disziplin-CRUD
 # ============================================
-
 
 
 @auth_bp.route("/admin/disziplinen", methods=["GET"])

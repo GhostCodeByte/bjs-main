@@ -22,6 +22,13 @@
 
                 --shadow: 0 10px 30px rgba(17, 24, 39, 0.08);
                 --radius: 12px;
+
+                /* Spacing scale */
+                --space-1: 6px;
+                --space-2: 10px;
+                --space-3: 14px;
+                --space-4: 18px;
+                --space-5: 24px;
             }
 
             * {
@@ -30,9 +37,13 @@
 
             body {
                 margin: 0;
-                font-family: system-ui, -apple-system, sans-serif;
+                font-family:
+                    system-ui,
+                    -apple-system,
+                    sans-serif;
                 background: var(--bg);
                 color: var(--text);
+                line-height: 1.45;
             }
 
             header {
@@ -60,17 +71,51 @@
             main {
                 max-width: 1100px;
                 margin: 0 auto;
-                padding: 18px 16px 28px;
+                padding: var(--space-4) 16px 26px;
             }
 
             h1 {
-                margin: 0 0 10px;
-                font-size: 1.4rem;
+                margin: 0;
+                font-size: 1.45rem;
+                letter-spacing: 0.2px;
             }
 
-            h2 {
-                margin: 18px 0 10px;
-                font-size: 1.05rem;
+            .topbar {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: var(--space-3);
+                margin-bottom: var(--space-3);
+                padding-bottom: var(--space-2);
+                border-bottom: 1px solid var(--border);
+            }
+
+            .topbar .right {
+                font-size: 0.9rem;
+                color: var(--muted);
+                white-space: nowrap;
+            }
+
+            .topbar code {
+                font-size: 0.85rem;
+            }
+
+            .help {
+                color: var(--muted);
+                font-size: 0.875rem;
+                line-height: 1.35;
+            }
+
+            .tight {
+                margin-top: 0;
+                display: flex;
+                align-items: center;
+                gap: 8px;
+            }
+
+            input[type="checkbox"] {
+                width: auto;
+                margin: 0;
             }
 
             .muted {
@@ -82,7 +127,7 @@
             .flash {
                 padding: 10px 12px;
                 border-radius: 10px;
-                margin-bottom: 10px;
+                margin: 12px 0;
                 font-weight: 650;
                 border: 1px solid var(--border);
                 background: #fff;
@@ -109,7 +154,7 @@
             .grid {
                 display: grid;
                 grid-template-columns: 1fr;
-                gap: 12px;
+                gap: var(--space-4);
             }
 
             @media (min-width: 900px) {
@@ -125,53 +170,73 @@
                 background: var(--panel);
                 border: 1px solid var(--border);
                 border-radius: var(--radius);
-                padding: 16px;
+                padding: var(--space-4);
                 box-shadow: var(--shadow);
                 display: flex;
                 flex-direction: column;
-                gap: 10px;
+                gap: var(--space-3);
             }
 
             .card h3 {
-                margin: 0 0 2px;
-                font-size: 1rem;
+                margin: 0;
+                font-size: 1.02rem;
+                letter-spacing: 0.2px;
+            }
+
+            form {
+                display: flex;
+                flex-direction: column;
+                gap: var(--space-3);
             }
 
             label {
                 font-weight: 650;
                 font-size: 0.9rem;
+                display: block;
+                margin-bottom: var(--space-1);
             }
 
             input,
             select {
                 width: 100%;
-                padding: 9px 10px;
+                padding: 10px 12px;
                 border: 1px solid #d1d5db;
                 border-radius: 10px;
                 font-size: 0.95rem;
                 background: #fff;
             }
 
+            input:focus,
+            select:focus {
+                outline: none;
+                border-color: var(--primary);
+                box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+            }
+
             .row {
                 display: grid;
                 grid-template-columns: 1fr;
-                gap: 10px;
+                gap: var(--space-3);
+                align-items: start;
             }
 
             @media (min-width: 600px) {
                 .row.two {
                     grid-template-columns: 1fr 1fr;
+                    gap: var(--space-4);
                 }
                 .row.three {
                     grid-template-columns: 2fr 1fr 1fr;
+                    gap: var(--space-4);
                 }
             }
 
             .btnrow {
                 display: flex;
-                gap: 10px;
+                gap: var(--space-2);
                 align-items: center;
                 flex-wrap: wrap;
+                margin-top: 2px;
             }
 
             button {
@@ -205,7 +270,8 @@
                 background: #f3f4f6;
                 padding: 2px 6px;
                 border-radius: 8px;
-                font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+                font-family:
+                    ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
                     "Liberation Mono", "Courier New", monospace;
             }
 
@@ -224,6 +290,7 @@
                 padding: 10px 10px;
                 border-bottom: 1px solid var(--border);
                 font-size: 0.92rem;
+                vertical-align: top;
             }
 
             th {
@@ -242,33 +309,39 @@
             <strong>Admin</strong>
             <nav>
                 <a href="{{ url_for('auth.admin_dashboard') }}">Dashboard</a>
-                <a href="{{ url_for('auth.admin_riegeneinteilung') }}">Riegeneinteilung</a>
+                <a href="{{ url_for('auth.admin_riegeneinteilung') }}"
+                    >Riegeneinteilung</a
+                >
                 <a href="{{ url_for('auth.logout') }}">Logout</a>
             </nav>
         </header>
 
         <main>
-            <h1>Riegeneinteilung</h1>
-            <div class="muted">
-                Hier verwaltest du Datenbanken pro Event (CSV → DB) und legst Riegen an.
+            <div class="topbar">
+                <h1>Riegeneinteilung</h1>
+                <div class="right">
+                    Aktiv: <code>{{ active_db_path or '—' }}</code>
+                </div>
             </div>
 
-            {% with messages = get_flashed_messages(with_categories=true) %} {% if
-            messages %} {% for category, message in messages %}
+            {% with messages = get_flashed_messages(with_categories=true) %} {%
+            if messages %} {% for category, message in messages %}
             <div class="flash {{ category }}">{{ message }}</div>
             {% endfor %} {% endif %} {% endwith %}
 
             <div class="grid">
                 <section class="card">
-                    <h3>Aktive Datenbank</h3>
-                    <div class="muted">
-                        Aktuell: <code>{{ active_db_path or '—' }}</code>
-                    </div>
+                    <h3>Datenbank wechseln</h3>
 
                     <form
                         method="post"
                         action="{{ url_for('auth.admin_select_db') }}"
                     >
+                        <input
+                            type="hidden"
+                            name="csrf_token"
+                            value="{{ csrf_token() }}"
+                        />
                         <label for="db_name">Datenbank auswählen</label>
                         <select id="db_name" name="db_name" required>
                             <option value="" disabled selected>
@@ -276,8 +349,8 @@
                             </option>
                             {% for item in dbs %}
                             <option value="{{ item.name }}">
-                                {{ item.name }}{% if item.label %} — {{ item.label
-                                }}{% endif %}
+                                {{ item.name }}{% if item.label %} — {{
+                                item.label }}{% endif %}
                             </option>
                             {% endfor %}
                         </select>
@@ -290,12 +363,36 @@
                     </form>
                 </section>
 
+                <section class="card span2">
+                    <h3>Status</h3>
+                    <div class="help">
+                        {% if stats %}
+                        Schüler: <strong>{{ stats.students_assigned }}</strong>/<strong>{{ stats.students_total }}</strong>
+                        (offen: {{ stats.students_unassigned }}) ·
+                        Riegen: <strong>{{ stats.riegen_total }}</strong> ·
+                        Profil: <strong>{{ stats.profil_assigned }}</strong>/<strong>{{ stats.profil_total }}</strong>
+                        {% else %}
+                        Keine Statistik verfügbar.
+                        {% endif %}
+                    </div>
+                    <div class="help" style="margin-top: 8px;">
+                        Erkannte Klassen:
+                        {% if classes and classes|length > 0 %}
+                            {% for c in classes %}
+                                <code>{{ c.stufe }}{{ c.buchstabe }}</code>{% if not loop.last %} {% endif %}
+                            {% endfor %}
+                        {% else %}
+                            <span class="muted">—</span>
+                        {% endif %}
+                    </div>
+                </section>
+
                 <section class="card">
-                    <h3>CSV importieren → neue Datenbank</h3>
-                    <div class="muted">
-                        Erwartete Kopfzeilen: <code>Geschlecht</code>,
+                    <h3>CSV Import</h3>
+                    <div class="help">
+                        Kopfzeilen: <code>Geschlecht</code>,
                         <code>Klasse</code>, <code>Name</code>,
-                        <code>Vorname</code>, <code>Geburtsjahr</code> (+ optional
+                        <code>Vorname</code>, <code>Geburtsjahr</code> (optional
                         <code>Profil</code>).
                     </div>
 
@@ -304,6 +401,11 @@
                         enctype="multipart/form-data"
                         action="{{ url_for('auth.admin_import_csv_to_new_db') }}"
                     >
+                        <input
+                            type="hidden"
+                            name="csrf_token"
+                            value="{{ csrf_token() }}"
+                        />
                         <div class="row">
                             <div>
                                 <label for="csv_file">CSV Datei</label>
@@ -324,7 +426,7 @@
                                     id="label"
                                     name="label"
                                     type="text"
-                                    placeholder="z.B. Schülerliste 5a/5b"
+                                    placeholder="z.B. 5a/5b"
                                 />
                             </div>
 
@@ -339,13 +441,13 @@
                         </div>
 
                         <div class="row">
-                            <label>
+                            <label class="tight">
                                 <input
                                     type="checkbox"
                                     name="auto_activate"
                                     value="1"
                                 />
-                                Nach Import aktiv setzen
+                                Danach aktiv setzen
                             </label>
                         </div>
 
@@ -358,72 +460,54 @@
                 </section>
 
                 <section class="card span2">
-                    <h3>Riege anlegen</h3>
+                    <h3>Einteilen</h3>
+                    <div class="help">
+                        Erstellt automatisch Riegen pro Klasse:
+                        <code>m</code>/<code>w</code> (ohne Profil) und optional eine Profil-Riege pro Klasse.
+                    </div>
+
                     <form
                         method="post"
-                        action="{{ url_for('auth.admin_create_riege') }}"
+                        enctype="multipart/form-data"
+                        action="{{ url_for('auth.admin_riegen_einteilen') }}"
                     >
-                        <div class="row three">
+                        <input
+                            type="hidden"
+                            name="csrf_token"
+                            value="{{ csrf_token() }}"
+                        />
+
+                        <div class="row">
                             <div>
-                                <label for="name">Riegenführer</label>
+                                <label for="leaders_file">Leiter CSV (optional, 1 Spalte: Name)</label>
                                 <input
-                                    id="name"
-                                    name="name"
-                                    type="text"
-                                    required
+                                    id="leaders_file"
+                                    name="leaders_file"
+                                    type="file"
+                                    accept=".csv,text/csv"
                                 />
-                            </div>
-                            <div>
-                                <label for="stufe">Stufe</label>
-                                <select id="stufe" name="stufe" required>
-                                    <option value="" disabled selected>
-                                        wählen
-                                    </option>
-                                    {% for s in range(5, 11) %}
-                                    <option value="{{ s }}">{{ s }}</option>
-                                    {% endfor %}
-                                </select>
-                            </div>
-                            <div>
-                                <label for="geschlecht">Geschlecht</label>
-                                <select id="geschlecht" name="geschlecht" required>
-                                    <option value="" disabled selected>
-                                        wählen
-                                    </option>
-                                    <option value="m">m</option>
-                                    <option value="w">w</option>
-                                    <option value="beide">beide</option>
-                                </select>
                             </div>
                         </div>
 
                         <div class="row two">
                             <div>
-                                <label for="klassenendungen">Klassen</label>
-                                <input
-                                    id="klassenendungen"
-                                    name="klassenendungen"
-                                    type="text"
-                                    placeholder="z.B. a,b,c"
-                                    required
-                                />
+                                <label for="delimiter2">Trennzeichen</label>
+                                <select id="delimiter2" name="delimiter">
+                                    <option value=";" selected>;</option>
+                                    <option value=",">,</option>
+                                    <option value="\t">Tab</option>
+                                </select>
                             </div>
                             <div>
-                                <label>
-                                    <input
-                                        type="checkbox"
-                                        name="profil"
-                                        value="1"
-                                    />
-                                    Profil
+                                <label class="tight">
+                                    <input type="checkbox" name="keep_existing" value="1" />
+                                    Vorhandene Riegen behalten
                                 </label>
                             </div>
                         </div>
 
                         <div class="btnrow">
-                            <button class="primary" type="submit">
-                                Riege anlegen & zuweisen
-                            </button>
+                            <button class="primary" type="submit">Einteilen</button>
                         </div>
                     </form>
                 </section>
@@ -439,29 +523,61 @@
                                 <th>Geschlecht</th>
                                 <th>Profil</th>
                                 <th>Schüler</th>
+                                <th></th>
                             </tr>
                         </thead>
                         <tbody>
-                            {% if riegen and riegen|length > 0 %} {% for r in riegen %}
+                            {% if riegen and riegen|length > 0 %} {% for r in
+                            riegen %}
                             <tr>
-                                <td>{{ r.name or r.get('name') }}</td>
-                                <td>{{ r.stufe or r.get('stufe') }}</td>
-                                <td>
-                                    {{ r.klassenendungen or r.get('klassenendungen'
-                                    ) }}
-                                </td>
-                                <td>{{ r.geschlecht or r.get('geschlecht') }}</td>
-                                <td>
-                                    {% set p = r.profil if r.profil is not none else
-                                    r.get('profil') %} {{ 'ja' if p else 'nein' }}
-                                </td>
-                                <td>
-                                    {% if r.total_schueler is not none %}{{ r.total_schueler }}{% else %}{{ r.get('total_schueler', 0) }}{% endif %}
-                                </td>
+                                <form method="post" action="{{ url_for('auth.admin_update_riege') }}">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                                    <input type="hidden" name="riegen_id" value="{{ r.id or r.get('id') }}" />
+                                    <td>
+                                        <input name="name" type="text" value="{{ r.name or r.get('name') }}" required />
+                                    </td>
+                                    <td>
+                                        <select name="stufe" required>
+                                            {% for s in range(5, 11) %}
+                                            <option value="{{ s }}" {% if (r.stufe or r.get('stufe')) == s %}selected{% endif %}>{{ s }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </td>
+                                    <td>
+                                        <input name="klassenendungen" type="text" value="{{ r.klassenendungen or r.get('klassenendungen') }}" required />
+                                    </td>
+                                    <td>
+                                        <select name="geschlecht" required>
+                                            {% set g = (r.geschlecht if r.geschlecht is not none else r.get('geschlecht')) %}
+                                            <option value="m" {% if g == 'm' %}selected{% endif %}>m</option>
+                                            <option value="w" {% if g == 'w' %}selected{% endif %}>w</option>
+                                            <option value="mw" {% if g == 'mw' %}selected{% endif %}>mw</option>
+                                        </select>
+                                    </td>
+                                    <td style="text-align:center;">
+                                        {% set p = r.profil if r.profil is not none else r.get('profil') %}
+                                        <input type="checkbox" name="profil" value="1" {% if p %}checked{% endif %} />
+                                    </td>
+                                    <td>
+                                        {% if r.total_schueler is not none %}{{ r.total_schueler }}{% else %}{{ r.get('total_schueler', 0) }}{% endif %}
+                                    </td>
+                                    <td style="text-align: right; white-space: nowrap">
+                                        <label class="tight" style="margin-right:8px;">
+                                            <input type="checkbox" name="reassign" value="1" />
+                                            neu zuweisen
+                                        </label>
+                                        <button class="primary" type="submit" style="padding: 8px 10px;">Speichern</button>
+                                </form>
+                                        <form method="post" action="{{ url_for('auth.admin_delete_riege') }}" onsubmit="return confirm('Riege wirklich löschen? (Schüler werden nur entkoppelt)');" style="display:inline">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                                            <input type="hidden" name="riegen_id" value="{{ r.id or r.get('id') }}" />
+                                            <button class="danger" type="submit" style="padding: 8px 10px;">Löschen</button>
+                                        </form>
+                                    </td>
                             </tr>
                             {% endfor %} {% else %}
                             <tr>
-                                <td colspan="6" class="muted">
+                                <td colspan="7" class="muted">
                                     Keine Riegen vorhanden.
                                 </td>
                             </tr>

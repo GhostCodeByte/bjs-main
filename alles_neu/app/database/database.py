@@ -9,8 +9,6 @@ from pathlib import Path
 from typing import Any, Dict, List, Literal, Optional, Tuple
 
 
-
-
 class Database:
     """
     Haupt-Datenbank-Klasse für die BJS-Webanwendung.
@@ -34,8 +32,6 @@ class Database:
 
         self.db_path = path
         Path(path).parent.mkdir(parents=True, exist_ok=True)
-
-
 
         self.connection = sqlite3.connect(
             path, detect_types=sqlite3.PARSE_DECLTYPES, check_same_thread=False
@@ -109,7 +105,6 @@ class Database:
         self.connection.commit()
 
     def _ensure_runtime_tables(self):
-
         self.cursor.execute(
             """
             CREATE TABLE IF NOT EXISTS Station_Pin (
@@ -299,7 +294,7 @@ class Database:
             ),
         )
         self.connection.commit()
-        return int(self.cursor.lastrowid)
+        return int(self.cursor.lastrowid or 0)
 
     def add_riegenfuehrer(
         self,
@@ -318,7 +313,7 @@ class Database:
             (name, geschlecht, 1 if profil else 0, int(stufe), klassenendung),
         )
         self.connection.commit()
-        return int(self.cursor.lastrowid)
+        return int(self.cursor.lastrowid or 0)
 
     def add_riegenfuehrer_to_schueler(
         self,
@@ -328,7 +323,25 @@ class Database:
         geschlecht: str,
         profil: bool,
     ) -> int:
-        """Weist Schüler einer Riege zu (Update)."""
+        """Weist Schüler einer Riege zu (Update).
+
+        `geschlecht` wird nur angewendet, wenn `profil` False ist.
+        Für Profil-Riegen wird ausschließlich nach Klasse/Profil gefiltert.
+        """
+
+        if profil:
+            cur = self._execute_tx(
+                """
+                UPDATE Schueler
+                SET RiegenfuehrerID = ?
+                WHERE Klassenbuchstabe = ?
+                AND Klasse = ?
+                AND Profil = 1
+                """,
+                (rf_id, klassenbuchstabe, int(stufe)),
+            )
+            return cur.rowcount
+
         cur = self._execute_tx(
             """
             UPDATE Schueler
@@ -336,12 +349,93 @@ class Database:
             WHERE Klassenbuchstabe = ?
             AND Klasse = ?
             AND Geschlecht = ?
-            AND Profil = ?
+            AND Profil = 0
             """,
-            (rf_id, klassenbuchstabe, int(stufe), geschlecht, 1 if profil else 0),
+            (rf_id, klassenbuchstabe, int(stufe), geschlecht),
         )
         return cur.rowcount
 
+    def clear_all_riegen_assignments(self) -> int:
+        """Setzt alle Schüler-Riegenzuweisungen zurück."""
+        cur = self._execute_tx("UPDATE Schueler SET RiegenfuehrerID = NULL")
+        return int(cur.rowcount)
+
+    def clear_all_riegen(self) -> int:
+        """Löscht alle Riegen (und entkoppelt Schüler)."""
+        self.clear_all_riegen_assignments()
+        cur = self._execute_tx("DELETE FROM Riegenfuehrer")
+        return int(cur.rowcount)
+
+    def get_riegen_stats(self) -> Dict[str, int]:
+        """Einfache Kennzahlen für die Riegeneinteilung-Seite."""
+        self.cursor.execute("SELECT COUNT(*) FROM Schueler")
+        total_students = int(self.cursor.fetchone()[0] or 0)
+        self.cursor.execute("SELECT COUNT(*) FROM Schueler WHERE RiegenfuehrerID IS NOT NULL")
+        assigned_students = int(self.cursor.fetchone()[0] or 0)
+        self.cursor.execute("SELECT COUNT(*) FROM Riegenfuehrer")
+        total_riegen = int(self.cursor.fetchone()[0] or 0)
+        self.cursor.execute("SELECT COUNT(*) FROM Schueler WHERE Profil = 1")
+        total_profil = int(self.cursor.fetchone()[0] or 0)
+        self.cursor.execute(
+            "SELECT COUNT(*) FROM Schueler WHERE Profil = 1 AND RiegenfuehrerID IS NOT NULL"
+        )
+        assigned_profil = int(self.cursor.fetchone()[0] or 0)
+        return {
+            "students_total": total_students,
+            "students_assigned": assigned_students,
+            "students_unassigned": total_students - assigned_students,
+            "riegen_total": total_riegen,
+            "profil_total": total_profil,
+            "profil_assigned": assigned_profil,
+        }
+
+    def get_present_classes(self) -> List[Dict[str, Any]]:
+        """Liefert alle vorhandenen Klassenkombinationen mit Profil-Flag.
+
+        Returns: [{'stufe': 5, 'buchstabe': 'a', 'has_profil': True}, ...]
+        """
+        self.cursor.execute(
+            """
+            SELECT Klasse, Klassenbuchstabe,
+                   MAX(CASE WHEN Profil = 1 THEN 1 ELSE 0 END) as has_profil
+            FROM Schueler
+            WHERE Klasse IS NOT NULL
+            GROUP BY Klasse, Klassenbuchstabe
+            ORDER BY Klasse, Klassenbuchstabe
+            """
+        )
+        rows = self.cursor.fetchall()
+        out: List[Dict[str, Any]] = []
+        for klasse, buchstabe, has_profil in rows:
+            out.append(
+                {
+                    "stufe": int(klasse),
+                    "buchstabe": (buchstabe or "").strip().lower(),
+                    "has_profil": bool(has_profil),
+                }
+            )
+        return out
+
+    def update_riege(
+        self,
+        *,
+        riegen_id: int,
+        name: str,
+        stufe: int,
+        klassenendungen: str,
+        geschlecht: str,
+        profil: bool,
+    ) -> int:
+        """Aktualisiert eine Riege (Metadaten)."""
+        cur = self._execute_tx(
+            """
+            UPDATE Riegenfuehrer
+            SET Name = ?, Geschlecht = ?, Profil = ?, Stufe = ?, Klassenendungen = ?
+            WHERE ID = ?
+            """,
+            (name, geschlecht, 1 if profil else 0, int(stufe), klassenendungen, int(riegen_id)),
+        )
+        return int(cur.rowcount)
 
     def get_riegenfuehrer(self):
         self.cursor.execute("SELECT * FROM Riegenfuehrer")
@@ -480,6 +574,24 @@ class Database:
             "percent": round((completed / total) * 100, 1) if total > 0 else 0,
             "rounds": rounds,
         }
+
+    def delete_riege(self, riegenfuehrer_id: int) -> Tuple[int, int]:
+        """Löscht eine Riege und hebt Schüler-Zuweisungen auf.
+
+        Returns:
+            (unassigned_count, deleted_count)
+        """
+        unassigned = self._execute_tx(
+            "UPDATE Schueler SET RiegenfuehrerID = NULL WHERE RiegenfuehrerID = ?",
+            (int(riegenfuehrer_id),),
+        ).rowcount
+
+        deleted = self._execute_tx(
+            "DELETE FROM Riegenfuehrer WHERE ID = ?",
+            (int(riegenfuehrer_id),),
+        ).rowcount
+
+        return int(unassigned), int(deleted)
 
     # ============================================
     # Ergebnis-Methoden
@@ -708,7 +820,7 @@ class Database:
                 sort_order,
             ),
         )
-        return cur.lastrowid
+        return int(cur.lastrowid or 0)
 
     def update_disziplin(
         self,
@@ -873,7 +985,6 @@ class Database:
             (pin, device_id, discipline or pin_discipline),
         )
         return True, "OK"
-
 
     def revoke_station_pin(self, pin: str, device_id: Optional[str] = None) -> int:
         if device_id:
@@ -1127,10 +1238,11 @@ class Database:
         if Database._backup_thread and Database._backup_thread.is_alive():
             return
 
-        Database._backup_stop_event = threading.Event()
+        stop_event = threading.Event()
+        Database._backup_stop_event = stop_event
 
         def backup_loop():
-            while not Database._backup_stop_event.is_set():
+            while not stop_event.is_set():
                 try:
                     config = self.get_backup_config()
                     if config.get("enabled"):
@@ -1154,7 +1266,7 @@ class Database:
                     print(f"Auto-backup error: {e}")
 
                 # Warte 60 Sekunden oder bis Stop-Event
-                Database._backup_stop_event.wait(60)
+                stop_event.wait(60)
 
         Database._backup_thread = threading.Thread(target=backup_loop, daemon=True)
         Database._backup_thread.start()
