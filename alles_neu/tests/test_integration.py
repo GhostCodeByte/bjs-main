@@ -14,8 +14,11 @@ def _login_admin(client):
 def _login_station(client, app):
     # hole einen gültigen PIN aus der DB
     with app.app_context():
-        db = app.get_db()
+        from app import get_db
+
+        db = get_db()
         pin = db.ensure_default_station_pin(
+
             station=app.config.get("STATION_DEFAULT_NAME", "Station"),
             max_logins=app.config.get("STATION_DEFAULT_MAX_LOGINS", 1),
             length=app.config.get("STATION_DEFAULT_PIN_LENGTH", 6),
@@ -38,8 +41,11 @@ def test_station_login_and_get_riege_flow(client, app):
 
     # hole einen Riegenführer
     with app.app_context():
-        db = app.get_db()
+        from app import get_db
+
+        db = get_db()
         riegen = db.get_riegenfuehrer()
+
         assert len(riegen) >= 1
         riegen_id = riegen[0][0]
 
@@ -56,6 +62,7 @@ def test_admin_login_and_disziplin_crud_flow(client):
     _login_admin(client)
 
     # create
+
     create_resp = client.post(
         "/admin/disziplinen/create",
         json={

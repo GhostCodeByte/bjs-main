@@ -1,11 +1,17 @@
-import pandas as pd
-import numpy as np
 import os
-from alles_neu.admin.admin_database import Database
+
+try:
+    import numpy as np
+    import pandas as pd
+except ImportError:
+    pd = None
+    np = None
 from datetime import datetime
 
+from alles_neu.admin.admin_database import Database
 
-def fill_schueler(data: np.ndarray):
+
+def fill_schueler(data):
     db = Database()
     for element in data:
         stufe = element[1][:-1]
@@ -17,36 +23,30 @@ def fill_schueler(data: np.ndarray):
             klasse=stufe,
             klassenbuchstabe=klasse,
             geburtsjahr=int(element[4]),
-            profil=element[5]
+            profil=element[5],
         )
 
+
 def create_riege(rf_id, stufe, klassenendungen, geschlechter, profil):
-    print('adding')
+    print("adding")
     db = Database()
-    id = db.add_riegenfuehrer(
-        rf_id,
-        geschlechter,
-        profil,
-        stufe,
-        klassenendungen
-    )
+    id = db.add_riegenfuehrer(rf_id, geschlechter, profil, stufe, klassenendungen)
     for kl_end in klassenendungen:
         for geschlecht in geschlechter:
-            db.add_riegenfuehrer_to_schueler(
-                id,
-                kl_end,
-                stufe,
-                geschlecht,
-                profil
-            )
+            db.add_riegenfuehrer_to_schueler(id, kl_end, stufe, geschlecht, profil)
+
 
 def create_db_from_csv(csv_path):
+    if pd is None:
+        print("Pandas/Numpy not installed. Cannot import CSV.")
+        return
+
     base_dir = os.path.dirname(os.path.abspath(__file__))
     db_path = os.path.join(base_dir, f"bjs_database_{datetime.now().year}.db")
     try:
         os.remove(db_path)
     except Exception:
         print(f"Failed to delete database: {db_path}")
-    df = pd.read_csv(csv_path, delimiter=';')
+    df = pd.read_csv(csv_path, delimiter=";")
     data = np.array(df)
     fill_schueler(data)

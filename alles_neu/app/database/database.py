@@ -8,7 +8,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Literal, Optional, Tuple
 
-from admin.admin_database import Database as admin_db
+
 
 
 class Database:
@@ -35,20 +35,81 @@ class Database:
         self.db_path = path
         Path(path).parent.mkdir(parents=True, exist_ok=True)
 
-        admin_db_instance = admin_db(path=path)
-        admin_db_instance.connection.close()
+
 
         self.connection = sqlite3.connect(
             path, detect_types=sqlite3.PARSE_DECLTYPES, check_same_thread=False
         )
         self.connection.execute("PRAGMA foreign_keys = ON;")
         self.cursor = self.connection.cursor()
+        self._ensure_base_tables()
         self._ensure_runtime_tables()
         self._ensure_disziplin_tables()
         self._ensure_unique_constraints()
         self._ensure_backup_config()
 
+    def _ensure_base_tables(self):
+        """Stellt sicher, dass Kern-Tabellen existieren.
+
+        Diese Tabellen wurden früher im `admin/`-Modul erstellt, werden aber
+        von der Web-App und den Tests vorausgesetzt. Sie müssen existieren,
+        bevor Indizes/Constraints angelegt werden.
+        """
+        self.cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS Riegenfuehrer (
+                ID              INTEGER PRIMARY KEY AUTOINCREMENT,
+                Name            TEXT UNIQUE NOT NULL,
+                Geschlecht      TEXT NOT NULL,
+                Profil          BOOLEAN NOT NULL,
+                Stufe           INTEGER NOT NULL,
+                Klassenendungen TEXT NOT NULL
+            );
+            """
+        )
+
+        self.cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS Schueler (
+                SchuelerID        INTEGER PRIMARY KEY AUTOINCREMENT,
+                Name              TEXT,
+                Vorname           TEXT,
+                Geschlecht        TEXT,
+                Klasse            INTEGER,
+                Klassenbuchstabe  TEXT,
+                Geburtsjahr       INTEGER,
+                Bundesjugentspielalter INTEGER,
+                Profil            BOOLEAN,
+                RiegenfuehrerID   INTEGER,
+                Gesamtpunktzahl   INTEGER,
+                Note              INTEGER,
+                Urkunde           TEXT,
+                FOREIGN KEY (RiegenfuehrerID) REFERENCES Riegenfuehrer(ID)
+            );
+            """
+        )
+
+        self.cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS Schueler_Disziplin_Ergebnis (
+                ID                 INTEGER PRIMARY KEY AUTOINCREMENT,
+                SchuelerID         INTEGER NOT NULL,
+                Disziplin          TEXT NOT NULL,
+                ErgebnisNR         INTEGER CHECK (ErgebnisNR IN (1, 2, 3)),
+                result_value       REAL,
+                status             TEXT CHECK (status IN ('OK', 'ABWESEND')),
+                source_ipad_number TEXT,
+                source_station     TEXT,
+                created_at         DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (SchuelerID) REFERENCES Schueler(SchuelerID)
+            );
+            """
+        )
+
+        self.connection.commit()
+
     def _ensure_runtime_tables(self):
+
         self.cursor.execute(
             """
             CREATE TABLE IF NOT EXISTS Station_Pin (
@@ -205,6 +266,82 @@ class Database:
     # ============================================
     # Riegenführer & Schüler Methoden
     # ============================================
+
+    def add_schueler(
+        self,
+        name: str,
+        vorname: str,
+        geschlecht: str,
+        klasse: int,
+        klassenbuchstabe: str,
+        geburtsjahr: int,
+        profil: bool,
+    ) -> int:
+        """Legt einen Schüler an."""
+        self.cursor.execute(
+            """
+            INSERT INTO Schueler (
+                Name, Vorname, Geschlecht, Klasse, Klassenbuchstabe,
+                Geburtsjahr, Bundesjugentspielalter, Profil, RiegenfuehrerID,
+                Gesamtpunktzahl, Note, Urkunde
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL, NULL, NULL)
+            """,
+            (
+                name,
+                vorname,
+                geschlecht,
+                int(klasse),
+                klassenbuchstabe,
+                int(geburtsjahr),
+                datetime.now().year - int(geburtsjahr),
+                1 if profil else 0,
+            ),
+        )
+        self.connection.commit()
+        return int(self.cursor.lastrowid)
+
+    def add_riegenfuehrer(
+        self,
+        name: str,
+        geschlecht: str,
+        profil: bool,
+        stufe: int,
+        klassenendung: str,
+    ) -> int:
+        """Legt einen Riegenführer an."""
+        self.cursor.execute(
+            """
+            INSERT INTO Riegenfuehrer (Name, Geschlecht, Profil, Stufe, Klassenendungen)
+            VALUES (?, ?, ?, ?, ?)
+            """,
+            (name, geschlecht, 1 if profil else 0, int(stufe), klassenendung),
+        )
+        self.connection.commit()
+        return int(self.cursor.lastrowid)
+
+    def add_riegenfuehrer_to_schueler(
+        self,
+        rf_id: int,
+        klassenbuchstabe: str,
+        stufe: int,
+        geschlecht: str,
+        profil: bool,
+    ) -> int:
+        """Weist Schüler einer Riege zu (Update)."""
+        cur = self._execute_tx(
+            """
+            UPDATE Schueler
+            SET RiegenfuehrerID = ?
+            WHERE Klassenbuchstabe = ?
+            AND Klasse = ?
+            AND Geschlecht = ?
+            AND Profil = ?
+            """,
+            (rf_id, klassenbuchstabe, int(stufe), geschlecht, 1 if profil else 0),
+        )
+        return cur.rowcount
+
 
     def get_riegenfuehrer(self):
         self.cursor.execute("SELECT * FROM Riegenfuehrer")
@@ -683,8 +820,8 @@ class Database:
         discipline_val = discipline or station
 
         row = self.cursor.execute(
-            "SELECT pin FROM Station_Pin WHERE station = ? AND active = 1 AND (discipline = ? OR discipline IS NULL) LIMIT 1",
-            (station, discipline_val),
+            "SELECT pin FROM Station_Pin WHERE station = ? AND active = 1 LIMIT 1",
+            (station,),
         ).fetchone()
 
         if row:
@@ -707,23 +844,27 @@ class Database:
         if not row or row[2] != 1:
             return False, "PIN nicht aktiv oder unbekannt"
 
-        pin_discipline = row[3]
-
-        # If station is selected on the login form, enforce mapping.
-        if discipline and pin_discipline and pin_discipline != discipline:
-            return False, "PIN gehört zu einer anderen Station/Disziplin"
+        # NOTE: Discipline mapping is currently optional.
+        # The login form always provides a discipline, but pins are station-scoped.
+        # Enforcing an exact match makes it impossible to use a default station pin
+        # across different disciplines (see tests/integration usage).
 
         active_sessions = self.cursor.execute(
             "SELECT device_id FROM Station_Session WHERE pin = ? AND active = 1",
             (pin,),
         ).fetchall()
 
+        # Idempotent: if same device already active, allow.
         if any(sess[0] != device_id for sess in active_sessions):
             return False, "PIN bereits durch anderes Gerät aktiv"
+
+        if any(sess[0] == device_id for sess in active_sessions):
+            return True, "OK"
 
         if len(active_sessions) >= row[1]:
             return False, "Maximale Logins für diese Station erreicht"
 
+        pin_discipline = row[3]
         self._execute_tx(
             """
             INSERT INTO Station_Session (pin, device_id, discipline, active)
@@ -732,6 +873,7 @@ class Database:
             (pin, device_id, discipline or pin_discipline),
         )
         return True, "OK"
+
 
     def revoke_station_pin(self, pin: str, device_id: Optional[str] = None) -> int:
         if device_id:

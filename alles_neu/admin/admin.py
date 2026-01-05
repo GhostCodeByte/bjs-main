@@ -1,18 +1,27 @@
-from kivy.lang import Builder
-from kivymd.app import MDApp
-from kivy.core.window import Window
-from kivy.uix.screenmanager import Screen
-from kivymd.uix.menu import MDDropdownMenu
+import sys
+from pathlib import Path
+
+# Add parent directory to path for imports
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
+
 from alles_neu.admin.utils import create_db_from_csv, create_riege
+from kivy.core.window import Window
+from kivy.lang import Builder
+from kivy.uix.screenmanager import Screen
+from kivymd.app import MDApp
+from kivymd.uix.menu import MDDropdownMenu
 from plyer import filechooser
+
 
 class Riegeneinteilung(Screen):
     pass
 
+
 class Admin(MDApp):
     def build(self):
         Window.size = (600, 800)
-        self.sm = Builder.load_file("main.kv")
+        kv_path = str(Path(__file__).parent / "main.kv")
+        self.sm = Builder.load_file(kv_path)
         return self.sm
 
     def change_screen(self, screen_name):
@@ -20,63 +29,62 @@ class Admin(MDApp):
 
     def open_dropdown_geschlecht(self, item):
         menu_items = [
-            {
-                "text": "Jungen",
-                "on_release": lambda: self.set_geschlecht('M')
-            },
-            {
-                "text": "Mädchen",
-                "on_release": lambda: self.set_geschlecht('W')
-            },
-            {
-                "text": "Beide",
-                "on_release": lambda: self.set_geschlecht('Beide')
-            }
+            {"text": "Jungen", "on_release": lambda: self.set_geschlecht("M")},
+            {"text": "Mädchen", "on_release": lambda: self.set_geschlecht("W")},
+            {"text": "Beide", "on_release": lambda: self.set_geschlecht("Beide")},
         ]
         MDDropdownMenu(caller=item, items=menu_items).open()
-    
+
     def open_dropdown_stufe(self, item):
         menu_items = [
             {
                 "text": f"{i}",
                 "on_release": lambda x=i: self.set_stufe(x),
-            } for i in range(5, 11)
+            }
+            for i in range(5, 11)
         ]
         MDDropdownMenu(caller=item, items=menu_items).open()
 
     def set_geschlecht(self, geschlecht):
-        self.root.get_screen('riegeneinteilung').ids.geschlecht_dropdown.text = f"{geschlecht}"
+        self.root.get_screen("riegeneinteilung").ids.geschlecht_dropdown.text = f"{geschlecht}"
 
     def set_stufe(self, stufe):
-        self.root.get_screen('riegeneinteilung').ids.stufe_dropdown.text = f"{stufe}"
+        self.root.get_screen("riegeneinteilung").ids.stufe_dropdown.text = f"{stufe}"
 
     def get_riegen_data(self):
-            name_rf = self.root.get_screen('riegeneinteilung').ids.riegenfuehrer_text_input.text
-            klassenendung = self.root.get_screen('riegeneinteilung').ids.klassen_text_input.text.replace(",", "").replace(" ", "")
-            stufe = int(self.root.get_screen('riegeneinteilung').ids.stufe_dropdown.text)
-            geschlecht = self.root.get_screen('riegeneinteilung').ids.geschlecht_dropdown.text
-            profil = self.root.get_screen('riegeneinteilung').ids.checkbox_profil.active
-            if geschlecht == 'Beide':
-                geschlecht = 'mw'
-            return name_rf, stufe, klassenendung, geschlecht, profil
-
+        name_rf = self.root.get_screen("riegeneinteilung").ids.riegenfuehrer_text_input.text
+        klassenendung = (
+            self.root.get_screen("riegeneinteilung")
+            .ids.klassen_text_input.text.replace(",", "")
+            .replace(" ", "")
+        )
+        stufe = int(self.root.get_screen("riegeneinteilung").ids.stufe_dropdown.text)
+        geschlecht = self.root.get_screen("riegeneinteilung").ids.geschlecht_dropdown.text
+        profil = self.root.get_screen("riegeneinteilung").ids.checkbox_profil.active
+        if geschlecht == "Beide":
+            geschlecht = "mw"
+        return name_rf, stufe, klassenendung, geschlecht, profil
 
     def reset_entries(self):
-        self.root.get_screen('riegeneinteilung').ids.riegenfuehrer_text_input.text = ''
-        self.root.get_screen('riegeneinteilung').ids.klassen_text_input.text = ''
-        self.root.get_screen('riegeneinteilung').ids.stufe_dropdown.text = ''
-        self.root.get_screen('riegeneinteilung').ids.geschlecht_dropdown.text = ''
-        self.root.get_screen('riegeneinteilung').ids.checkbox_profil.active = False
+        self.root.get_screen("riegeneinteilung").ids.riegenfuehrer_text_input.text = ""
+        self.root.get_screen("riegeneinteilung").ids.klassen_text_input.text = ""
+        self.root.get_screen("riegeneinteilung").ids.stufe_dropdown.text = ""
+        self.root.get_screen("riegeneinteilung").ids.geschlecht_dropdown.text = ""
+        self.root.get_screen("riegeneinteilung").ids.checkbox_profil.active = False
 
     def create_riege_kv(self):
         try:
             data = self.get_riegen_data()
         except Exception:
-            self.root.get_screen('riegeneinteilung').ids.label_data_not_complete.text = 'Eintrag ist im falschen Format.'
+            self.root.get_screen(
+                "riegeneinteilung"
+            ).ids.label_data_not_complete.text = "Eintrag ist im falschen Format."
             return
 
         create_riege(*data)
-        self.root.get_screen('riegeneinteilung').ids.label_data_not_complete.text = 'Riege wurde hinzugefügt.'
+        self.root.get_screen(
+            "riegeneinteilung"
+        ).ids.label_data_not_complete.text = "Riege wurde hinzugefügt."
         self.reset_entries()
 
     def create_db(self):

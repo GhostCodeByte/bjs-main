@@ -95,10 +95,14 @@ def app(test_db_path, monkeypatch):
 
     yield flask_app
 
+
     # Cleanup
     with flask_app.app_context():
         try:
-            flask_app.get_db().close()
+            from app import get_db
+
+            get_db().close()
+
         except Exception:
             pass
     Path(test_db_path).unlink(missing_ok=True)
@@ -111,5 +115,8 @@ def client(app):
 
 @pytest.fixture()
 def db(app):
+    from app import get_db
+
     with app.app_context():
-        yield app.get_db()
+        yield get_db()
+

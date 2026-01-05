@@ -1,0 +1,475 @@
+<!doctype html>
+<html lang="de">
+    <head>
+        <meta charset="UTF-8" />
+        <meta
+            name="viewport"
+            content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+        />
+        <title>Riegeneinteilung</title>
+
+        <style>
+            :root {
+                --bg: #f7f7f8;
+                --panel: #ffffff;
+                --border: #e5e7eb;
+                --text: #111827;
+                --muted: #6b7280;
+
+                --primary: #2563eb;
+                --success: #15803d;
+                --danger: #b91c1c;
+
+                --shadow: 0 10px 30px rgba(17, 24, 39, 0.08);
+                --radius: 12px;
+            }
+
+            * {
+                box-sizing: border-box;
+            }
+
+            body {
+                margin: 0;
+                font-family: system-ui, -apple-system, sans-serif;
+                background: var(--bg);
+                color: var(--text);
+            }
+
+            header {
+                background: #111827;
+                color: #fff;
+                padding: 12px 16px;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 12px;
+            }
+
+            header nav a {
+                color: #fff;
+                text-decoration: none;
+                margin-left: 14px;
+                opacity: 0.95;
+            }
+
+            header nav a:hover {
+                opacity: 1;
+                text-decoration: underline;
+            }
+
+            main {
+                max-width: 1100px;
+                margin: 0 auto;
+                padding: 18px 16px 28px;
+            }
+
+            h1 {
+                margin: 0 0 10px;
+                font-size: 1.4rem;
+            }
+
+            h2 {
+                margin: 18px 0 10px;
+                font-size: 1.05rem;
+            }
+
+            .muted {
+                color: var(--muted);
+                font-size: 0.92rem;
+                line-height: 1.35;
+            }
+
+            .flash {
+                padding: 10px 12px;
+                border-radius: 10px;
+                margin-bottom: 10px;
+                font-weight: 650;
+                border: 1px solid var(--border);
+                background: #fff;
+            }
+
+            .flash.success {
+                background: #e8f5e9;
+                color: #1b5e20;
+                border-color: #c8e6c9;
+            }
+
+            .flash.error {
+                background: #ffebee;
+                color: #b71c1c;
+                border-color: #ffcdd2;
+            }
+
+            .flash.info {
+                background: #e3f2fd;
+                color: #0d47a1;
+                border-color: #bbdefb;
+            }
+
+            .grid {
+                display: grid;
+                grid-template-columns: 1fr;
+                gap: 12px;
+            }
+
+            @media (min-width: 900px) {
+                .grid {
+                    grid-template-columns: 1fr 1fr;
+                }
+                .span2 {
+                    grid-column: 1 / -1;
+                }
+            }
+
+            .card {
+                background: var(--panel);
+                border: 1px solid var(--border);
+                border-radius: var(--radius);
+                padding: 16px;
+                box-shadow: var(--shadow);
+                display: flex;
+                flex-direction: column;
+                gap: 10px;
+            }
+
+            .card h3 {
+                margin: 0 0 2px;
+                font-size: 1rem;
+            }
+
+            label {
+                font-weight: 650;
+                font-size: 0.9rem;
+            }
+
+            input,
+            select {
+                width: 100%;
+                padding: 9px 10px;
+                border: 1px solid #d1d5db;
+                border-radius: 10px;
+                font-size: 0.95rem;
+                background: #fff;
+            }
+
+            .row {
+                display: grid;
+                grid-template-columns: 1fr;
+                gap: 10px;
+            }
+
+            @media (min-width: 600px) {
+                .row.two {
+                    grid-template-columns: 1fr 1fr;
+                }
+                .row.three {
+                    grid-template-columns: 2fr 1fr 1fr;
+                }
+            }
+
+            .btnrow {
+                display: flex;
+                gap: 10px;
+                align-items: center;
+                flex-wrap: wrap;
+            }
+
+            button {
+                border: none;
+                border-radius: 10px;
+                padding: 10px 14px;
+                font-weight: 750;
+                color: #fff;
+                cursor: pointer;
+                font-size: 0.92rem;
+            }
+
+            button:disabled {
+                opacity: 0.65;
+                cursor: not-allowed;
+            }
+
+            .primary {
+                background: var(--primary);
+            }
+
+            .secondary {
+                background: #374151;
+            }
+
+            .danger {
+                background: var(--danger);
+            }
+
+            code {
+                background: #f3f4f6;
+                padding: 2px 6px;
+                border-radius: 8px;
+                font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+                    "Liberation Mono", "Courier New", monospace;
+            }
+
+            table {
+                width: 100%;
+                border-collapse: collapse;
+                background: #fff;
+                border: 1px solid var(--border);
+                border-radius: var(--radius);
+                overflow: hidden;
+            }
+
+            th,
+            td {
+                text-align: left;
+                padding: 10px 10px;
+                border-bottom: 1px solid var(--border);
+                font-size: 0.92rem;
+            }
+
+            th {
+                background: #f3f4f6;
+                font-weight: 800;
+            }
+
+            tr:last-child td {
+                border-bottom: none;
+            }
+        </style>
+    </head>
+
+    <body>
+        <header>
+            <strong>Admin</strong>
+            <nav>
+                <a href="{{ url_for('auth.admin_dashboard') }}">Dashboard</a>
+                <a href="{{ url_for('auth.admin_riegeneinteilung') }}">Riegeneinteilung</a>
+                <a href="{{ url_for('auth.logout') }}">Logout</a>
+            </nav>
+        </header>
+
+        <main>
+            <h1>Riegeneinteilung</h1>
+            <div class="muted">
+                Hier verwaltest du Datenbanken pro Event (CSV → DB) und legst Riegen an.
+            </div>
+
+            {% with messages = get_flashed_messages(with_categories=true) %} {% if
+            messages %} {% for category, message in messages %}
+            <div class="flash {{ category }}">{{ message }}</div>
+            {% endfor %} {% endif %} {% endwith %}
+
+            <div class="grid">
+                <section class="card">
+                    <h3>Aktive Datenbank</h3>
+                    <div class="muted">
+                        Aktuell: <code>{{ active_db_path or '—' }}</code>
+                    </div>
+
+                    <form
+                        method="post"
+                        action="{{ url_for('auth.admin_select_db') }}"
+                    >
+                        <label for="db_name">Datenbank auswählen</label>
+                        <select id="db_name" name="db_name" required>
+                            <option value="" disabled selected>
+                                Bitte auswählen
+                            </option>
+                            {% for item in dbs %}
+                            <option value="{{ item.name }}">
+                                {{ item.name }}{% if item.label %} — {{ item.label
+                                }}{% endif %}
+                            </option>
+                            {% endfor %}
+                        </select>
+
+                        <div class="btnrow">
+                            <button class="primary" type="submit">
+                                Aktiv setzen
+                            </button>
+                        </div>
+                    </form>
+                </section>
+
+                <section class="card">
+                    <h3>CSV importieren → neue Datenbank</h3>
+                    <div class="muted">
+                        Erwartete Kopfzeilen: <code>Geschlecht</code>,
+                        <code>Klasse</code>, <code>Name</code>,
+                        <code>Vorname</code>, <code>Geburtsjahr</code> (+ optional
+                        <code>Profil</code>).
+                    </div>
+
+                    <form
+                        method="post"
+                        enctype="multipart/form-data"
+                        action="{{ url_for('auth.admin_import_csv_to_new_db') }}"
+                    >
+                        <div class="row">
+                            <div>
+                                <label for="csv_file">CSV Datei</label>
+                                <input
+                                    id="csv_file"
+                                    name="csv_file"
+                                    type="file"
+                                    accept=".csv,text/csv"
+                                    required
+                                />
+                            </div>
+                        </div>
+
+                        <div class="row two">
+                            <div>
+                                <label for="label">Label</label>
+                                <input
+                                    id="label"
+                                    name="label"
+                                    type="text"
+                                    placeholder="z.B. Schülerliste 5a/5b"
+                                />
+                            </div>
+
+                            <div>
+                                <label for="delimiter">Trennzeichen</label>
+                                <select id="delimiter" name="delimiter">
+                                    <option value=";" selected>;</option>
+                                    <option value=",">,</option>
+                                    <option value="\t">Tab</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <label>
+                                <input
+                                    type="checkbox"
+                                    name="auto_activate"
+                                    value="1"
+                                />
+                                Nach Import aktiv setzen
+                            </label>
+                        </div>
+
+                        <div class="btnrow">
+                            <button class="primary" type="submit">
+                                Import starten
+                            </button>
+                        </div>
+                    </form>
+                </section>
+
+                <section class="card span2">
+                    <h3>Riege anlegen</h3>
+                    <form
+                        method="post"
+                        action="{{ url_for('auth.admin_create_riege') }}"
+                    >
+                        <div class="row three">
+                            <div>
+                                <label for="name">Riegenführer</label>
+                                <input
+                                    id="name"
+                                    name="name"
+                                    type="text"
+                                    required
+                                />
+                            </div>
+                            <div>
+                                <label for="stufe">Stufe</label>
+                                <select id="stufe" name="stufe" required>
+                                    <option value="" disabled selected>
+                                        wählen
+                                    </option>
+                                    {% for s in range(5, 11) %}
+                                    <option value="{{ s }}">{{ s }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div>
+                                <label for="geschlecht">Geschlecht</label>
+                                <select id="geschlecht" name="geschlecht" required>
+                                    <option value="" disabled selected>
+                                        wählen
+                                    </option>
+                                    <option value="m">m</option>
+                                    <option value="w">w</option>
+                                    <option value="beide">beide</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="row two">
+                            <div>
+                                <label for="klassenendungen">Klassen</label>
+                                <input
+                                    id="klassenendungen"
+                                    name="klassenendungen"
+                                    type="text"
+                                    placeholder="z.B. a,b,c"
+                                    required
+                                />
+                            </div>
+                            <div>
+                                <label>
+                                    <input
+                                        type="checkbox"
+                                        name="profil"
+                                        value="1"
+                                    />
+                                    Profil
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="btnrow">
+                            <button class="primary" type="submit">
+                                Riege anlegen & zuweisen
+                            </button>
+                        </div>
+                    </form>
+                </section>
+
+                <section class="card span2">
+                    <h3>Riegen (aktive DB)</h3>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Stufe</th>
+                                <th>Klassen</th>
+                                <th>Geschlecht</th>
+                                <th>Profil</th>
+                                <th>Schüler</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% if riegen and riegen|length > 0 %} {% for r in riegen %}
+                            <tr>
+                                <td>{{ r.name or r.get('name') }}</td>
+                                <td>{{ r.stufe or r.get('stufe') }}</td>
+                                <td>
+                                    {{ r.klassenendungen or r.get('klassenendungen'
+                                    ) }}
+                                </td>
+                                <td>{{ r.geschlecht or r.get('geschlecht') }}</td>
+                                <td>
+                                    {% set p = r.profil if r.profil is not none else
+                                    r.get('profil') %} {{ 'ja' if p else 'nein' }}
+                                </td>
+                                <td>
+                                    {% if r.total_schueler is not none %}{{ r.total_schueler }}{% else %}{{ r.get('total_schueler', 0) }}{% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %} {% else %}
+                            <tr>
+                                <td colspan="6" class="muted">
+                                    Keine Riegen vorhanden.
+                                </td>
+                            </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </section>
+            </div>
+        </main>
+    </body>
+</html>

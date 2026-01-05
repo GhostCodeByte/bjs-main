@@ -7,6 +7,13 @@ import uuid
 from pathlib import Path
 from typing import Optional
 
+import io
+
+from app.db_registry import DbRegistry, default_meta_db_path
+from app.services_csv_import import import_students_csv_to_new_db
+from app.services_riegen import create_riege_and_assign
+
+
 from flask import (
     Blueprint,
     current_app,
@@ -512,7 +519,8 @@ def admin_upload_db():
         flash("Keine Datei ausgewählt.", "error")
         return redirect(url_for("auth.admin_dashboard"))
 
-    filename = secure_filename(file.filename)
+    filename = secure_filename(file.filename or "")
+
     if not filename.lower().endswith(".db"):
         flash("Nur .db Dateien erlaubt.", "error")
         return redirect(url_for("auth.admin_dashboard"))
@@ -521,7 +529,13 @@ def admin_upload_db():
     backup_label = request.form.get("label") or "upload"
     backup_path = db.backup_to_file(label=backup_label, backup_type="upload")
 
-    target_path = Path(current_app.config.get("DB_PATH"))
+    db_path_setting = current_app.config.get("DB_PATH")
+    if not db_path_setting:
+        flash("DB_PATH ist nicht konfiguriert.", "error")
+        return redirect(url_for("auth.admin_dashboard"))
+
+    target_path = Path(db_path_setting)
+
     target_path.parent.mkdir(parents=True, exist_ok=True)
 
     with tempfile.NamedTemporaryFile(delete=False) as tmp:
@@ -540,8 +554,157 @@ def admin_upload_db():
 
 
 # ============================================
+# Riegeneinteilung (DB Auswahl + CSV Import + Riegen)
+# ============================================
+
+
+def _get_registry() -> DbRegistry:
+    project_root = Path(current_app.root_path).parent.parent
+    return DbRegistry(default_meta_db_path(project_root))
+
+
+@auth_bp.route("/admin/riegeneinteilung", methods=["GET"])
+def admin_riegeneinteilung():
+    if not _require_admin():
+        return redirect(url_for("auth.login"))
+
+    registry = _get_registry()
+    active_db = registry.get_active_db_path() or current_app.config.get("DB_PATH")
+    if active_db:
+        registry.ensure_registered(active_db, default_label="default")
+
+    dbs = registry.list_dbs()
+
+    db = get_db()
+    riegen = []
+    try:
+        riegen = db.get_all_riegen_with_progress()
+    except Exception:
+        riegen = []
+
+    return render_template(
+        "admin_riegeneinteilung.html",
+        dbs=dbs,
+        active_db_path=active_db,
+        riegen=riegen,
+    )
+
+
+@auth_bp.route("/admin/riegeneinteilung/select_db", methods=["POST"])
+def admin_select_db():
+    if not _require_admin():
+        return redirect(url_for("auth.login"))
+
+    name = (request.form.get("db_name") or "").strip()
+    if not name:
+        flash("Bitte eine Datenbank auswählen.", "error")
+        return redirect(url_for("auth.admin_riegeneinteilung"))
+
+    registry = _get_registry()
+    entry = registry.get_by_name(name)
+    if not entry:
+        flash("Datenbank nicht gefunden.", "error")
+        return redirect(url_for("auth.admin_riegeneinteilung"))
+
+    registry.set_active_db_path(entry.path)
+
+    # Close cached connection so next request uses the selected DB
+    try:
+        db = get_db()
+        db.close()
+    except Exception:
+        pass
+
+    flash(f"Aktive DB gesetzt: {entry.name}", "success")
+    return redirect(url_for("auth.admin_riegeneinteilung"))
+
+
+@auth_bp.route("/admin/riegeneinteilung/import_csv", methods=["POST"])
+def admin_import_csv_to_new_db():
+    if not _require_admin():
+        return redirect(url_for("auth.login"))
+
+    file = request.files.get("csv_file")
+    if not file or not (file.filename or "").strip():
+        flash("Keine CSV-Datei ausgewählt.", "error")
+        return redirect(url_for("auth.admin_riegeneinteilung"))
+
+    filename = secure_filename(file.filename or "")
+    if not filename.lower().endswith(".csv"):
+        flash("Nur .csv Dateien erlaubt.", "error")
+        return redirect(url_for("auth.admin_riegeneinteilung"))
+
+    label = (request.form.get("label") or "").strip() or "upload"
+    delimiter = (request.form.get("delimiter") or ";")[:1]
+    auto_activate = (request.form.get("auto_activate") or "") == "1"
+
+    target_dir = Path(current_app.root_path).parent / "database"
+
+    # Decode upload as text and import
+    try:
+        text = file.stream.read().decode("utf-8-sig", errors="replace")
+        result = import_students_csv_to_new_db(
+            csv_text=io.StringIO(text),
+            target_dir=target_dir,
+            label=label,
+            delimiter=delimiter,
+        )
+    except Exception as exc:
+        flash(f"CSV Import fehlgeschlagen: {exc}", "error")
+        return redirect(url_for("auth.admin_riegeneinteilung"))
+
+    registry = _get_registry()
+    registry.register_db(path=result.db_path, name=result.db_name, label=label)
+
+    if auto_activate:
+        registry.set_active_db_path(result.db_path)
+        try:
+            db = get_db()
+            db.close()
+        except Exception:
+            pass
+
+    flash(
+        f"CSV importiert: {result.imported} Schüler, {result.errors} Fehler. DB: {result.db_name}",
+        "success" if result.errors == 0 else "info",
+    )
+    return redirect(url_for("auth.admin_riegeneinteilung"))
+
+
+@auth_bp.route("/admin/riegeneinteilung/create_riege", methods=["POST"])
+def admin_create_riege():
+    if not _require_admin():
+        return redirect(url_for("auth.login"))
+
+    name = (request.form.get("name") or "").strip()
+    stufe_raw = (request.form.get("stufe") or "").strip()
+    klassen = (request.form.get("klassenendungen") or "").strip()
+    geschlecht = (request.form.get("geschlecht") or "").strip()
+    profil = (request.form.get("profil") or "") == "1"
+
+    try:
+        stufe = int(stufe_raw)
+        db = get_db()
+        res = create_riege_and_assign(
+            db=db,
+            name=name,
+            stufe=stufe,
+            klassenendungen=klassen,
+            geschlecht=geschlecht,
+            profil=profil,
+        )
+    except Exception as exc:
+        flash(f"Riege anlegen fehlgeschlagen: {exc}", "error")
+        return redirect(url_for("auth.admin_riegeneinteilung"))
+
+    flash(f"Riege erstellt (ID {res.rf_id}). Zugewiesen: {res.assigned}", "success")
+    return redirect(url_for("auth.admin_riegeneinteilung"))
+
+
+# ============================================
 # Disziplin-CRUD
 # ============================================
+
 
 
 @auth_bp.route("/admin/disziplinen", methods=["GET"])
