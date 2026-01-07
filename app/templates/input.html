@@ -1,0 +1,1037 @@
+<!doctype html>
+<html lang="de">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <meta name="csrf-token" content="{{ csrf_token() }}" />
+        <title>Eingabe</title>
+
+        <!-- Externe CSS-Dateien für Styling -->
+        <link
+            rel="stylesheet"
+            href="{{ url_for('static', filename='input.css') }}"
+        />
+        <link
+            href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+            rel="stylesheet"
+        />
+    </head>
+    <body>
+        <div class="container">
+            <!-- Oberer Navigationsbereich mit Buttons und Dropdowns -->
+            <div class="d-flex justify-content-between mt-3">
+                <!-- Mittlerer Dropdown-Bereich -->
+                <div>
+                    <select
+                        id="riegenfuehrer"
+                        class="form-select d-inline w-auto"
+                    >
+                        <option value="" selected disabled>Riegenführer</option>
+                        {% for riegen in riegenfuehrer %}
+                        <option value="{{ riegen[0] }}">{{ riegen[1] }}</option>
+                        {% endfor %}
+                    </select>
+                    <button class="btn btn-info ms-2" onclick="getRiege()">
+                        Get
+                    </button>
+                </div>
+
+                <!-- Riege, Station und Logout rechts -->
+                <div class="d-flex align-items-center gap-2">
+                    <div class="text-muted small ms-2">
+                        Station: <strong>{{ station }}</strong>
+                        <span class="ms-2"
+                            >iPad:
+                            <strong>{{ ipad_stations_nummer }}</strong></span
+                        >
+                    </div>
+                    <button
+                        class="btn btn-danger ms-2"
+                        onclick="window.location.href = '/logout'"
+                    >
+                        Logout
+                    </button>
+                </div>
+            </div>
+
+            <!-- Hauptcontainer mit Informations- und Eingabebereichen -->
+            <div class="d-flex mt-4 gap-4">
+                <!-- Linker Informationscontainer -->
+                <div class="box p-3">
+                    <p><strong>Klasse:</strong> <span id="klasse"></span></p>
+                    <p>
+                        <strong>Geschlecht:</strong>
+                        <span id="geschlecht"></span>
+                    </p>
+                    <div class="mt-3">
+                        <p class="mb-1">
+                            <strong>Fortschritt pro Runde:</strong>
+                        </p>
+                        <div id="rounds-progress-container">
+                            {% for i in range(1, num_rounds + 1) %}
+                            <p class="mb-1">
+                                <span class="badge bg-secondary"
+                                    >Runde {{ i }}:</span
+                                >
+                                <span id="runde{{ i }}_fertig">0</span>/<span
+                                    id="schueler_gesamt_r{{ i }}"
+                                    >0</span
+                                >
+                            </p>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    <div class="mt-3">
+                        <p class="mb-1">
+                            <span class="badge bg-danger">Abwesend:</span>
+                            <span id="schueler_abwesend">0</span>
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Rechter Eingabecontainer -->
+                <div class="box p-3 flex-grow-1">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <p>
+                                <strong>Name:</strong>
+                                <span id="selectedSchueler"></span>
+                            </p>
+                            <p><strong>Schwierigkeitsgrad:</strong></p>
+                        </div>
+
+                        <!-- Dropdown für Schülerselektion -->
+                        <select
+                            id="schuelerDropdown"
+                            class="form-select w-auto"
+                            style="height: 50%"
+                            onchange="updateSelectedSchueler()"
+                        >
+                            <option value="" selected disabled>Schüler</option>
+                        </select>
+                    </div>
+
+                    <!-- Eingabefeld für Ergebnis mit Anzeige des gespeicherten Werts -->
+                    <div class="d-flex align-items-center mt-2 gap-3">
+                        <input
+                            type="text"
+                            id="ergebnis"
+                            class="form-control w-50"
+                            placeholder="mm:ss"
+                            inputmode="numeric"
+                            enterkeyhint="next"
+                            autocomplete="off"
+                            autocorrect="off"
+                            autocapitalize="off"
+                            spellcheck="false"
+                            pattern="[0-9:]*"
+                        />
+                        <div
+                            id="current-result-display"
+                            class="text-muted"
+                            style="min-width: 150px"
+                        >
+                            <!-- Hier wird das bereits gespeicherte Ergebnis angezeigt -->
+                        </div>
+                    </div>
+
+                    <!-- Buttons für Navigation und Aktionen -->
+                    <div class="d-flex justify-content-between mt-4">
+                        <button
+                            class="btn btn-success"
+                            onclick="next_schueler()"
+                        >
+                            Nächster
+                        </button>
+                        <div class="d-flex gap-2" id="round-buttons-container">
+                            {% for i in range(1, num_rounds + 1) %}
+                            <button
+                                class="toggle-btn"
+                                onclick="selectButton(this)"
+                                data-round="{{ i }}"
+                            >
+                                Runde {{ i }}
+                            </button>
+                            {% endfor %}
+                        </div>
+                        <button
+                            class="btn btn-danger"
+                            onclick="mark_abwesend()"
+                        >
+                            Abwesend
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Toast Container -->
+        <div class="toast-container" id="toast-container"></div>
+
+        <!-- Loading Overlay -->
+        <div class="overlay" id="loading-overlay">
+            <div class="overlay-spinner"></div>
+        </div>
+
+        <script>
+            // ============================================
+            // Toast Notification System
+            // ============================================
+            function showToast(message, type = "success", duration = 3000) {
+                const container = document.getElementById("toast-container");
+                if (!container) return;
+
+                const toast = document.createElement("div");
+                toast.className = `toast ${type}`;
+
+                const icons = {
+                    success: "✅",
+                    error: "❌",
+                    info: "ℹ️",
+                    warning: "⚠️",
+                };
+
+                toast.innerHTML = `
+                    <span class="toast-icon">${icons[type] || icons.info}</span>
+                    <span class="toast-message">${message}</span>
+                    <button class="toast-close" onclick="this.parentElement.remove()">×</button>
+                `;
+
+                container.appendChild(toast);
+
+                // Trigger animation
+                requestAnimationFrame(() => {
+                    toast.classList.add("show");
+                });
+
+                // Auto-remove
+                setTimeout(() => {
+                    toast.classList.remove("show");
+                    setTimeout(() => toast.remove(), 300);
+                }, duration);
+            }
+
+            // ============================================
+            // Loading Overlay
+            // ============================================
+            function showLoading() {
+                const overlay = document.getElementById("loading-overlay");
+                if (overlay) overlay.classList.add("active");
+            }
+
+            function hideLoading() {
+                const overlay = document.getElementById("loading-overlay");
+                if (overlay) overlay.classList.remove("active");
+            }
+
+            // ============================================
+            // Button Loading State
+            // ============================================
+            function setButtonLoading(button, loading) {
+                if (!button) return;
+                if (loading) {
+                    button.classList.add("loading");
+                    button.disabled = true;
+                    button.dataset.originalText = button.textContent;
+                } else {
+                    button.classList.remove("loading");
+                    button.disabled = false;
+                    if (button.dataset.originalText) {
+                        button.textContent = button.dataset.originalText;
+                    }
+                }
+            }
+
+            // ============================================
+            // Visual Feedback Animations
+            // ============================================
+            function flashSaveSuccess(elementId) {
+                const el = document.getElementById(elementId);
+                if (el) {
+                    el.classList.add("save-flash");
+                    setTimeout(() => el.classList.remove("save-flash"), 600);
+                }
+            }
+
+            function shakeError(elementId) {
+                const el = document.getElementById(elementId);
+                if (el) {
+                    el.classList.add("error-shake");
+                    setTimeout(() => el.classList.remove("error-shake"), 500);
+                }
+            }
+
+            const csrfToken = document.querySelector(
+                'meta[name="csrf-token"]',
+            ).content;
+
+            // Anzahl der Runden aus dem Backend
+            let numRounds = {{ num_rounds }};
+
+            // Hilfsfunktion zum Aktualisieren der Fortschrittsanzeige
+            function updateProgressDisplay(data) {
+                // Aktualisiere num_rounds falls vom Server mitgeteilt
+                if (data.meta && data.meta.num_rounds) {
+                    numRounds = data.meta.num_rounds;
+                }
+
+                // Aktualisiere die Rundenzähler dynamisch
+                if (data.progress && data.progress.rounds_done) {
+                    for (let i = 1; i <= numRounds; i++) {
+                        const el = document.getElementById(`runde${i}_fertig`);
+                        if (el) {
+                            el.innerText = data.progress.rounds_done[i] || 0;
+                        }
+                    }
+                }
+                if (data.progress) {
+                    document.getElementById("schueler_abwesend").innerText = data.progress.absent || 0;
+                }
+                if (data.meta) {
+                    const total = data.meta.active_total || 0;
+                    for (let i = 1; i <= numRounds; i++) {
+                        const el = document.getElementById(`schueler_gesamt_r${i}`);
+                        if (el) {
+                            el.innerText = total;
+                        }
+                    }
+                }
+            }
+
+            // Funktion zum Absenden des Ergebnisses und Aktualisieren der Schülerliste
+            function next_schueler() {
+                const nextBtn = document.querySelector(".btn-success");
+                setButtonLoading(nextBtn, true);
+
+                const schuelerDropdown =
+                    document.getElementById("schuelerDropdown");
+                const selectedSchuelerID = schuelerDropdown.value;
+                const ergebnis = document.getElementById("ergebnis").value;
+                const selected_round =
+                    document.querySelector(".toggle-btn.active");
+
+                console.log(
+                    "Aktiver Button:",
+                    selected_round
+                        ? selected_round.textContent
+                        : "Kein Button aktiv",
+                );
+
+                let selected_round_value = null;
+                if (selected_round) {
+                    // Verwende das data-round Attribut falls vorhanden
+                    selected_round_value = selected_round.getAttribute("data-round");
+                    if (!selected_round_value) {
+                        const parts = selected_round.textContent.trim().split(" ");
+                        if (parts.length >= 2) {
+                            selected_round_value = parts[1];
+                        }
+                    }
+                    console.log("Ausgewählte Runde:", selected_round_value);
+                }
+
+                if (!selected_round_value) {
+                    alert("Bitte wählen Sie eine Runde aus.");
+                    setButtonLoading(nextBtn, false);
+                    return;
+                }
+
+                const selectedOption =
+                    schuelerDropdown.options[schuelerDropdown.selectedIndex];
+                const selectedStudentName = selectedOption
+                    ? selectedOption.getAttribute("data-schueler-name")
+                    : "";
+
+                fetch("/next_student", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "X-CSRFToken": csrfToken,
+                    },
+                    body: JSON.stringify({
+                        schueler_id: selectedSchuelerID,
+                        ergebnis: ergebnis,
+                        round: parseInt(selected_round_value),
+                    }),
+                })
+                    .then((response) => response.json())
+                    .then((data) => {
+                        setButtonLoading(nextBtn, false);
+
+                        if (data.error) {
+                            showToast(data.error, "error");
+                            shakeError("ergebnis");
+                            return;
+                        }
+
+                        // Visual feedback
+                        showToast(
+                            `Ergebnis gespeichert: ${ergebnis}`,
+                            "success",
+                        );
+                        flashSaveSuccess("ergebnis");
+
+                        // Aktualisiere Fortschrittsanzeige
+                        updateProgressDisplay(data);
+
+                        document.getElementById("ergebnis").value = "";
+
+                        const currentIndex = schuelerDropdown.selectedIndex;
+
+                        if (selected_round_value) {
+                            updateStudentRoundStatus(
+                                currentIndex,
+                                selected_round_value,
+                            );
+                        }
+
+                        const isLastStudent =
+                            currentIndex >= schuelerDropdown.options.length - 1;
+
+                        if (isLastStudent) {
+                            const currentRoundIndex =
+                                parseInt(selected_round_value) - 1;
+                            let nextRoundIndex = currentRoundIndex + 1;
+
+                            if (nextRoundIndex >= numRounds) {
+                                nextRoundIndex = 0;
+                            }
+
+                            alert(
+                                "Ende der Schülerliste erreicht! Die Schülerliste wird von vorne begonnen mit der nächsten Runde.",
+                            );
+
+                            schuelerDropdown.selectedIndex = 1;
+
+                            const roundButtons =
+                                document.querySelectorAll(".toggle-btn");
+                            roundButtons.forEach((btn) =>
+                                btn.classList.remove("active"),
+                            );
+                            if (nextRoundIndex < roundButtons.length) {
+                                roundButtons[nextRoundIndex].classList.add(
+                                    "active",
+                                );
+                            }
+                        } else {
+                            const nextNonAbsentIndex =
+                                findNextNonAbsentStudent(currentIndex);
+                            schuelerDropdown.selectedIndex = nextNonAbsentIndex;
+                        }
+
+                        updateSelectedSchueler();
+                        loadCurrentResult();
+                    })
+                    .catch((error) => {
+                        setButtonLoading(nextBtn, false);
+                        console.error("Fehler:", error);
+                        showToast("Ein Fehler ist aufgetreten.", "error");
+                    });
+            }
+
+            // Funktion zum Abrufen einer Riege basierend auf Riegenführer
+            function getRiege() {
+                const riegenfuehrer =
+                    document.getElementById("riegenfuehrer").value;
+
+                if (!riegenfuehrer) {
+                    showToast(
+                        "Bitte wählen Sie einen Riegenführer aus.",
+                        "warning",
+                    );
+                    return;
+                }
+
+                const getBtn = document.querySelector(".btn-info");
+                setButtonLoading(getBtn, true);
+
+                fetch("/get_riege", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "X-CSRFToken": csrfToken,
+                    },
+                    body: JSON.stringify({ riegenfuehrer_id: riegenfuehrer }),
+                })
+                    .then((response) => response.json())
+                    .then((data) => {
+                        const getBtn = document.querySelector(".btn-info");
+                        setButtonLoading(getBtn, false);
+
+                        if (data.error) {
+                            showToast(data.error, "error");
+                            return;
+                        }
+
+                        showToast(
+                            `Riege geladen: ${data.meta?.active_total || 0} Schüler`,
+                            "info",
+                        );
+
+                        // Meta-Daten aktualisieren
+                        if (data.meta) {
+                            document.getElementById("klasse").innerText =
+                                data.meta.first_class || "";
+                            document.getElementById("geschlecht").innerText =
+                                data.meta.first_gender || "";
+                        }
+
+                        // Schüler-Dropdown aktualisieren
+                        updateSchuelerDropdown(data.status_list || []);
+
+                        // Fortschrittsanzeige aktualisieren
+                        updateProgressDisplay(data);
+
+                        // Automatisch den ersten Runden-Button auswählen
+                        selectFirstButton();
+
+                        // Automatisch den ersten Schüler auswählen
+                        const schuelerDropdown =
+                            document.getElementById("schuelerDropdown");
+                        if (schuelerDropdown.options.length > 1) {
+                            schuelerDropdown.selectedIndex = 1;
+                            updateSelectedSchueler();
+                            const ergebnisInput =
+                                document.getElementById("ergebnis");
+                            if (ergebnisInput) {
+                                ergebnisInput.focus();
+                            }
+                        }
+                    })
+                    .catch((error) => {
+                        console.error("Fehler:", error);
+                        alert("Ein Fehler ist aufgetreten.");
+                    });
+            }
+
+            // Funktion zum Aktualisieren des Schüler-Dropdowns
+            function updateSchuelerDropdown(statusList) {
+                const schuelerDropdown =
+                    document.getElementById("schuelerDropdown");
+                schuelerDropdown.innerHTML =
+                    '<option value="" selected disabled>Schüler</option>';
+
+                statusList.forEach((item) => {
+                    const option = document.createElement("option");
+                    option.value = item.id;
+                    option.setAttribute("data-schueler-id", item.id);
+                    option.setAttribute(
+                        "data-schueler-name",
+                        item.name || "",
+                    );
+
+                    const roundValues = item.round_values || [];
+                    const isAbsent = item.absent === true;
+
+                    // Dynamisch Symbole basierend auf der Rundenzahl generieren
+                    let progressSymbols = [];
+                    for (let i = 0; i < numRounds; i++) {
+                        if (isAbsent) {
+                            progressSymbols.push("❌");
+                        } else if (roundValues[i] !== null && roundValues[i] !== undefined) {
+                            progressSymbols.push("✔️");
+                        } else {
+                            progressSymbols.push("❌");
+                        }
+                    }
+
+                    const progress = progressSymbols.join(" ");
+                    const displayName = item.name || "";
+
+                    if (isAbsent) {
+                        option.text = `❌ ${displayName} ${progress}`;
+                        option.style.color = "red";
+                    } else {
+                        option.text = `${displayName} ${progress}`;
+                    }
+                    schuelerDropdown.appendChild(option);
+                });
+            }
+
+            function selectButton(clickedButton) {
+                document
+                    .querySelectorAll(".toggle-btn")
+                    .forEach((btn) => btn.classList.remove("active"));
+                clickedButton.classList.add("active");
+                loadCurrentResult();
+            }
+
+            function selectFirstButton() {
+                document
+                    .querySelectorAll(".toggle-btn")
+                    .forEach((btn) => btn.classList.remove("active"));
+                const firstButton = document.querySelector(".toggle-btn");
+                if (firstButton) {
+                    firstButton.classList.add("active");
+                }
+            }
+
+            function updateStudentAbsentStatus(studentIndex) {
+                const schuelerDropdown =
+                    document.getElementById("schuelerDropdown");
+                if (
+                    studentIndex <= 0 ||
+                    studentIndex >= schuelerDropdown.options.length
+                )
+                    return;
+
+                const optionText = schuelerDropdown.options[studentIndex].text;
+                let cleanText = optionText;
+                if (cleanText.startsWith("❌ ")) {
+                    cleanText = cleanText.substring(2);
+                }
+
+                // Extrahiere den Namen (alles vor den Status-Symbolen)
+                // Die Status-Symbole sind die letzten numRounds Wörter
+                const parts = cleanText.split(" ");
+                const nameParts = parts.slice(0, parts.length - numRounds);
+                const namePart = nameParts.join(" ").trim();
+
+                // Generiere dynamisch die Abwesend-Symbole
+                const absentSymbols = Array(numRounds).fill("❌").join(" ");
+                const newText = `❌ ${namePart} ${absentSymbols}`;
+                schuelerDropdown.options[studentIndex].text = newText;
+                schuelerDropdown.options[studentIndex].style.color = "red";
+            }
+
+            function findNextNonAbsentStudent(startIndex) {
+                const schuelerDropdown =
+                    document.getElementById("schuelerDropdown");
+                let nextIndex = startIndex;
+
+                for (let i = 0; i < schuelerDropdown.options.length; i++) {
+                    nextIndex++;
+
+                    if (nextIndex >= schuelerDropdown.options.length) {
+                        nextIndex = 1;
+                    }
+
+                    const optionText = schuelerDropdown.options[nextIndex].text;
+                    if (!optionText.startsWith("❌")) {
+                        return nextIndex;
+                    }
+                }
+
+                return startIndex < schuelerDropdown.options.length - 1
+                    ? startIndex + 1
+                    : 1;
+            }
+
+            function updateStudentRoundStatus(studentIndex, completedRound) {
+                const schuelerDropdown =
+                    document.getElementById("schuelerDropdown");
+                if (
+                    studentIndex <= 0 ||
+                    studentIndex >= schuelerDropdown.options.length
+                )
+                    return;
+
+                const optionText = schuelerDropdown.options[studentIndex].text;
+
+                // Die Status-Symbole sind die letzten numRounds Wörter
+                const parts = optionText.split(" ");
+                const nameParts = parts.slice(0, parts.length - numRounds);
+                const statusMarks = parts.slice(parts.length - numRounds);
+                const namePart = nameParts.join(" ").trim();
+
+                if (completedRound >= 1 && completedRound <= numRounds) {
+                    const index = completedRound - 1;
+                    if (index < statusMarks.length) {
+                        statusMarks[index] = "✔️";
+                    }
+                }
+
+                const newText = `${namePart} ${statusMarks.join(" ")}`;
+                schuelerDropdown.options[studentIndex].text = newText;
+            }
+
+            function updateSelectedSchueler() {
+                const schuelerDropdown =
+                    document.getElementById("schuelerDropdown");
+                const selectedOption =
+                    schuelerDropdown.options[schuelerDropdown.selectedIndex];
+
+                const selectedSchuelerName = selectedOption
+                    ? selectedOption.getAttribute("data-schueler-name")
+                    : "";
+                document.getElementById("selectedSchueler").innerText =
+                    selectedSchuelerName || "";
+
+                autoSelectNextIncompleteRound();
+                loadCurrentResult();
+            }
+
+            function autoSelectNextIncompleteRound() {
+                const schuelerDropdown =
+                    document.getElementById("schuelerDropdown");
+                if (schuelerDropdown.selectedIndex <= 0) return;
+
+                const optionText =
+                    schuelerDropdown.options[schuelerDropdown.selectedIndex]
+                        .text;
+
+                if (optionText.startsWith("❌")) return;
+
+                // Die Status-Symbole sind die letzten numRounds Wörter
+                const parts = optionText.split(" ");
+                const statusMarks = parts.slice(parts.length - numRounds);
+
+                let incompleteRoundIndex = -1;
+                for (let i = 0; i < statusMarks.length; i++) {
+                    if (statusMarks[i] === "❌") {
+                        incompleteRoundIndex = i;
+                        break;
+                    }
+                }
+
+                if (incompleteRoundIndex >= 0) {
+                    const roundButtons =
+                        document.querySelectorAll(".toggle-btn");
+                    if (incompleteRoundIndex < roundButtons.length) {
+                        roundButtons.forEach((btn) =>
+                            btn.classList.remove("active"),
+                        );
+                        roundButtons[incompleteRoundIndex].classList.add(
+                            "active",
+                        );
+                    }
+                }
+            }
+
+            function loadCurrentResult() {
+                const schuelerDropdown =
+                    document.getElementById("schuelerDropdown");
+                const selectedSchuelerID = schuelerDropdown.value;
+                const selected_round =
+                    document.querySelector(".toggle-btn.active");
+                const resultDisplay = document.getElementById(
+                    "current-result-display",
+                );
+
+                resultDisplay.innerHTML = "";
+
+                if (!selectedSchuelerID || !selected_round) {
+                    return;
+                }
+
+                // Verwende das data-round Attribut falls vorhanden, sonst parse den Text
+                let selected_round_value = selected_round.getAttribute("data-round");
+                if (!selected_round_value) {
+                    const roundParts = selected_round.textContent.trim().split(" ");
+                    if (roundParts.length < 2) return;
+                    selected_round_value = roundParts[1];
+                }
+
+                fetch(
+                    `/get_current_result?schueler_id=${encodeURIComponent(selectedSchuelerID)}&runde=${selected_round_value}`,
+                    {
+                        headers: {
+                            "X-CSRFToken": csrfToken,
+                        },
+                    },
+                )
+                    .then((response) => response.json())
+                    .then((data) => {
+                        if (data.has_result && data.result !== "NA") {
+                            resultDisplay.innerHTML = `<span class="text-success">${data.result}</span>`;
+                        } else {
+                            resultDisplay.innerHTML = `<span class="text-muted">NA</span>`;
+                        }
+                    })
+                    .catch((error) => {
+                        console.error(
+                            "Fehler beim Laden des Ergebnisses:",
+                            error,
+                        );
+                        resultDisplay.innerHTML = `<span class="text-danger">Fehler beim Laden</span>`;
+                    });
+            }
+
+            function mark_abwesend() {
+                const abwesendBtn = document.querySelector(".btn-danger");
+                setButtonLoading(abwesendBtn, true);
+
+                const schuelerDropdown =
+                    document.getElementById("schuelerDropdown");
+                const selectedSchuelerID = schuelerDropdown.value;
+                if (!selectedSchuelerID) {
+                    showToast("Bitte wählen Sie einen Schüler aus.", "warning");
+                    setButtonLoading(abwesendBtn, false);
+                    return;
+                }
+
+                const selectedOption =
+                    schuelerDropdown.options[schuelerDropdown.selectedIndex];
+                const selectedStudentName = selectedOption
+                    ? selectedOption.getAttribute("data-schueler-name")
+                    : "";
+
+                const currentIndex = schuelerDropdown.selectedIndex;
+
+                updateStudentAbsentStatus(currentIndex);
+
+                fetch("/mark_absent", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "X-CSRFToken": csrfToken,
+                    },
+                    body: JSON.stringify({
+                        schueler_id: selectedSchuelerID,
+                    }),
+                })
+                    .then((response) => response.json())
+                    .then((data) => {
+                        setButtonLoading(abwesendBtn, false);
+
+                        if (data.error) {
+                            showToast(data.error, "error");
+                            return;
+                        }
+
+                        showToast("Schüler als abwesend markiert", "info");
+
+                        // Fortschrittsanzeige aktualisieren
+                        updateProgressDisplay(data);
+
+                        setTimeout(() => {
+                            const isLastStudent =
+                                currentIndex >=
+                                schuelerDropdown.options.length - 1;
+
+                            if (isLastStudent) {
+                                showToast(
+                                    "Ende der Schülerliste erreicht! Starte von vorne.",
+                                    "info",
+                                );
+                                schuelerDropdown.selectedIndex = 1;
+                            } else {
+                                const nextNonAbsentIndex =
+                                    findNextNonAbsentStudent(currentIndex);
+                                schuelerDropdown.selectedIndex =
+                                    nextNonAbsentIndex;
+                            }
+
+                            updateSelectedSchueler();
+                            loadCurrentResult();
+                        }, 100);
+                    })
+                    .catch((error) => {
+                        setButtonLoading(abwesendBtn, false);
+                        console.error(
+                            "Fehler beim Markieren als abwesend:",
+                            error,
+                        );
+                        showToast(
+                            "Fehler beim Markieren als abwesend",
+                            "error",
+                        );
+
+                        setTimeout(() => {
+                            const isLastStudent =
+                                currentIndex >=
+                                schuelerDropdown.options.length - 1;
+                            if (isLastStudent) {
+                                alert(
+                                    "Ende der Schülerliste erreicht! Die Schülerliste wird von vorne begonnen.",
+                                );
+                                schuelerDropdown.selectedIndex = 1;
+                            } else {
+                                const nextNonAbsentIndex =
+                                    findNextNonAbsentStudent(currentIndex);
+                                schuelerDropdown.selectedIndex =
+                                    nextNonAbsentIndex;
+                            }
+                            updateSelectedSchueler();
+                            loadCurrentResult();
+                        }, 300);
+                    });
+            }
+
+            // Dynamische Eingabemodi für Ergebnisfeld je nach Disziplin
+            (function () {
+                function byId(id) {
+                    return document.getElementById(id);
+                }
+
+                function resetInputNode() {
+                    const oldEl = byId("ergebnis");
+                    if (!oldEl) return oldEl;
+                    const clone = oldEl.cloneNode(true);
+                    clone.value = oldEl.value || "";
+                    if (oldEl.parentNode) {
+                        oldEl.parentNode.replaceChild(clone, oldEl);
+                    }
+                    return clone;
+                }
+
+                function formatMmSs(input) {
+                    let digits = (input || "").replace(/\D/g, "");
+                    digits = digits.slice(-4);
+                    if (digits.length === 0) return "";
+                    let mm = "00";
+                    let ss = "00";
+                    if (digits.length <= 2) {
+                        ss = digits.padStart(2, "0");
+                    } else {
+                        let mmRaw = digits.slice(0, digits.length - 2);
+                        mmRaw = mmRaw.replace(/^0+/, "");
+                        if (mmRaw === "") {
+                            mm = "00";
+                        } else if (mmRaw.length === 1) {
+                            mm = "0" + mmRaw;
+                        } else {
+                            mm = mmRaw;
+                        }
+                        ss = digits.slice(-2);
+                    }
+                    let sec = parseInt(ss, 10);
+                    if (isNaN(sec)) sec = 0;
+                    ss = String(sec).padStart(2, "0");
+                    return `${mm}:${ss}`;
+                }
+
+                function setCommonAttrs(el) {
+                    el.setAttribute("enterkeyhint", "next");
+                    el.setAttribute("autocomplete", "off");
+                    el.setAttribute("autocorrect", "off");
+                    el.setAttribute("autocapitalize", "off");
+                    el.setAttribute("spellcheck", "false");
+                }
+
+                function setTimeMode(el) {
+                    el.setAttribute("inputmode", "numeric");
+                    el.setAttribute("pattern", "[0-9:]*");
+                    el.placeholder = "mm:ss";
+
+                    const onInput = () => {
+                        const atEnd =
+                            el.selectionStart === el.value.length &&
+                            el.selectionEnd === el.value.length;
+                        const formatted = formatMmSs(el.value);
+                        el.value = formatted;
+                        if (atEnd) {
+                            const end = el.value.length;
+                            try {
+                                el.setSelectionRange(end, end);
+                            } catch {}
+                        }
+                    };
+                    const onBlur = () => {
+                        el.value = formatMmSs(el.value);
+                    };
+                    const onKeyDown = (e) => {
+                        const allowed = [
+                            "Backspace",
+                            "Delete",
+                            "ArrowLeft",
+                            "ArrowRight",
+                            "Tab",
+                            "Home",
+                            "End",
+                            "Escape",
+                            "Enter",
+                        ];
+                        if (allowed.includes(e.key)) {
+                            if (
+                                e.key === "Enter" &&
+                                typeof next_schueler === "function"
+                            ) {
+                                el.value = formatMmSs(el.value);
+                                next_schueler();
+                            }
+                            return;
+                        }
+                        if (!/^\d$/.test(e.key)) e.preventDefault();
+                    };
+                    const onPaste = (e) => {
+                        e.preventDefault();
+                        const text =
+                            (e.clipboardData || window.clipboardData).getData(
+                                "text",
+                            ) || "";
+                        el.value = formatMmSs(text);
+                    };
+
+                    el.addEventListener("input", onInput);
+                    el.addEventListener("blur", onBlur);
+                    el.addEventListener("keydown", onKeyDown);
+                    el.addEventListener("paste", onPaste);
+                }
+
+                function setDecimalMode(el) {
+                    el.setAttribute("inputmode", "decimal");
+                    el.setAttribute("pattern", "[0-9.,]*");
+                    el.removeAttribute("maxlength");
+                    el.placeholder = "11,11";
+
+                    const onInput = () => {
+                        let v = el.value.replace(/[^\d.,]/g, "");
+                        const parts = v.split(/[.,]/);
+                        if (parts.length > 2) {
+                            v = parts[0] + "," + parts.slice(1).join("");
+                        }
+                        el.value = v;
+                    };
+                    const onKeyDown = (e) => {
+                        const allowed = [
+                            "Backspace",
+                            "Delete",
+                            "ArrowLeft",
+                            "ArrowRight",
+                            "Tab",
+                            "Home",
+                            "End",
+                            "Escape",
+                            "Enter",
+                        ];
+                        if (allowed.includes(e.key)) {
+                            if (
+                                e.key === "Enter" &&
+                                typeof next_schueler === "function"
+                            ) {
+                                next_schueler();
+                            }
+                            return;
+                        }
+                        if (!/^[0-9.,]$/.test(e.key)) e.preventDefault();
+                    };
+
+                    el.addEventListener("input", onInput);
+                    el.addEventListener("keydown", onKeyDown);
+                }
+
+                function determineModeFromDisziplin(value) {
+                    if (!value) return "decimal";
+                    const v = String(value).toLowerCase();
+                    if (v.includes("laufen") || v.includes("sprint"))
+                        return "time";
+                    return "decimal";
+                }
+
+                function applyMode() {
+                    let el = resetInputNode();
+                    if (!el) el = byId("ergebnis");
+                    if (!el) return;
+
+                    setCommonAttrs(el);
+
+                    const stationName = "{{ station }}";
+                    const mode = determineModeFromDisziplin(stationName);
+                    if (mode === "time") setTimeMode(el);
+                    else setDecimalMode(el);
+                }
+
+                function init() {
+                    applyMode();
+                }
+
+                if (document.readyState === "loading") {
+                    document.addEventListener("DOMContentLoaded", init);
+                } else {
+                    init();
+                }
+            })();
+        </script>
+    </body>
+</html>

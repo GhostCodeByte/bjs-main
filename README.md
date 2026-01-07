@@ -1,16 +1,12 @@
 # BJS – Bundesjugendspiele Verwaltung
 
-Dieses Projekt ist eine Flask-Webanwendung zur Verwaltung von Schülerdaten, Riegen und Disziplinen für Bundesjugendspiele. Die neue Struktur (`alles_neu/`) bietet verbesserte Sicherheit, modulare Architektur und ein separates 
-
-
--Tool.
+Eine Flask-Webanwendung zur Verwaltung von Schülerdaten, Riegen und Disziplinen für Bundesjugendspiele. Das Projekt bietet verbesserte Sicherheit, modulare Architektur und ein separates Admin-Tool zur Offline-Datenvorbereitung.
 
 ---
 
 ## Strukturübersicht
 
 ```
-alles_neu/
 ├── app/                        # Flask-Webanwendung
 │   ├── __init__.py             # App-Factory, Blueprints, DB-Setup
 │   ├── database/
@@ -32,12 +28,19 @@ alles_neu/
 ├── admin/                      # Offline-Admin-Tool (Kivy)
 │   ├── admin.py                # Kivy-App für Riegen-/DB-Verwaltung
 │   ├── admin_database.py       # DB-Schema und Hilfsfunktionen
+│   ├── cli.py                  # CLI für Headless-Export
 │   ├── utils.py                # CSV-Import, Riegen-Erstellung
 │   ├── main.kv                 # Kivy-UI-Definition
 │   └── test_data.csv           # Beispiel-CSV für Import
+├── scripts/                    # Hilfsskripte
+│   ├── start_dev.sh            # Entwicklungsserver starten
+│   ├── start_prod.sh           # Produktionsserver starten
+│   └── admin_export.sh         # Admin CLI Export-Skript
+├── tests/                      # Pytest-Tests
+├── config.py                   # Konfigurationsklassen (Dev/Prod/Test)
 ├── main.py                     # Flask-App starten
-├── .env                        # Umgebungsvariablen (nicht im Repo)
-└── TODO.md                     # Projekt-Roadmap
+├── requirements.txt            # Python-Abhängigkeiten
+└── requirements-dev.txt        # Entwickler-Abhängigkeiten
 ```
 
 ---
@@ -47,7 +50,6 @@ alles_neu/
 ### 1. Umgebung einrichten
 
 ```bash
-cd alles_neu
 python -m venv venv
 source venv/bin/activate  # Windows: venv\Scripts\activate
 pip install -r requirements.txt
@@ -55,12 +57,12 @@ pip install -r requirements.txt
 
 ### 2. Umgebungsvariablen konfigurieren
 
-Erstelle eine `.env`-Datei in `alles_neu/`:
+Erstelle eine `.env`-Datei im Projektverzeichnis:
 
 ```env
 SECRET_KEY=dein-geheimer-schluessel-hier
 ADMIN_PASSWORD=sicheres-admin-passwort
-DB_PATH=alles_neu/app/database/bjs_database_2025.db
+DB_PATH=app/database/bjs_database_2025.db
 STATION_DEFAULT_PIN=123456
 STATION_DEFAULT_NAME=Station
 STATION_DEFAULT_MAX_LOGINS=1
@@ -70,7 +72,6 @@ STATION_DEFAULT_PIN_LENGTH=6
 ### 3. Flask-App starten
 
 ```bash
-cd alles_neu
 python main.py
 ```
 
@@ -115,20 +116,25 @@ Die Anwendung läuft auf **http://localhost:5000**
 
 ## Admin-Tool (Kivy)
 
-Das Admin-Tool dient zur **Offline-Vorbereitung** der Datenbank:
+Das Admin-Tool dient zur **Offline-Vorbereitung** der Datenbank.
 
 ### Starten (GUI)
 
 ```bash
-cd alles_neu/admin
+cd admin
 python admin.py
 ```
 
 ### Starten (CLI/Headless)
 
 ```bash
-cd alles_neu
 python -m admin.cli --csv path/to/schueler.csv --output bjs_database_2025.db
+```
+
+Oder mit dem bereitgestellten Skript:
+
+```bash
+./scripts/admin_export.sh --csv path/to/schueler.csv --output bjs_database_2025.db
 ```
 
 ### Funktionen
@@ -212,7 +218,6 @@ Disziplinen können im Admin-Bereich verwaltet werden:
 
 ---
 
-
 ## Deployment & Umgebungen
 
 - `ENV`/`FLASK_ENV` steuert die Config-Klasse (`development`, `production`, `testing`)
@@ -222,7 +227,6 @@ Disziplinen können im Admin-Bereich verwaltet werden:
 ### Entwicklung
 
 ```bash
-cd alles_neu
 ENV=development python main.py
 # oder via Skript:
 ./scripts/start_dev.sh
@@ -231,24 +235,12 @@ ENV=development python main.py
 ### Produktion (Gunicorn)
 
 ```bash
-cd alles_neu
 ENV=production HOST=0.0.0.0 PORT=5000 WORKERS=4 TIMEOUT=120 ./scripts/start_prod.sh
 # alternativ direkt:
 gunicorn -w 4 -b 0.0.0.0:5000 main:app
 ```
 
-
-
-### Admin-Export (Offline-DB)
-
-```bash
-cd alles_neu
-./scripts/admin_export.sh --csv path/to/schueler.csv --output bjs_database_2025.db
-```
-
 ### Empfohlene Einstellungen
-
-
 
 ```env
 DEBUG=False
@@ -258,10 +250,11 @@ SESSION_COOKIE_SAMESITE=Lax
 SESSION_COOKIE_HTTPONLY=True
 ```
 
+---
+
 ## Tests & Qualität
 
 ```bash
-cd alles_neu
 pip install -r requirements-dev.txt
 pytest
 pre-commit install
@@ -270,6 +263,8 @@ pre-commit run --all-files
 
 - Lint/Format: `black`, `ruff` (Konfiguration in `pyproject.toml`)
 - Git-Hygiene: `.env`, `*.db`, Test-Artefakte sind gitignored; keine DB/CSV ins Repo committen.
+
+---
 
 ## Backup & Wiederherstellung
 
