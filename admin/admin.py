@@ -4,7 +4,7 @@ from pathlib import Path
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
-from alles_neu.admin.utils import create_db_from_csv, create_riege
+from admin.utils import create_db_from_csv, create_riege
 from kivy.core.window import Window
 from kivy.lang import Builder
 from kivy.uix.screenmanager import Screen

@@ -7,7 +7,7 @@ from typing import Type
 class BaseConfig:
     SECRET_KEY = os.getenv("SECRET_KEY", "change-me")
     DB_PATH = os.getenv(
-        "DB_PATH", f"alles_neu/app/database/bjs_database_{datetime.now().year}.db"
+        "DB_PATH", f"app/database/bjs_database_{datetime.now().year}.db"
     )
     ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "admin123")
     STATION_DEFAULT_PIN = os.getenv("STATION_DEFAULT_PIN")
@@ -47,7 +47,7 @@ class TestingConfig(BaseConfig):
     DEBUG = True
     WTF_CSRF_ENABLED = False
     SESSION_COOKIE_SECURE = False
-    DB_PATH = os.getenv("TEST_DB_PATH", "alles_neu/app/database/test.db")
+    DB_PATH = os.getenv("TEST_DB_PATH", "app/database/test.db")
 
 
 CONFIG_MAP: dict[str, Type[BaseConfig]] = {

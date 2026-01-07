@@ -89,7 +89,7 @@ def generate_and_insert_schueler(db_path: str):
     conn.close()
 
 if __name__ == "__main__":
-    db_path = f"alles_neu/app/database/bjs_database_{datetime.now().year}.db"
+    db_path = f"app/database/bjs_database_{datetime.now().year}.db"
     db = database.Database(path = db_path)
     generate_and_insert_schueler(db_path)
     print(f"Daten erfolgreich in die Datenbank eingefügt: {db_path}")

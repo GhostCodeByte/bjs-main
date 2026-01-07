@@ -162,4 +162,4 @@ class DbRegistry:
 
 def default_meta_db_path(project_root: str | Path) -> Path:
     root = Path(project_root)
-    return root / "alles_neu" / "app" / "database" / "bjs_meta.db"
+    return root / "app" / "database" / "bjs_meta.db"

@@ -28,7 +28,7 @@ class Database:
             id = datetime.now().year
 
         if path is None:
-            path = f"alles_neu/app/database/bjs_database_{id}.db"
+            path = f"app/database/bjs_database_{id}.db"
 
         self.db_path = path
         Path(path).parent.mkdir(parents=True, exist_ok=True)

@@ -8,7 +8,7 @@ except ImportError:
     np = None
 from datetime import datetime
 
-from alles_neu.admin.admin_database import Database
+from admin.admin_database import Database
 
 
 def fill_schueler(data):

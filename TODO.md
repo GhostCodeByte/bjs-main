@@ -1,4 +1,4 @@
-# TODO – Projekt-Härtung & Fertigstellung (alles_neu)
+# TODO – Projekt-Härtung & Fertigstellung
 
 Ziel: Funktionsgleich und besser als `old/`, mit klarer Struktur, Sicherheit, Stabilität und Betrieb.
 
@@ -6,7 +6,7 @@ Ziel: Funktionsgleich und besser als `old/`, mit klarer Struktur, Sicherheit, St
 - [x] Logout-Route implementieren und Template-Link fixen.
 - [x] Session-Logik prüfen: `is_logged_in` nicht direkt auf `False` setzen beim Laden von `/input`.
 - [x] Fehlermeldungen/Validierung für Login (Disziplin Pflicht, falsches Passwort → klare Meldung).
-- [x] README aktualisieren auf neue Struktur (`alles_neu`), Startbefehle, Admin-Tool, Datenfluss.
+- [x] README aktualisieren auf neue Struktur, Startbefehle, Admin-Tool, Datenfluss.
 - [x] Admin-Login-Button in Auth ergänzen (führt zum Admin-Login-Flow).
 - [x] Minimalen Upload-/Import-Flow für externe DB-Datei skizzieren (Endpoint + UI-Hook).
 
@@ -71,8 +71,8 @@ Ziel: Funktionsgleich und besser als `old/`, mit klarer Struktur, Sicherheit, St
 
 ## 11) Migration von `old/`
 - [x] Vergleiche `old/todo.txt` mit obiger Liste; offene Punkte übertragen/abhaken. *(Abgleich durchgeführt; offene Punkte übernommen)*
-- [x] Prüfe, ob alte Features (Abwesenheit, Markierungen, Fortschrittslogik) vollständig in `alles_neu` sind. *(Funktionalität in neuen Flows vorhanden)*
-- [x] Entferne obsolet gewordene Duplikate, nachdem Funktionalität verifiziert ist. *(Alte Duplikate als obsolet markiert/entfernt, Fokus auf `alles_neu`)*
+- [x] Prüfe, ob alte Features (Abwesenheit, Markierungen, Fortschrittslogik) vollständig sind. *(Funktionalität in neuen Flows vorhanden)*
+- [x] Entferne obsolet gewordene Duplikate, nachdem Funktionalität verifiziert ist. *(Alte Duplikate als obsolet markiert/entfernt)*
 - [x] De-scoped: Legacy-Punkte aus `old/todo.txt` (z. B. „Ausgabe-/Export-Ansicht (PDF-Urkunden?)“, „Schwierigkeitsgrad berechnen“) vorerst nicht übernommen.
 ---
 

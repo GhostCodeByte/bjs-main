@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
-# Start the Flask development server for the "alles_neu" app.
+# Start the Flask development server for the BJS app.
 # Usage: chmod +x scripts/start_dev.sh && ./scripts/start_dev.sh
 
 set -eu

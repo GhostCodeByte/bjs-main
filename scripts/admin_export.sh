@@ -10,7 +10,7 @@
 #   --help                      Show this help
 #
 # Notes:
-# - The CLI lives at alles_neu/admin/cli.py and supports CSV -> SQLite export.
+# - The CLI lives at admin/cli.py and supports CSV -> SQLite export.
 # - The resulting DB file can be uploaded via the web UI (/admin/upload_db).
 # - Adjust DEFAULT_OUTPUT_DIR to control where the DB file is written.
 
