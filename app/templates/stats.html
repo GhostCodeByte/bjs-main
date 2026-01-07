@@ -220,11 +220,7 @@
                 font-size: 1.25rem;
                 color: var(--primary);
             }
-            .result-unit {
-                font-size: 0.85rem;
-                color: var(--gray-600);
-                font-weight: 400;
-            }
+
             /* Empty State */
             .empty-state {
                 text-align: center;
@@ -456,9 +452,6 @@
                         <div class="result">
                             {{ "%.2f"|format(entry.result) if entry.result else
                             '-' }}
-                            <span class="result-unit"
-                                >{{ 'm' if entry.result else '' }}</span
-                            >
                         </div>
                     </li>
                     {% endfor %}
@@ -597,7 +590,6 @@
                         </div>
                         <div class="result">
                             ${resultFormatted}
-                            <span class="result-unit">${entry.result ? "m" : ""}</span>
                         </div>
                     `;
                     list.appendChild(li);

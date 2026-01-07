@@ -43,7 +43,9 @@ _EVENT_PASSWORD_KEY = "event_password"
 _DEFAULT_EVENT_PASSWORD = "event123"
 
 
-def _check_rate_limit(key: str, limit: int = _RATE_LIMIT_MAX, window: int = _RATE_LIMIT_WINDOW):
+def _check_rate_limit(
+    key: str, limit: int = _RATE_LIMIT_MAX, window: int = _RATE_LIMIT_WINDOW
+):
     now = time.time()
     bucket = _RATE_LIMIT_BUCKETS.setdefault(key, [])
     _RATE_LIMIT_BUCKETS[key] = [ts for ts in bucket if ts > now - window]
@@ -72,7 +74,6 @@ def _disziplin_to_dict(d) -> dict:
         "name": d.name,
         "format": d.format,
         "num_rounds": d.num_rounds,
-        "unit": d.unit,
     }
 
 
@@ -125,7 +126,10 @@ def _seed_default_pin():
                 pass
     else:
         db.ensure_default_station_pin(
-            station=station_name, max_logins=max_logins, length=length, discipline=station_name
+            station=station_name,
+            max_logins=max_logins,
+            length=length,
+            discipline=station_name,
         )
     current_app.config[seeded_flag] = True
 
@@ -202,7 +206,9 @@ def login():
             resp = make_response(render_template("auth.html"))
             resp.status_code = 503
             return resp
-        ok, msg = db.claim_station_pin(pin=pin, device_id=device_id, discipline=discipline)
+        ok, msg = db.claim_station_pin(
+            pin=pin, device_id=device_id, discipline=discipline
+        )
         if not ok:
             flash(msg, "error")
             resp = make_response(render_template("auth.html"))
@@ -350,7 +356,6 @@ def admin_list_stations():
             "id": d.id,
             "name": d.name,
             "format": d.format,
-            "unit": d.unit,
             "num_rounds": d.num_rounds,
             "active": True,
         }
@@ -560,7 +565,9 @@ def admin_backup_config():
     db = get_db()
     if db is None:
         return jsonify({"error": "Keine Datenbank vorhanden"}), 503
-    db.update_backup_config(interval_minutes=interval, max_backups=max_backups, enabled=enabled)
+    db.update_backup_config(
+        interval_minutes=interval, max_backups=max_backups, enabled=enabled
+    )
     return jsonify({"status": "ok"})
 
 
@@ -917,7 +924,8 @@ def admin_update_riege():
         if reassign:
             # Entkoppeln und neu zuweisen für diese Riege
             db._execute_tx(
-                "UPDATE Schueler SET RiegenfuehrerID = NULL WHERE RiegenfuehrerID = ?", (riegen_id,)
+                "UPDATE Schueler SET RiegenfuehrerID = NULL WHERE RiegenfuehrerID = ?",
+                (riegen_id,),
             )
             for kl_end in klassen or "":
                 if kl_end.strip():
@@ -1014,7 +1022,6 @@ def admin_disziplinen_create():
             name=name,
             format=payload.get("format", "distance"),
             num_rounds=int(payload.get("num_rounds", 3)),
-            unit=payload.get("unit", "m"),
         )
         return jsonify({"id": disziplin_id, "message": "Disziplin erstellt"})
     except ValueError as e:
@@ -1049,7 +1056,6 @@ def admin_disziplinen_update(disziplin_id: int):
             name=payload.get("name"),
             format=payload.get("format"),
             num_rounds=int(payload["num_rounds"]) if "num_rounds" in payload else None,
-            unit=payload.get("unit"),
         )
         if not ok:
             return jsonify({"error": "Nicht gefunden"}), 404
@@ -1133,12 +1139,16 @@ def event_overview():
     if not disziplin_filter and disziplinen:
         disziplin_filter = disziplinen[0]["name"]
 
-    selected_meta = next((d for d in disziplinen if d["name"] == disziplin_filter), None)
+    selected_meta = next(
+        (d for d in disziplinen if d["name"] == disziplin_filter), None
+    )
     riegen = db.get_all_riegen_with_progress(disziplin=disziplin_filter) if db else []
     stats = db.get_stats() if db else {}
     bestenliste = []
     if disziplin_filter and db:
-        bestenliste = db.get_bestenliste(disziplin_filter, limit=20, geschlecht=geschlecht_filter)
+        bestenliste = db.get_bestenliste(
+            disziplin_filter, limit=20, geschlecht=geschlecht_filter
+        )
 
     return render_template(
         "dashboard.html",
@@ -1170,7 +1180,9 @@ def stats_page():
     bestenliste = []
     if selected_disziplin and db:
         geschlecht_filter = request.args.get("geschlecht")
-        bestenliste = db.get_bestenliste(selected_disziplin, limit=20, geschlecht=geschlecht_filter)
+        bestenliste = db.get_bestenliste(
+            selected_disziplin, limit=20, geschlecht=geschlecht_filter
+        )
 
     return render_template(
         "stats.html",

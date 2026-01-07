@@ -85,14 +85,15 @@
                 >
                     <option value="" disabled selected>Bitte wählen</option>
                     {% if disziplinen %} {% for d in disziplinen %}
+
                     <option
                         value="{{ d.name }}"
                         data-format="{{ d.format }}"
                         data-rounds="{{ d.num_rounds }}"
-                        data-unit="{{ d.unit }}"
                     >
                         {{ d.name }}
                     </option>
+
                     {% endfor %} {% else %}
                     <option value="Sprinten">Sprinten</option>
                     <option value="Weitsprung">Weitsprung</option>

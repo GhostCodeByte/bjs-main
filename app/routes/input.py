@@ -83,8 +83,8 @@ def _validate_and_normalize_result(ergebnis: str, discipline: str):
         seconds_int = int(seconds)
         if seconds_int >= 60:
             return False, None, "Sekunden müssen < 60 sein"
-        total_seconds = int(minutes) * 60 + seconds_int
-        return True, float(total_seconds), ""
+        # Speichere als String mm:ss
+        return True, f"{int(minutes):02d}:{seconds_int:02d}", ""
     try:
         number = float(value.replace(",", "."))
     except ValueError:
@@ -212,7 +212,9 @@ def build_status_payload(last_saved=None):
     progress = _compute_progress(schueler_liste, num_rounds)
     active_total = max(progress["total"] - progress["absent"], 0)
     # all_completed wenn die letzte Runde für alle aktiven Schüler fertig ist
-    all_completed = active_total > 0 and progress["rounds_done"].get(num_rounds, 0) >= active_total
+    all_completed = (
+        active_total > 0 and progress["rounds_done"].get(num_rounds, 0) >= active_total
+    )
     remaining_active = max(active_total - progress["rounds_done"].get(num_rounds, 0), 0)
     demographics = _collect_meta_data(schueler_liste)
     first_student = schueler_liste[0] if schueler_liste else {}
@@ -335,12 +337,17 @@ def next_student():
         return jsonify({"error": str(exc)}), 500
 
     _update_round_cache_in_session(schueler_id, round_nr, normalized_value)
+
+    display_value = normalized_value
+    if isinstance(normalized_value, float):
+        display_value = f"{normalized_value:.2f}".replace(".", ",")
+
     payload = build_status_payload(
         last_saved={
             "schueler_id": schueler_id,
             "round": round_nr,
             "status": "OK",
-            "value": normalized_value,
+            "value": display_value,
         }
     )
 
@@ -381,8 +388,12 @@ def get_current_result():
             if value == "ABWESEND":
                 return jsonify({"has_result": True, "result": "ABWESEND"})
             elif value is not None:
-                # Formatiere das Ergebnis (z.B. Sekunden zu mm:ss für Laufdisziplinen)
-                return jsonify({"has_result": True, "result": value})
+                # Formatiere das Ergebnis
+                if isinstance(value, float):
+                    return jsonify(
+                        {"has_result": True, "result": f"{value:.2f}".replace(".", ",")}
+                    )
+                return jsonify({"has_result": True, "result": str(value)})
             break
 
     return jsonify({"has_result": False, "result": "NA"})
@@ -395,7 +406,9 @@ def mark_absent():
 
     data = request.get_json() or {}
     schueler_id = data.get("schueler_id")
-    round_nr = data.get("round")  # Optional - wenn nicht angegeben, alle Runden als abwesend
+    round_nr = data.get(
+        "round"
+    )  # Optional - wenn nicht angegeben, alle Runden als abwesend
     discipline = session.get("discipline")
 
     if not schueler_id:

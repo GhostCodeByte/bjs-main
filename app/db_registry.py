@@ -24,7 +24,6 @@ class Disziplin:
     name: str
     format: str  # 'time' or 'distance'
     num_rounds: int
-    unit: str
 
 
 class DbRegistry:
@@ -69,11 +68,39 @@ class DbRegistry:
                     name TEXT NOT NULL UNIQUE,
                     format TEXT NOT NULL CHECK (format IN ('time', 'distance')) DEFAULT 'distance',
                     num_rounds INTEGER NOT NULL CHECK (num_rounds BETWEEN 1 AND 5) DEFAULT 3,
-                    unit TEXT DEFAULT 'm',
                     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
                 );
                 """
             )
+
+            # Migration: entferne alte unit-Spalte falls vorhanden
+            cols = [
+                row[1]
+                for row in conn.execute("PRAGMA table_info(Disziplinen)").fetchall()
+            ]
+            if "unit" in cols:
+                conn.execute("PRAGMA foreign_keys = OFF;")
+                conn.execute("ALTER TABLE Disziplinen RENAME TO Disziplinen_old;")
+                conn.execute(
+                    """
+                    CREATE TABLE Disziplinen (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        name TEXT NOT NULL UNIQUE,
+                        format TEXT NOT NULL CHECK (format IN ('time', 'distance')) DEFAULT 'distance',
+                        num_rounds INTEGER NOT NULL CHECK (num_rounds BETWEEN 1 AND 5) DEFAULT 3,
+                        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                    );
+                    """
+                )
+                conn.execute(
+                    """
+                    INSERT INTO Disziplinen (id, name, format, num_rounds, created_at)
+                    SELECT id, name, format, num_rounds, created_at
+                    FROM Disziplinen_old;
+                    """
+                )
+                conn.execute("DROP TABLE Disziplinen_old;")
+                conn.execute("PRAGMA foreign_keys = ON;")
 
     def get_active_db_path(self) -> Optional[str]:
         with self._connect() as conn:
@@ -173,7 +200,9 @@ class DbRegistry:
             file_size=int(row[5] or 0),
         )
 
-    def ensure_registered(self, db_path: str | Path, *, default_label: str = "") -> None:
+    def ensure_registered(
+        self, db_path: str | Path, *, default_label: str = ""
+    ) -> None:
         db_path = Path(db_path)
         name = db_path.name
         if self.get_by_name(name):
@@ -222,7 +251,7 @@ class DbRegistry:
         with self._connect() as conn:
             rows = conn.execute(
                 """
-                SELECT id, name, format, num_rounds, unit
+                SELECT id, name, format, num_rounds
                 FROM Disziplinen
                 ORDER BY name
                 """
@@ -234,7 +263,6 @@ class DbRegistry:
                 name=row[1],
                 format=row[2],
                 num_rounds=row[3],
-                unit=row[4] or "m",
             )
             for row in rows
         ]
@@ -244,7 +272,7 @@ class DbRegistry:
         with self._connect() as conn:
             row = conn.execute(
                 """
-                SELECT id, name, format, num_rounds, unit
+                SELECT id, name, format, num_rounds
                 FROM Disziplinen WHERE id = ?
                 """,
                 (disziplin_id,),
@@ -257,7 +285,6 @@ class DbRegistry:
             name=row[1],
             format=row[2],
             num_rounds=row[3],
-            unit=row[4] or "m",
         )
 
     def get_disziplin_by_name(self, name: str) -> Optional[Disziplin]:
@@ -265,7 +292,7 @@ class DbRegistry:
         with self._connect() as conn:
             row = conn.execute(
                 """
-                SELECT id, name, format, num_rounds, unit
+                SELECT id, name, format, num_rounds
                 FROM Disziplinen WHERE name = ?
                 """,
                 (name,),
@@ -278,7 +305,6 @@ class DbRegistry:
             name=row[1],
             format=row[2],
             num_rounds=row[3],
-            unit=row[4] or "m",
         )
 
     def create_disziplin(
@@ -286,16 +312,15 @@ class DbRegistry:
         name: str,
         format: str = "distance",
         num_rounds: int = 3,
-        unit: str = "m",
     ) -> int:
         """Erstellt eine neue Disziplin. Gibt die ID zurück."""
         with self._connect() as conn:
             cur = conn.execute(
                 """
-                INSERT INTO Disziplinen (name, format, num_rounds, unit)
-                VALUES (?, ?, ?, ?)
+                INSERT INTO Disziplinen (name, format, num_rounds)
+                VALUES (?, ?, ?)
                 """,
-                (name, format, num_rounds, unit),
+                (name, format, num_rounds),
             )
             return cur.lastrowid or 0
 
@@ -305,7 +330,6 @@ class DbRegistry:
         name: Optional[str] = None,
         format: Optional[str] = None,
         num_rounds: Optional[int] = None,
-        unit: Optional[str] = None,
     ) -> bool:
         """Aktualisiert eine Disziplin. Gibt True zurück wenn gefunden."""
         updates = []
@@ -320,9 +344,6 @@ class DbRegistry:
         if num_rounds is not None:
             updates.append("num_rounds = ?")
             params.append(num_rounds)
-        if unit is not None:
-            updates.append("unit = ?")
-            params.append(unit)
 
         if not updates:
             return True

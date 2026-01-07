@@ -141,19 +141,25 @@ class Database:
             """
         )
         pin_columns = [
-            row[1] for row in self.cursor.execute("PRAGMA table_info(Station_Pin)").fetchall()
+            row[1]
+            for row in self.cursor.execute("PRAGMA table_info(Station_Pin)").fetchall()
         ]
         if "discipline" not in pin_columns:
             self.cursor.execute("ALTER TABLE Station_Pin ADD COLUMN discipline TEXT")
         session_columns = [
-            row[1] for row in self.cursor.execute("PRAGMA table_info(Station_Session)").fetchall()
+            row[1]
+            for row in self.cursor.execute(
+                "PRAGMA table_info(Station_Session)"
+            ).fetchall()
         ]
         if "discipline" not in session_columns:
-            self.cursor.execute("ALTER TABLE Station_Session ADD COLUMN discipline TEXT")
+            self.cursor.execute(
+                "ALTER TABLE Station_Session ADD COLUMN discipline TEXT"
+            )
         self.connection.commit()
 
     def _ensure_disziplin_tables(self):
-        """Erstellt Tabellen für Disziplin-Konfiguration."""
+        """Erstellt Tabellen für Disziplin-Konfiguration und migriert alte Schemas ohne unit-Spalte."""
         self.cursor.execute(
             """
             CREATE TABLE IF NOT EXISTS Disziplinen (
@@ -162,7 +168,6 @@ class Database:
                 display_name TEXT,
                 result_format TEXT NOT NULL CHECK (result_format IN ('time', 'distance')) DEFAULT 'distance',
                 num_rounds INTEGER NOT NULL CHECK (num_rounds BETWEEN 1 AND 5) DEFAULT 3,
-                unit TEXT DEFAULT 'm',
                 description TEXT,
                 sort_order INTEGER DEFAULT 0,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -170,6 +175,40 @@ class Database:
             );
             """
         )
+
+        # Migration: entferne alte unit-Spalte falls vorhanden
+        disziplin_columns = [
+            row[1]
+            for row in self.cursor.execute("PRAGMA table_info(Disziplinen)").fetchall()
+        ]
+        if "unit" in disziplin_columns:
+            self.cursor.execute("PRAGMA foreign_keys = OFF")
+            self.cursor.execute("ALTER TABLE Disziplinen RENAME TO Disziplinen_old")
+            self.cursor.execute(
+                """
+                CREATE TABLE Disziplinen (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    name TEXT NOT NULL UNIQUE,
+                    display_name TEXT,
+                    result_format TEXT NOT NULL CHECK (result_format IN ('time', 'distance')) DEFAULT 'distance',
+                    num_rounds INTEGER NOT NULL CHECK (num_rounds BETWEEN 1 AND 5) DEFAULT 3,
+                    description TEXT,
+                    sort_order INTEGER DEFAULT 0,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                );
+                """
+            )
+            self.cursor.execute(
+                """
+                INSERT INTO Disziplinen (id, name, display_name, result_format, num_rounds, description, sort_order, created_at, updated_at)
+                SELECT id, name, display_name, result_format, num_rounds, description, sort_order, created_at, updated_at
+                FROM Disziplinen_old;
+                """
+            )
+            self.cursor.execute("DROP TABLE Disziplinen_old")
+            self.connection.commit()
+            self.cursor.execute("PRAGMA foreign_keys = ON")
 
         self.cursor.execute(
             """
@@ -370,7 +409,9 @@ class Database:
         """Einfache Kennzahlen für die Riegeneinteilung-Seite."""
         self.cursor.execute("SELECT COUNT(*) FROM Schueler")
         total_students = int(self.cursor.fetchone()[0] or 0)
-        self.cursor.execute("SELECT COUNT(*) FROM Schueler WHERE RiegenfuehrerID IS NOT NULL")
+        self.cursor.execute(
+            "SELECT COUNT(*) FROM Schueler WHERE RiegenfuehrerID IS NOT NULL"
+        )
         assigned_students = int(self.cursor.fetchone()[0] or 0)
         self.cursor.execute("SELECT COUNT(*) FROM Riegenfuehrer")
         total_riegen = int(self.cursor.fetchone()[0] or 0)
@@ -433,7 +474,14 @@ class Database:
             SET Name = ?, Geschlecht = ?, Profil = ?, Stufe = ?, Klassenendungen = ?
             WHERE ID = ?
             """,
-            (name, geschlecht, 1 if profil else 0, int(stufe), klassenendungen, int(riegen_id)),
+            (
+                name,
+                geschlecht,
+                1 if profil else 0,
+                int(stufe),
+                klassenendungen,
+                int(riegen_id),
+            ),
         )
         return int(cur.rowcount)
 
@@ -471,7 +519,9 @@ class Database:
 
         return schueler_liste
 
-    def get_all_riegen_with_progress(self, disziplin: Optional[str] = None) -> List[Dict[str, Any]]:
+    def get_all_riegen_with_progress(
+        self, disziplin: Optional[str] = None
+    ) -> List[Dict[str, Any]]:
         """
         Holt alle Riegen mit Fortschritts-Informationen.
         Für Dashboard-Übersicht.
@@ -509,13 +559,17 @@ class Database:
 
         return riegen
 
-    def _get_riege_progress(self, riege_id: int, disziplin: Optional[str] = None) -> Dict[str, Any]:
+    def _get_riege_progress(
+        self, riege_id: int, disziplin: Optional[str] = None
+    ) -> Dict[str, Any]:
         """Berechnet den Fortschritt einer Riege."""
         disziplin_filter = "AND e.Disziplin = ?" if disziplin else ""
         params = (riege_id, disziplin) if disziplin else (riege_id,)
 
         # Gesamt-Schüler
-        self.cursor.execute("SELECT COUNT(*) FROM Schueler WHERE RiegenfuehrerID = ?", (riege_id,))
+        self.cursor.execute(
+            "SELECT COUNT(*) FROM Schueler WHERE RiegenfuehrerID = ?", (riege_id,)
+        )
         total = self.cursor.fetchone()[0] or 0
 
         if total == 0:
@@ -563,7 +617,9 @@ class Database:
                 AND e.status = 'OK'
                 {disziplin_filter.replace("e.Disziplin", "e.Disziplin")}
             """
-            params_round = (riege_id, round_nr, disziplin) if disziplin else (riege_id, round_nr)
+            params_round = (
+                (riege_id, round_nr, disziplin) if disziplin else (riege_id, round_nr)
+            )
             self.cursor.execute(query, params_round)
             rounds[round_nr] = self.cursor.fetchone()[0] or 0
 
@@ -660,7 +716,9 @@ class Database:
         Bei Distanz: höchster Wert ist besser
         """
         # Disziplin-Format prüfen
-        self.cursor.execute("SELECT result_format FROM Disziplinen WHERE name = ?", (disziplin,))
+        self.cursor.execute(
+            "SELECT result_format FROM Disziplinen WHERE name = ?", (disziplin,)
+        )
         row = self.cursor.fetchone()
         result_format = row[0] if row else "distance"
 
@@ -708,7 +766,7 @@ class Database:
         """Holt alle Disziplinen mit Konfiguration."""
         self.cursor.execute(
             """
-            SELECT id, name, display_name, result_format, num_rounds, unit, description, sort_order, created_at, updated_at
+            SELECT id, name, display_name, result_format, num_rounds, description, sort_order, created_at, updated_at
             FROM Disziplinen
             ORDER BY sort_order, name
             """
@@ -721,11 +779,10 @@ class Database:
                 "display_name": row[2],
                 "result_format": row[3],
                 "num_rounds": row[4],
-                "unit": row[5],
-                "description": row[6],
-                "sort_order": row[7],
-                "created_at": row[8],
-                "updated_at": row[9],
+                "description": row[5],
+                "sort_order": row[6],
+                "created_at": row[7],
+                "updated_at": row[8],
                 "config": {},
             }
 
@@ -745,7 +802,7 @@ class Database:
         """Holt eine einzelne Disziplin."""
         self.cursor.execute(
             """
-            SELECT id, name, display_name, result_format, num_rounds, unit, description, sort_order
+            SELECT id, name, display_name, result_format, num_rounds, description, sort_order
             FROM Disziplinen WHERE id = ?
             """,
             (disziplin_id,),
@@ -760,16 +817,15 @@ class Database:
             "display_name": row[2],
             "result_format": row[3],
             "num_rounds": row[4],
-            "unit": row[5],
-            "description": row[6],
-            "sort_order": row[7],
+            "description": row[5],
+            "sort_order": row[6],
         }
 
     def get_disziplin_by_name(self, name: str) -> Optional[Dict[str, Any]]:
         """Holt Disziplin nach Name."""
         self.cursor.execute(
             """
-            SELECT id, name, display_name, result_format, num_rounds, unit, description, sort_order
+            SELECT id, name, display_name, result_format, num_rounds, description, sort_order
             FROM Disziplinen WHERE name = ?
             """,
             (name,),
@@ -784,9 +840,8 @@ class Database:
             "display_name": row[2],
             "result_format": row[3],
             "num_rounds": row[4],
-            "unit": row[5],
-            "description": row[6],
-            "sort_order": row[7],
+            "description": row[5],
+            "sort_order": row[6],
         }
 
     def create_disziplin(
@@ -795,7 +850,6 @@ class Database:
         display_name: Optional[str] = None,
         result_format: str = "distance",
         num_rounds: int = 3,
-        unit: str = "m",
         description: Optional[str] = None,
         sort_order: int = 0,
     ) -> int:
@@ -807,15 +861,14 @@ class Database:
 
         cur = self._execute_tx(
             """
-            INSERT INTO Disziplinen (name, display_name, result_format, num_rounds, unit, description, sort_order)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO Disziplinen (name, display_name, result_format, num_rounds, description, sort_order)
+            VALUES (?, ?, ?, ?, ?, ?)
             """,
             (
                 name,
                 display_name or name,
                 result_format,
                 num_rounds,
-                unit,
                 description,
                 sort_order,
             ),
@@ -829,7 +882,6 @@ class Database:
         display_name: Optional[str] = None,
         result_format: Optional[str] = None,
         num_rounds: Optional[int] = None,
-        unit: Optional[str] = None,
         description: Optional[str] = None,
         sort_order: Optional[int] = None,
     ) -> bool:
@@ -853,9 +905,6 @@ class Database:
                 raise ValueError("num_rounds muss zwischen 1 und 5 liegen")
             updates.append("num_rounds = ?")
             params.append(num_rounds)
-        if unit is not None:
-            updates.append("unit = ?")
-            params.append(unit)
         if description is not None:
             updates.append("description = ?")
             params.append(description)
@@ -1113,7 +1162,9 @@ class Database:
         dest = (
             Path(target_path)
             if target_path
-            else Path(self.db_path).with_name(f"{Path(self.db_path).stem}_backup_{suffix}.db")
+            else Path(self.db_path).with_name(
+                f"{Path(self.db_path).stem}_backup_{suffix}.db"
+            )
         )
         dest.parent.mkdir(parents=True, exist_ok=True)
 
@@ -1132,7 +1183,9 @@ class Database:
         )
 
         # Last backup aktualisieren
-        self._execute_tx("UPDATE Backup_Config SET last_backup = CURRENT_TIMESTAMP WHERE id = 1")
+        self._execute_tx(
+            "UPDATE Backup_Config SET last_backup = CURRENT_TIMESTAMP WHERE id = 1"
+        )
 
         # Alte Backups aufräumen
         self._cleanup_old_backups()
@@ -1293,7 +1346,9 @@ class Database:
         stats["total_riegen"] = self.cursor.fetchone()[0]
 
         # Ergebnisse gesamt
-        self.cursor.execute("SELECT COUNT(*) FROM Schueler_Disziplin_Ergebnis WHERE status = 'OK'")
+        self.cursor.execute(
+            "SELECT COUNT(*) FROM Schueler_Disziplin_Ergebnis WHERE status = 'OK'"
+        )
         stats["total_ergebnisse"] = self.cursor.fetchone()[0]
 
         # Abwesend gesamt
@@ -1315,7 +1370,9 @@ class Database:
             GROUP BY Disziplin
             """
         )
-        stats["ergebnisse_pro_disziplin"] = {row[0]: row[1] for row in self.cursor.fetchall()}
+        stats["ergebnisse_pro_disziplin"] = {
+            row[0]: row[1] for row in self.cursor.fetchall()
+        }
 
         # Letzte Aktivität
         self.cursor.execute("SELECT MAX(created_at) FROM Schueler_Disziplin_Ergebnis")

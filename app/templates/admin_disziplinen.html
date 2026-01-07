@@ -241,12 +241,9 @@
                 <div class="card" data-id="{{ d.id }}">
                     <h3>
                         <span>{{ d.name }}</span>
-                        <span class="badge {{ d.format }}">
-                            {{ 'Zeit' if d.format == 'time' else 'Distanz' }}
-                        </span>
                     </h3>
                     <p><strong>Runden:</strong> {{ d.num_rounds }}</p>
-                    <p><strong>Einheit:</strong> {{ d.unit }}</p>
+                    <p><strong>Format:</strong> {{ 'Zeit' if d.format == 'time' else 'Distanz' }}</p>
                     <div class="actions">
                         <button
                             class="btn-secondary"
@@ -331,17 +328,6 @@
                         </div>
                     </div>
 
-                    <div class="form-group">
-                        <label for="unit">Einheit</label>
-                        <input
-                            type="text"
-                            id="unit"
-                            name="unit"
-                            value="m"
-                            placeholder="z.B. m, s, cm"
-                        />
-                    </div>
-
                     <div class="form-actions">
                         <button
                             type="button"
@@ -422,7 +408,6 @@
                         data.format || "distance";
                     document.getElementById("num_rounds").value =
                         data.num_rounds || 3;
-                    document.getElementById("unit").value = data.unit || "m";
 
                     document
                         .getElementById("modal-overlay")
@@ -450,7 +435,6 @@
                     num_rounds: parseInt(
                         document.getElementById("num_rounds").value,
                     ),
-                    unit: document.getElementById("unit").value,
                 };
 
                 try {
