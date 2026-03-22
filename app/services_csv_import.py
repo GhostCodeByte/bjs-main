@@ -1,3 +1,5 @@
+"""Hilfsfunktionen für den Import von Schülerdaten aus CSV-Dateien."""
+
 from __future__ import annotations
 
 import csv
@@ -5,20 +7,22 @@ import re
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import BinaryIO, Iterable, Optional, TextIO
+from typing import Optional, TextIO
 
 from app.database.database import Database
 
 
 @dataclass(frozen=True)
 class CsvImportResult:
+    """Beschreibt das Ergebnis eines CSV-Imports in eine neue Datenbank."""
+
     db_path: str
     db_name: str
     imported: int
     errors: int
 
 
-_REQUIRED_HEADERS = {
+_PFLICHTSPALTEN = {
     "geschlecht",
     "klasse",
     "name",
@@ -27,56 +31,55 @@ _REQUIRED_HEADERS = {
 }
 
 
-def _normalize_header(key: str) -> str:
-    return re.sub(r"\s+", "", str(key or "").strip().lower())
+def _normalize_header(spaltenname: str) -> str:
+    """Normalisiert CSV-Überschriften für robuste Vergleiche."""
+    return re.sub(r"\s+", "", str(spaltenname or "").strip().lower())
 
 
-def _to_bool(value: object) -> bool:
-    if value is None:
+def _to_bool(wert: object) -> bool:
+    """Interpretiert typische Wahrheitswerte aus CSV-Dateien."""
+    if wert is None:
         return False
-    if isinstance(value, bool):
-        return value
-    raw = str(value).strip().lower()
-    return raw in {"1", "true", "yes", "ja", "y"}
+    if isinstance(wert, bool):
+        return wert
+    roher_wert = str(wert).strip().lower()
+    return roher_wert in {"1", "true", "yes", "ja", "y"}
 
 
-def _parse_klasse(value: str) -> tuple[int, str]:
-    raw = str(value or "").strip()
-    if not raw:
+def _parse_klasse(klassenwert: str) -> tuple[int, str]:
+    """Zerlegt eine Klassenangabe in Stufe und Buchstabenanteil."""
+    roher_wert = str(klassenwert or "").strip()
+    if not roher_wert:
         raise ValueError("Klasse fehlt")
 
-    digits = "".join(ch for ch in raw if ch.isdigit())
-    letters = "".join(ch for ch in raw if ch.isalpha())
+    stufenziffern = "".join(zeichen for zeichen in roher_wert if zeichen.isdigit())
+    klassenbuchstaben = "".join(
+        zeichen for zeichen in roher_wert if zeichen.isalpha()
+    )
 
-    if not digits:
-        raise ValueError(f"Ungültige Klasse: {raw}")
+    if not stufenziffern:
+        raise ValueError(f"Ungueltige Klasse: {roher_wert}")
 
-    stufe = int(digits)
-    buchstabe = (letters[:1] or "").lower()
-    return stufe, buchstabe
-
-
-def _slugify(label: str) -> str:
-    text = (label or "").strip().lower()
-    text = re.sub(r"[^a-z0-9_-]+", "_", text)
-    text = re.sub(r"_+", "_", text).strip("_")
-    return text or "upload"
+    stufe = int(stufenziffern)
+    klassenbuchstabe = (klassenbuchstaben[:1] or "").lower()
+    return stufe, klassenbuchstabe
 
 
 def build_db_filename(*, year: int, target_dir: Path) -> str:
-    """Generate DB filename as BJS_YYYY_ID.db with auto-incrementing ID."""
-    existing_ids = []
-    pattern = re.compile(rf"^BJS_{year}_(\d+)\.db$", re.IGNORECASE)
+    """Erzeugt den nächsten freien Dateinamen im Format `BJS_JAHR_ID.db`."""
+    vorhandene_ids: list[int] = []
+    dateiname_muster = re.compile(rf"^BJS_{year}_(\d+)\.db$", re.IGNORECASE)
 
     if target_dir.exists():
-        for f in target_dir.iterdir():
-            if f.is_file():
-                match = pattern.match(f.name)
-                if match:
-                    existing_ids.append(int(match.group(1)))
+        for datei in target_dir.iterdir():
+            if not datei.is_file():
+                continue
+            treffer = dateiname_muster.match(datei.name)
+            if treffer:
+                vorhandene_ids.append(int(treffer.group(1)))
 
-    next_id = max(existing_ids, default=0) + 1
-    return f"BJS_{year}_{next_id}.db"
+    naechste_id = max(vorhandene_ids, default=0) + 1
+    return f"BJS_{year}_{naechste_id}.db"
 
 
 def import_students_csv_to_new_db(
@@ -86,76 +89,77 @@ def import_students_csv_to_new_db(
     delimiter: str = ";",
     year: Optional[int] = None,
 ) -> CsvImportResult:
-    """Create a new SQLite DB from a header-based CSV.
+    """Importiert eine Schüler-CSV in eine neue SQLite-Datenbank."""
+    zielverzeichnis = Path(target_dir)
+    zielverzeichnis.mkdir(parents=True, exist_ok=True)
 
-    Expected headers (case-insensitive):
-    - Geschlecht
-    - Klasse
-    - Name
-    - Vorname
-    - Geburtsjahr
-    Optional:
-    - Profil
+    import_jahr = int(year or datetime.now().year)
+    datenbankname = build_db_filename(year=import_jahr, target_dir=zielverzeichnis)
+    datenbankpfad = zielverzeichnis / datenbankname
 
-    DB filename format: BJS_YYYY_ID.db (ID is auto-incremented)
-    """
-
-    target_dir = Path(target_dir)
-    target_dir.mkdir(parents=True, exist_ok=True)
-
-    resolved_year = int(year or datetime.now().year)
-    db_name = build_db_filename(year=resolved_year, target_dir=target_dir)
-    db_path = target_dir / db_name
-
-    reader = csv.DictReader(csv_text, delimiter=delimiter)
-    if not reader.fieldnames:
+    csv_leser = csv.DictReader(csv_text, delimiter=delimiter)
+    if not csv_leser.fieldnames:
         raise ValueError("CSV hat keine Kopfzeile")
 
-    headers = {_normalize_header(h) for h in reader.fieldnames}
-    missing = _REQUIRED_HEADERS - headers
-    if missing:
-        raise ValueError(f"CSV Kopfzeile fehlt: {', '.join(sorted(missing))}")
+    normalisierte_spalten = {
+        _normalize_header(spaltenname) for spaltenname in csv_leser.fieldnames
+    }
+    fehlende_spalten = _PFLICHTSPALTEN - normalisierte_spalten
+    if fehlende_spalten:
+        raise ValueError(
+            f"CSV Kopfzeile fehlt: {', '.join(sorted(fehlende_spalten))}"
+        )
 
-    imported = 0
-    errors = 0
+    importierte_schueler = 0
+    fehlerhafte_zeilen = 0
+    datenbank = Database(path=str(datenbankpfad))
 
-    db = Database(path=str(db_path))
     try:
-        for row in reader:
+        for csv_zeile in csv_leser:
             try:
-                norm_row = {_normalize_header(k): v for k, v in row.items()}
+                normalisierte_zeile = {
+                    _normalize_header(spaltenname): wert
+                    for spaltenname, wert in csv_zeile.items()
+                }
 
-                geschlecht = str(norm_row.get("geschlecht", "")).strip().lower()
-                stufe, buchstabe = _parse_klasse(str(norm_row.get("klasse", "")))
-                name = str(norm_row.get("name", "")).strip()
-                vorname = str(norm_row.get("vorname", "")).strip()
-                geburtsjahr = int(str(norm_row.get("geburtsjahr", "")).strip())
-                profil = _to_bool(norm_row.get("profil"))
+                geschlecht = str(
+                    normalisierte_zeile.get("geschlecht", "")
+                ).strip().lower()
+                stufe, klassenbuchstabe = _parse_klasse(
+                    str(normalisierte_zeile.get("klasse", ""))
+                )
+                nachname = str(normalisierte_zeile.get("name", "")).strip()
+                vorname = str(normalisierte_zeile.get("vorname", "")).strip()
+                geburtsjahr = int(
+                    str(normalisierte_zeile.get("geburtsjahr", "")).strip()
+                )
+                profil_flag = _to_bool(normalisierte_zeile.get("profil"))
 
                 if geschlecht not in {"m", "w"}:
                     raise ValueError("Geschlecht muss m oder w sein")
-                if not name or not vorname:
+                if not nachname or not vorname:
                     raise ValueError("Name/Vorname fehlt")
 
-                db.add_schueler(
-                    name=name,
+                datenbank.add_schueler(
+                    name=nachname,
                     vorname=vorname,
                     geschlecht=geschlecht,
                     klasse=stufe,
-                    klassenbuchstabe=buchstabe,
+                    klassenbuchstabe=klassenbuchstabe,
                     geburtsjahr=geburtsjahr,
-                    profil=profil,
+                    profil=profil_flag,
                 )
-                imported += 1
+                importierte_schueler += 1
             except Exception:
-                errors += 1
-        db.connection.commit()
+                # Einzelne fehlerhafte Zeilen stoppen den Gesamtimport nicht.
+                fehlerhafte_zeilen += 1
+        datenbank.connection.commit()
     finally:
-        db.connection.close()
+        datenbank.connection.close()
 
     return CsvImportResult(
-        db_path=str(db_path),
-        db_name=db_name,
-        imported=imported,
-        errors=errors,
+        db_path=str(datenbankpfad),
+        db_name=datenbankname,
+        imported=importierte_schueler,
+        errors=fehlerhafte_zeilen,
     )

@@ -1,10 +1,12 @@
+"""Zentrale Konfigurationen für Entwicklungs-, Test- und Produktivbetrieb."""
+
 import os
 from pathlib import Path
 
 
 class BaseConfig:
     SECRET_KEY = os.getenv("SECRET_KEY", "change-me")
-    DB_PATH = os.getenv("DB_PATH")  # None until CSV import creates a database
+    DB_PATH = os.getenv("DB_PATH")  # Bleibt leer, bis ein CSV-Import eine Datenbank erzeugt.
     ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "admin123")
     STATION_DEFAULT_PIN = os.getenv("STATION_DEFAULT_PIN")
     STATION_DEFAULT_NAME = os.getenv("STATION_DEFAULT_NAME", "Station")
@@ -14,16 +16,16 @@ class BaseConfig:
     WTF_CSRF_ENABLED = True
     SESSION_COOKIE_SAMESITE = os.getenv("SESSION_COOKIE_SAMESITE", "Lax")
     SESSION_COOKIE_HTTPONLY = True
-    SESSION_COOKIE_SECURE = False  # override in production
+    SESSION_COOKIE_SECURE = False  # Wird in Produktion normalerweise auf True gesetzt.
     PREFERRED_URL_SCHEME = os.getenv("PREFERRED_URL_SCHEME", "http")
 
-    # Flask
+    # Basiswerte fuer Flask.
     DEBUG = False
     TESTING = False
 
     @classmethod
     def ensure_paths(cls) -> None:
-        """Ensure directories for DB_PATH exist."""
+        """Erzeugt das Zielverzeichnis der Datenbank, falls ein Pfad gesetzt ist."""
         if cls.DB_PATH:
             Path(cls.DB_PATH).parent.mkdir(parents=True, exist_ok=True)
 
@@ -43,7 +45,7 @@ class TestingConfig(BaseConfig):
     DEBUG = True
     WTF_CSRF_ENABLED = False
     SESSION_COOKIE_SECURE = False
-    DB_PATH = os.getenv("TEST_DB_PATH", "alles_neu/app/database/test.db")
+    DB_PATH = os.getenv("TEST_DB_PATH", "database/test.db")
 
 
 CONFIG_MAP: dict[str, type[BaseConfig]] = {
@@ -57,15 +59,10 @@ CONFIG_MAP: dict[str, type[BaseConfig]] = {
 
 
 def get_config(env_name: str | None = None) -> type[BaseConfig]:
-    """
-    Returns a config class based on the environment name.
-
-    Priority:
-    1) Explicit env_name argument
-    2) ENV or FLASK_ENV environment variable
-    3) Default to ProductionConfig
-    """
-    env = (env_name or os.getenv("ENV") or os.getenv("FLASK_ENV") or "").lower()
-    config_cls = CONFIG_MAP.get(env, ProductionConfig)
-    config_cls.ensure_paths()
-    return config_cls
+    """Liefert die passende Konfigurationsklasse anhand der Umgebung."""
+    umgebungsname = (
+        env_name or os.getenv("ENV") or os.getenv("FLASK_ENV") or ""
+    ).lower()
+    konfigurationsklasse = CONFIG_MAP.get(umgebungsname, ProductionConfig)
+    konfigurationsklasse.ensure_paths()
+    return konfigurationsklasse

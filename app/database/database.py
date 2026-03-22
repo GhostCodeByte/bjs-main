@@ -1,3 +1,5 @@
+"""SQLite-Zugriffsschicht fuer Schueler, Riegen, Ergebnisse, PINs und Backups."""
+
 import json
 import secrets
 import sqlite3
@@ -24,11 +26,12 @@ class Database:
     _backup_stop_event: Optional[threading.Event] = None
 
     def __init__(self, id=None, path=None):
+        """Initialisiert die SQLite-Verbindung und stellt alle benoetigten Tabellen sicher."""
         if id is None:
             id = datetime.now().year
 
         if path is None:
-            path = f"alles_neu/app/database/bjs_database_{id}.db"
+            path = str(Path("database") / f"bjs_database_{id}.db")
 
         self.db_path = path
         Path(path).parent.mkdir(parents=True, exist_ok=True)
@@ -91,7 +94,7 @@ class Database:
                 ID                 INTEGER PRIMARY KEY AUTOINCREMENT,
                 SchuelerID         INTEGER NOT NULL,
                 Disziplin          TEXT NOT NULL,
-                ErgebnisNR         INTEGER CHECK (ErgebnisNR IN (1, 2, 3)),
+                ErgebnisNR         INTEGER CHECK (ErgebnisNR BETWEEN 1 AND 5),
                 result_value       REAL,
                 status             TEXT CHECK (status IN ('OK', 'ABWESEND')),
                 source_ipad_number TEXT,
@@ -103,8 +106,55 @@ class Database:
         )
 
         self.connection.commit()
+        self._migrate_result_round_limit()
+
+    def _migrate_result_round_limit(self):
+        """Migriert alte Ergebnis-Tabellen von 3 auf bis zu 5 Runden."""
+        create_sql_row = self.cursor.execute(
+            "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'Schueler_Disziplin_Ergebnis'"
+        ).fetchone()
+        create_sql = create_sql_row[0] if create_sql_row else ""
+        if "ErgebnisNR IN (1, 2, 3)" not in create_sql:
+            return
+
+        self.cursor.execute("PRAGMA foreign_keys = OFF")
+        self.cursor.execute(
+            "ALTER TABLE Schueler_Disziplin_Ergebnis RENAME TO Schueler_Disziplin_Ergebnis_old"
+        )
+        self.cursor.execute(
+            """
+            CREATE TABLE Schueler_Disziplin_Ergebnis (
+                ID                 INTEGER PRIMARY KEY AUTOINCREMENT,
+                SchuelerID         INTEGER NOT NULL,
+                Disziplin          TEXT NOT NULL,
+                ErgebnisNR         INTEGER CHECK (ErgebnisNR BETWEEN 1 AND 5),
+                result_value       REAL,
+                status             TEXT CHECK (status IN ('OK', 'ABWESEND')),
+                source_ipad_number TEXT,
+                source_station     TEXT,
+                created_at         DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (SchuelerID) REFERENCES Schueler(SchuelerID)
+            );
+            """
+        )
+        self.cursor.execute(
+            """
+            INSERT INTO Schueler_Disziplin_Ergebnis (
+                ID, SchuelerID, Disziplin, ErgebnisNR, result_value, status,
+                source_ipad_number, source_station, created_at
+            )
+            SELECT
+                ID, SchuelerID, Disziplin, ErgebnisNR, result_value, status,
+                source_ipad_number, source_station, created_at
+            FROM Schueler_Disziplin_Ergebnis_old
+            """
+        )
+        self.cursor.execute("DROP TABLE Schueler_Disziplin_Ergebnis_old")
+        self.cursor.execute("PRAGMA foreign_keys = ON")
+        self.connection.commit()
 
     def _ensure_runtime_tables(self):
+        """Legt Laufzeittabellen fuer PINs, Sessions und App-Einstellungen an."""
         self.cursor.execute(
             """
             CREATE TABLE IF NOT EXISTS Station_Pin (
@@ -278,7 +328,7 @@ class Database:
             """
         )
 
-        # Seed default config if not exists
+        # Legt genau einmal die Standardkonfiguration fuer Backups an.
         self.cursor.execute("SELECT COUNT(*) FROM Backup_Config")
         if self.cursor.fetchone()[0] == 0:
             self.cursor.execute(
@@ -433,7 +483,7 @@ class Database:
     def get_present_classes(self) -> List[Dict[str, Any]]:
         """Liefert alle vorhandenen Klassenkombinationen mit Profil-Flag.
 
-        Returns: [{'stufe': 5, 'buchstabe': 'a', 'has_profil': True}, ...]
+        Rueckgabe: [{'stufe': 5, 'buchstabe': 'a', 'has_profil': True}, ...]
         """
         self.cursor.execute(
             """
@@ -486,10 +536,12 @@ class Database:
         return int(cur.rowcount)
 
     def get_riegenfuehrer(self):
+        """Liefert alle vorhandenen Riegenfuehrer aus der Datenbank."""
         self.cursor.execute("SELECT * FROM Riegenfuehrer")
         return self.cursor.fetchall()
 
     def get_riege(self, riegenfuehrer_id):
+        """Liefert alle Schueler einer Riege im Format fuer die Erfassungsansicht."""
         self.cursor.execute(
             """
             SELECT SchuelerID, Name, Vorname, Geschlecht, Bundesjugentspielalter, Klasse, Klassenbuchstabe, Profil
@@ -511,10 +563,9 @@ class Database:
                 "Klasse": row[5],
                 "Klassenbuchstabe": row[6],
                 "Profil": row[7],
-                "Round1": None,
-                "Round2": None,
-                "Round3": None,
             }
+            for round_nr in range(1, 6):
+                schueler[f"Round{round_nr}"] = None
             schueler_liste.append(schueler)
 
         return schueler_liste
@@ -654,6 +705,7 @@ class Database:
     # ============================================
 
     def get_rounds_done(self, schueler_id, disziplin):
+        """Liefert bereits gespeicherte Runden eines Schuelers fuer eine Disziplin."""
         self.cursor.execute(
             """
             SELECT
@@ -686,6 +738,7 @@ class Database:
         source_ipad_number,
         source_station,
     ):
+        """Speichert oder aktualisiert ein Ergebnis fuer Schueler, Disziplin und Runde."""
         print(
             f"Adding entry: SchuelerID={schueler_id}, Disziplin={disziplin}, ErgebnisNR={ergebnis_nr}, result_value={result_value}, status={status}, source_ipad_number={source_ipad_number}, source_station={source_station}"
         )
@@ -708,7 +761,11 @@ class Database:
         )
 
     def get_bestenliste(
-        self, disziplin: str, limit: int = 10, geschlecht: Optional[str] = None
+        self,
+        disziplin: str,
+        limit: int = 10,
+        geschlecht: Optional[str] = None,
+        result_format_override: Optional[str] = None,
     ) -> List[Dict]:
         """
         Holt die Bestenliste für eine Disziplin.
@@ -716,18 +773,22 @@ class Database:
         Bei Distanz: höchster Wert ist besser
         """
         # Disziplin-Format prüfen
-        self.cursor.execute(
-            "SELECT result_format FROM Disziplinen WHERE name = ?", (disziplin,)
-        )
-        row = self.cursor.fetchone()
-        result_format = row[0] if row else "distance"
+        if result_format_override in ("time", "distance"):
+            result_format = result_format_override
+        else:
+            self.cursor.execute(
+                "SELECT result_format FROM Disziplinen WHERE name = ?", (disziplin,)
+            )
+            row = self.cursor.fetchone()
+            result_format = row[0] if row else "distance"
 
         order = "ASC" if result_format == "time" else "DESC"
+        aggregate = "MIN" if result_format == "time" else "MAX"
         geschlecht_filter = "AND s.Geschlecht = ?" if geschlecht else ""
 
         query = f"""
             SELECT s.SchuelerID, s.Name, s.Vorname, s.Klasse, s.Klassenbuchstabe,
-                   s.Geschlecht, MAX(e.result_value) as best_result
+                   s.Geschlecht, {aggregate}(e.result_value) as best_result
             FROM Schueler s
             JOIN Schueler_Disziplin_Ergebnis e ON e.SchuelerID = s.SchuelerID
             WHERE e.Disziplin = ? AND e.status = 'OK' AND e.result_value IS NOT NULL
@@ -949,6 +1010,7 @@ class Database:
         length: int = 6,
         discipline: Optional[str] = None,
     ) -> str:
+        """Erzeugt einen eindeutigen numerischen PIN fuer eine Station."""
         pin = None
         attempts = 0
         discipline_val = discipline or station
@@ -978,6 +1040,7 @@ class Database:
         length: int = 6,
         discipline: Optional[str] = None,
     ) -> str:
+        """Liefert den aktiven Stations-PIN oder erzeugt einen neuen."""
         discipline_val = discipline or station
 
         row = self.cursor.execute(
@@ -998,6 +1061,7 @@ class Database:
     def claim_station_pin(
         self, pin: str, device_id: str, discipline: Optional[str] = None
     ) -> Tuple[bool, str]:
+        """Reserviert einen Stations-PIN fuer ein Geraet und prueft Logingrenzen."""
         row = self.cursor.execute(
             "SELECT pin, max_logins, active, discipline FROM Station_Pin WHERE pin = ?",
             (pin,),
@@ -1005,17 +1069,16 @@ class Database:
         if not row or row[2] != 1:
             return False, "PIN nicht aktiv oder unbekannt"
 
-        # NOTE: Discipline mapping is currently optional.
-        # The login form always provides a discipline, but pins are station-scoped.
-        # Enforcing an exact match makes it impossible to use a default station pin
-        # across different disciplines (see tests/integration usage).
+        # Die Disziplinpruefung bleibt hier absichtlich locker.
+        # Das Formular uebergibt zwar eine Disziplin, der PIN ist fachlich aber stationsbezogen.
+        # Eine harte Gleichheitspruefung wuerde Standard-PINs fuer mehrere Disziplinen unbrauchbar machen.
 
         active_sessions = self.cursor.execute(
             "SELECT device_id FROM Station_Session WHERE pin = ? AND active = 1",
             (pin,),
         ).fetchall()
 
-        # Idempotent: if same device already active, allow.
+        # Idempotenz: Dasselbe Geraet darf denselben aktiven PIN erneut anfragen.
         if any(sess[0] != device_id for sess in active_sessions):
             return False, "PIN bereits durch anderes Gerät aktiv"
 
@@ -1036,6 +1099,7 @@ class Database:
         return True, "OK"
 
     def revoke_station_pin(self, pin: str, device_id: Optional[str] = None) -> int:
+        """Deaktiviert eine oder mehrere aktive Sessions eines Stations-PIN."""
         if device_id:
             cur = self._execute_tx(
                 "UPDATE Station_Session SET active = 0 WHERE pin = ? AND device_id = ? AND active = 1",
@@ -1049,6 +1113,7 @@ class Database:
         return cur.rowcount
 
     def deactivate_pin(self, pin: str) -> int:
+        """Deaktiviert einen PIN und alle dazugehoerigen Sessions."""
         self._execute_tx(
             "UPDATE Station_Session SET active = 0 WHERE pin = ? AND active = 1",
             (pin,),
@@ -1060,6 +1125,7 @@ class Database:
         return cur.rowcount
 
     def delete_pin(self, pin: str) -> int:
+        """Loescht einen PIN inklusive aller zugehoerigen Sessions."""
         self._execute_tx("DELETE FROM Station_Session WHERE pin = ?", (pin,))
         cur = self._execute_tx("DELETE FROM Station_Pin WHERE pin = ?", (pin,))
         return cur.rowcount
@@ -1070,6 +1136,7 @@ class Database:
         pin: Optional[str] = None,
         device_id: Optional[str] = None,
     ) -> int:
+        """Deaktiviert Sessions anhand verschiedener Filterparameter."""
         if not any([session_id, pin, device_id]):
             return 0
         query = "UPDATE Station_Session SET active = 0 WHERE active = 1"
@@ -1092,6 +1159,7 @@ class Database:
         pin: Optional[str] = None,
         device_id: Optional[str] = None,
     ) -> int:
+        """Loescht Sessions anhand verschiedener Filterparameter."""
         if not any([session_id, pin, device_id]):
             return 0
         query = "DELETE FROM Station_Session WHERE 1=1"
@@ -1109,6 +1177,7 @@ class Database:
         return cur.rowcount
 
     def set_setting(self, key: str, value: Any) -> None:
+        """Speichert eine Anwendungseinstellung in der Event-Datenbank."""
         value_str = json.dumps(value) if not isinstance(value, str) else value
         self._execute_tx(
             """
@@ -1120,6 +1189,7 @@ class Database:
         )
 
     def get_setting(self, key: str, default: Any = None) -> Any:
+        """Liest eine Anwendungseinstellung aus der Event-Datenbank."""
         row = self.cursor.execute(
             "SELECT value FROM App_Settings WHERE key = ?",
             (key,),
@@ -1133,6 +1203,7 @@ class Database:
             return raw
 
     def delete_setting(self, key: str) -> int:
+        """Loescht eine gespeicherte Anwendungseinstellung."""
         cur = self._execute_tx("DELETE FROM App_Settings WHERE key = ?", (key,))
         return cur.rowcount
 
@@ -1295,6 +1366,7 @@ class Database:
         Database._backup_stop_event = stop_event
 
         def backup_loop():
+            """Prueft zyklisch, ob ein automatisches Backup faellig ist."""
             while not stop_event.is_set():
                 try:
                     config = self.get_backup_config()
@@ -1382,6 +1454,7 @@ class Database:
         return stats
 
     def close(self):
+        """Schliesst die Datenbankverbindung sauber und beendet Hilfsthreads."""
         self.stop_auto_backup()
         self.connection.close()
 

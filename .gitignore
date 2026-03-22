@@ -13,6 +13,7 @@ __pycache__/
 *.sqlite
 *.sqlite3
 *.db-journal
+database/
 .pytest_cache/
 .coverage
 htmlcov/

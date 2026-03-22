@@ -1,3 +1,5 @@
+"""Routen fuer Login, Administration, Dashboard und Event-Ansichten."""
+
 import io
 import json
 import secrets
@@ -34,9 +36,9 @@ from app.services_riegen import (
 
 auth_bp = Blueprint("auth", __name__, template_folder="../templates")
 
-# simple in-memory rate limiting (per IP + mode)
+# Einfaches In-Memory-Rate-Limit pro IP und Login-Modus.
 _RATE_LIMIT_BUCKETS = {}
-_RATE_LIMIT_WINDOW = 300  # seconds
+_RATE_LIMIT_WINDOW = 300  # Sekunden
 _RATE_LIMIT_MAX = 10
 _DEVICE_COOKIE_NAME = "device_id"
 _EVENT_PASSWORD_KEY = "event_password"
@@ -46,6 +48,7 @@ _DEFAULT_EVENT_PASSWORD = "event123"
 def _check_rate_limit(
     key: str, limit: int = _RATE_LIMIT_MAX, window: int = _RATE_LIMIT_WINDOW
 ):
+    """Prueft das einfache In-Memory-Rate-Limit fuer einen Schluessel."""
     now = time.time()
     bucket = _RATE_LIMIT_BUCKETS.setdefault(key, [])
     _RATE_LIMIT_BUCKETS[key] = [ts for ts in bucket if ts > now - window]
@@ -56,19 +59,22 @@ def _check_rate_limit(
 
 
 def _require_admin():
+    """Prueft, ob die aktuelle Session Admin-Rechte hat."""
     return session.get("role") == "admin"
 
 
 def _require_admin_or_event():
+    """Prueft, ob die Session Admin- oder Event-Rechte hat."""
     return session.get("role") in ("admin", "event")
 
 
 def _require_event():
+    """Prueft, ob die aktuelle Session als Event eingeloggt ist."""
     return session.get("role") == "event"
 
 
 def _disziplin_to_dict(d) -> dict:
-    """Convert Disziplin dataclass to dict for JSON/template."""
+    """Wandelt eine Disziplin in ein Dictionary fuer JSON und Templates um."""
     return {
         "id": d.id,
         "name": d.name,
@@ -78,6 +84,7 @@ def _disziplin_to_dict(d) -> dict:
 
 
 def _get_device_id() -> str:
+    """Liest oder erzeugt eine stabile Geraete-ID fuer Stations-Logins."""
     return (
         request.cookies.get(_DEVICE_COOKIE_NAME)
         or request.headers.get("X-Device-Id")
@@ -87,6 +94,7 @@ def _get_device_id() -> str:
 
 
 def _get_event_password():
+    """Liest das aktuell gueltige Event-Passwort aus DB oder Konfiguration."""
     db = get_db()
     if db is None:
         return current_app.config.get("EVENT_PASSWORD", _DEFAULT_EVENT_PASSWORD)
@@ -97,17 +105,18 @@ def _get_event_password():
 
 
 def _seed_default_pin():
+    """Stellt sicher, dass beim Start ein Standard-PIN fuer eine Station existiert."""
     seeded_flag = "_DEFAULT_PIN_SEEDED"
     if current_app.config.get(seeded_flag):
         return
     db = get_db()
     if db is None:
-        # No database yet, skip seeding
+        # Ohne aktive Datenbank kann noch kein Standard-PIN erzeugt werden.
         return
     station_name = current_app.config.get("STATION_DEFAULT_NAME", "Station")
     desired_pin = current_app.config.get("STATION_DEFAULT_PIN")
-    max_logins = 1  # hardcoded requirement
-    length = 6
+    max_logins = current_app.config.get("STATION_DEFAULT_MAX_LOGINS", 1)
+    length = current_app.config.get("STATION_DEFAULT_PIN_LENGTH", 6)
 
     if desired_pin:
         row = db.cursor.execute(
@@ -136,11 +145,13 @@ def _seed_default_pin():
 
 @auth_bp.before_app_request
 def _before_request_seed_pin():
+    """Fuehrt vor jeder Anfrage die Initialisierung des Standard-PIN aus."""
     _seed_default_pin()
 
 
 @auth_bp.route("/login", methods=["GET", "POST"])
 def login():
+    """Verarbeitet den Login fuer Admin-, Event- und Stationszugriffe."""
     if request.method == "POST":
         login_mode = request.form.get("mode", "station")
         rate_key = f"{login_mode}:{request.remote_addr}"
@@ -186,7 +197,7 @@ def login():
             flash("Event-Login erfolgreich.", "success")
             return redirect(url_for("auth.event_overview"))
 
-        # station login
+        # Stations-Login erwartet immer eine konkrete Disziplin.
         if not discipline:
             flash("Bitte Disziplin auswählen.", "error")
             resp = make_response(render_template("auth.html"))
@@ -263,6 +274,7 @@ def login():
 
 @auth_bp.route("/logout", methods=["POST", "GET"])
 def logout():
+    """Meldet den aktuellen Nutzer ab und raeumt Stations-Sessions auf."""
     role = session.get("role")
     pin = session.get("station_pin")
     device_id = session.get("device_id")
@@ -296,14 +308,14 @@ def admin_dashboard():
     if not _require_admin():
         return redirect(url_for("auth.login"))
 
-    # Database selection
+    # Die Datenbankauswahl wird aus der globalen Registry geladen.
     registry = _get_registry()
     active_db = registry.get_active_db_path()
     dbs = registry.list_dbs()
 
     db = get_db()
 
-    # Handle case when no database is selected yet
+    # Ohne aktive Datenbank zeigt das Dashboard nur Verwaltungsfunktionen ohne Laufzeitdaten.
     pins = []
     event_pin = None
     if db is not None:
@@ -375,9 +387,8 @@ def admin_create_station():
     return jsonify({"error": "Stationen werden über Disziplinen verwaltet."}), 410
 
 
-# NOTE:
-# Stations == Disziplinen: Stationen werden nicht mehr separat verwaltet.
-# Änderungen passieren über die Disziplinen-Verwaltung (/admin/disziplinen).
+# Stationen entsprechen fachlich den Disziplinen und werden deshalb nicht separat gepflegt.
+# Änderungen laufen zentral über die Disziplinen-Verwaltung unter `/admin/disziplinen`.
 
 
 @auth_bp.route("/admin/generate_pin", methods=["POST"])
@@ -397,7 +408,7 @@ def admin_generate_pin():
     registry = _get_registry()
     disziplin_id = int(station_id)
 
-    # disziplin_id -> name (für Speicherung in Station_Pin.station / Station_Pin.discipline)
+    # Die PIN-Tabelle speichert Namen, deshalb wird die ID vorher aufgelöst.
     disziplin = registry.get_disziplin(disziplin_id)
     if not disziplin:
         return jsonify({"error": "Disziplin nicht gefunden"}), 404
@@ -430,6 +441,7 @@ def admin_generate_pin():
 
 @auth_bp.route("/admin/revoke_pin", methods=["POST"])
 def admin_revoke_pin():
+    """Deaktiviert alle aktiven Sessions zu einem Stations-PIN."""
     if not _require_admin():
         return jsonify({"error": "Unauthorized"}), 401
     payload = request.get_json(silent=True) or {}
@@ -445,6 +457,7 @@ def admin_revoke_pin():
 
 @auth_bp.route("/admin/pins/delete", methods=["POST"])
 def admin_delete_pin():
+    """Loescht einen Stations-PIN inklusive Sessions dauerhaft."""
     if not _require_admin():
         return jsonify({"error": "Unauthorized"}), 401
     payload = request.get_json(silent=True) or {}
@@ -460,6 +473,7 @@ def admin_delete_pin():
 
 @auth_bp.route("/admin/pins/deactivate", methods=["POST"])
 def admin_deactivate_pin():
+    """Deaktiviert einen Stations-PIN, ohne ihn aus der Datenbank zu entfernen."""
     if not _require_admin():
         return jsonify({"error": "Unauthorized"}), 401
     payload = request.get_json(silent=True) or {}
@@ -475,6 +489,7 @@ def admin_deactivate_pin():
 
 @auth_bp.route("/admin/sessions/deactivate", methods=["POST"])
 def admin_deactivate_session():
+    """Deaktiviert gezielt aktive Stations-Sessions."""
     if not _require_admin():
         return jsonify({"error": "Unauthorized"}), 401
     payload = request.get_json(silent=True) or {}
@@ -491,6 +506,7 @@ def admin_deactivate_session():
 
 @auth_bp.route("/admin/sessions/delete", methods=["POST"])
 def admin_delete_session():
+    """Loescht gespeicherte Stations-Sessions."""
     if not _require_admin():
         return jsonify({"error": "Unauthorized"}), 401
     payload = request.get_json(silent=True) or {}
@@ -531,7 +547,7 @@ def admin_generate_event_pin():
     if not _require_admin():
         return jsonify({"error": "Unauthorized"}), 401
 
-    # 6-stellig, kryptografisch zufällig (führende Nullen erlaubt)
+    # Sechs Stellen, kryptografisch zufaellig, fuehrende Nullen sind erlaubt.
     new_pin = "".join(secrets.choice("0123456789") for _ in range(6))
 
     db = get_db()
@@ -543,6 +559,7 @@ def admin_generate_event_pin():
 
 @auth_bp.route("/admin/backup", methods=["POST"])
 def admin_backup():
+    """Stoesst ein manuelles Backup der aktiven Event-Datenbank an."""
     if not _require_admin():
         return jsonify({"error": "Unauthorized"}), 401
     payload = request.get_json(silent=True) or {}
@@ -556,6 +573,7 @@ def admin_backup():
 
 @auth_bp.route("/admin/backup/config", methods=["PUT"])
 def admin_backup_config():
+    """Aktualisiert die Backup-Konfiguration der aktiven Datenbank."""
     if not _require_admin():
         return jsonify({"error": "Unauthorized"}), 401
     payload = request.get_json(silent=True) or {}
@@ -573,6 +591,7 @@ def admin_backup_config():
 
 @auth_bp.route("/admin/upload_db", methods=["POST"])
 def admin_upload_db():
+    """Laedt eine Datenbankdatei hoch, registriert sie und aktiviert sie."""
     if not _require_admin():
         flash("Nicht berechtigt.", "error")
         return redirect(url_for("auth.login"))
@@ -594,7 +613,7 @@ def admin_upload_db():
         backup_label = request.form.get("label") or "upload"
         backup_path = db.backup_to_file(label=backup_label, backup_type="upload")
 
-    # Upload DB wird in database-Verzeichnis gespeichert und registriert
+    # Hochgeladene Datenbanken landen gesammelt im Projektordner `database/`.
     registry = _get_registry()
     target_dir = Path(current_app.root_path).parent / "database"
     target_dir.mkdir(parents=True, exist_ok=True)
@@ -609,7 +628,7 @@ def admin_upload_db():
             db.close()
         shutil.move(str(temp_path), target_path)
 
-        # Register and activate the uploaded database
+        # Die hochgeladene Datenbank wird sofort registriert und aktiviert.
         registry.register_db(path=target_path, name=filename, label="Upload")
         registry.set_active_db_path(str(target_path))
 
@@ -625,17 +644,19 @@ def admin_upload_db():
 
 
 # ============================================
-# Riegeneinteilung (DB Auswahl + CSV Import + Riegen)
+# Riegeneinteilung (Datenbankauswahl, CSV-Import und Riegenverwaltung)
 # ============================================
 
 
 def _get_registry() -> DbRegistry:
-    project_root = Path(current_app.root_path).parent.parent
+    """Erzeugt die Registry-Instanz fuer die globale Meta-Datenbank."""
+    project_root = Path(current_app.root_path).parent
     return DbRegistry(default_meta_db_path(project_root))
 
 
 @auth_bp.route("/admin/riegeneinteilung", methods=["GET"])
 def admin_riegeneinteilung():
+    """Zeigt die Verwaltungsseite fuer automatische und manuelle Riegeneinteilung."""
     if not _require_admin():
         return redirect(url_for("auth.login"))
 
@@ -645,7 +666,7 @@ def admin_riegeneinteilung():
 
     db = get_db()
 
-    # Handle case when no database is selected yet
+    # Ohne aktive Datenbank bleibt die Seite bedienbar, zeigt aber leere Kennzahlen.
     if db is None:
         riegen = []
         stats = {
@@ -690,6 +711,7 @@ def admin_riegeneinteilung():
 
 @auth_bp.route("/admin/select_db", methods=["POST"])
 def admin_select_db():
+    """Setzt eine registrierte Datenbank als aktive Event-Datenbank."""
     if not _require_admin():
         return redirect(url_for("auth.login"))
 
@@ -706,7 +728,7 @@ def admin_select_db():
 
     registry.set_active_db_path(entry.path)
 
-    # Close cached connection so next request uses the selected DB
+    # Die gecachte Verbindung muss weg, damit der naechste Request die neue DB oeffnet.
     try:
         db = get_db()
         db.close()
@@ -719,6 +741,7 @@ def admin_select_db():
 
 @auth_bp.route("/admin/delete_db", methods=["POST"])
 def admin_delete_db():
+    """Entfernt eine Datenbank aus Registry und optional vom Dateisystem."""
     if not _require_admin():
         return redirect(url_for("auth.login"))
 
@@ -733,11 +756,11 @@ def admin_delete_db():
         flash("Datenbank nicht gefunden.", "error")
         return redirect(url_for("auth.admin_dashboard"))
 
-    # Prüfen ob es die aktuell aktive DB ist
+    # Merkt sich, ob gerade die aktive Datenbank geloescht werden soll.
     active_path = registry.get_active_db_path()
     was_active = active_path and Path(active_path) == Path(entry.path)
 
-    # Datenbank löschen (Registry-Eintrag + Datei)
+    # Entfernt den Registry-Eintrag und optional die eigentliche Datei.
     delete_file = request.form.get("delete_file", "true").lower() == "true"
     success = registry.delete_db(name, delete_file=delete_file)
 
@@ -745,7 +768,7 @@ def admin_delete_db():
         flash("Löschen fehlgeschlagen.", "error")
         return redirect(url_for("auth.admin_dashboard"))
 
-    # Falls die aktive DB gelöscht wurde, Connection schließen
+    # Bei geloeschter aktiver DB darf keine alte Verbindung im Request-Kontext haengen bleiben.
     if was_active:
         try:
             db = get_db()
@@ -760,6 +783,7 @@ def admin_delete_db():
 
 @auth_bp.route("/admin/riegeneinteilung/import_csv", methods=["POST"])
 def admin_import_csv_to_new_db():
+    """Importiert eine Schueler-CSV in eine neue Event-Datenbank."""
     if not _require_admin():
         return redirect(url_for("auth.login"))
 
@@ -775,7 +799,7 @@ def admin_import_csv_to_new_db():
 
     target_dir = Path(current_app.root_path).parent / "database"
 
-    # Decode upload as text and import (delimiter always ;)
+    # Upload wird als Text gelesen; das Projekt erwartet hier immer Semikolon-Trennung.
     try:
         text = file.stream.read().decode("utf-8-sig", errors="replace")
         result = import_students_csv_to_new_db(
@@ -790,19 +814,19 @@ def admin_import_csv_to_new_db():
     registry = _get_registry()
     registry.register_db(path=result.db_path, name=result.db_name, label="")
 
-    # Always auto-activate the new DB
+    # Nach dem Import wird die neue Event-Datenbank sofort aktiv gesetzt.
     registry.set_active_db_path(result.db_path)
 
-    # Clear cached DB connection so get_db() loads the new database
+    # So wird im selben Request keine veraltete Verbindung weiterverwendet.
     g.pop("db", None)
 
-    # Auto-create riegen with placeholder names
+    # Direkt nach dem Import werden Platzhalter-Riegen erzeugt, damit die App startklar ist.
     riegen_result = None
     try:
         db = get_db()
         riegen_result = auto_create_riegen_and_assign(
             db=db,
-            leader_names=[],  # Use placeholders
+            leader_names=[],  # Leere Liste erzwingt Platzhalternamen.
             keep_existing_riegen=False,
         )
     except Exception as exc:
@@ -828,7 +852,7 @@ def admin_riegen_einteilen():
     try:
         result = auto_create_riegen_and_assign(
             db=db,
-            leader_names=[],  # No names - use placeholders
+            leader_names=[],  # Ohne Namen werden Platzhalter erzeugt.
             keep_existing_riegen=keep_existing,
         )
         stats = db.get_riegen_stats()
@@ -886,6 +910,7 @@ def admin_replace_leader_names():
 
 @auth_bp.route("/admin/riegeneinteilung/update_riege", methods=["POST"])
 def admin_update_riege():
+    """Aktualisiert Stammdaten einer einzelnen Riege und weist optional neu zu."""
     if not _require_admin():
         return redirect(url_for("auth.login"))
 
@@ -922,7 +947,7 @@ def admin_update_riege():
             return redirect(url_for("auth.admin_riegeneinteilung"))
 
         if reassign:
-            # Entkoppeln und neu zuweisen für diese Riege
+            # Bei Neuverteilung werden alte Zuweisungen zuerst geloest und dann neu aufgebaut.
             db._execute_tx(
                 "UPDATE Schueler SET RiegenfuehrerID = NULL WHERE RiegenfuehrerID = ?",
                 (riegen_id,),
@@ -947,6 +972,7 @@ def admin_update_riege():
 
 @auth_bp.route("/admin/riegeneinteilung/delete_riege", methods=["POST"])
 def admin_delete_riege():
+    """Loescht eine Riege und hebt ihre Zuweisungen auf."""
     if not _require_admin():
         return redirect(url_for("auth.login"))
 
@@ -976,12 +1002,13 @@ def admin_delete_riege():
 
 
 # ============================================
-# Disziplin-CRUD (stored in meta DB, not per-event DB)
+# Disziplin-CRUD (liegt in der Meta-Datenbank, nicht in einzelnen Event-DBs)
 # ============================================
 
 
 @auth_bp.route("/admin/disziplinen", methods=["GET"])
 def admin_disziplinen():
+    """Zeigt die Administrationsseite fuer globale Disziplinen an."""
     if not _require_admin():
         return redirect(url_for("auth.login"))
 
@@ -993,6 +1020,7 @@ def admin_disziplinen():
 
 @auth_bp.route("/admin/disziplinen/list", methods=["GET"])
 def admin_disziplinen_list():
+    """Liefert alle globalen Disziplinen als JSON-Liste."""
     if not _require_admin():
         return jsonify({"error": "Unauthorized"}), 401
 
@@ -1003,6 +1031,7 @@ def admin_disziplinen_list():
 
 @auth_bp.route("/admin/disziplinen/create", methods=["POST"])
 def admin_disziplinen_create():
+    """Legt eine neue globale Disziplin an."""
     if not _require_admin():
         return jsonify({"error": "Unauthorized"}), 401
 
@@ -1032,6 +1061,7 @@ def admin_disziplinen_create():
 
 @auth_bp.route("/admin/disziplinen/<int:disziplin_id>", methods=["GET"])
 def admin_disziplinen_get(disziplin_id: int):
+    """Liefert die Daten einer einzelnen Disziplin."""
     if not _require_admin():
         return jsonify({"error": "Unauthorized"}), 401
 
@@ -1044,6 +1074,7 @@ def admin_disziplinen_get(disziplin_id: int):
 
 @auth_bp.route("/admin/disziplinen/<int:disziplin_id>", methods=["PUT"])
 def admin_disziplinen_update(disziplin_id: int):
+    """Aktualisiert eine vorhandene globale Disziplin."""
     if not _require_admin():
         return jsonify({"error": "Unauthorized"}), 401
 
@@ -1068,6 +1099,7 @@ def admin_disziplinen_update(disziplin_id: int):
 
 @auth_bp.route("/admin/disziplinen/<int:disziplin_id>", methods=["DELETE"])
 def admin_disziplinen_delete(disziplin_id: int):
+    """Loescht eine globale Disziplin."""
     if not _require_admin():
         return jsonify({"error": "Unauthorized"}), 401
 
@@ -1079,20 +1111,23 @@ def admin_disziplinen_delete(disziplin_id: int):
 
 
 # ============================================
-# Dashboard & Stats (Event + Admin)
+# Dashboard und Statistiken (Event und Admin)
 # ============================================
 
 
 def _require_dashboard_access():
+    """Prueft den Zugriff auf Dashboard-Seiten fuer Admin und Event."""
     return session.get("role") in ("admin", "event")
 
 
 def _require_event_access():
+    """Prueft den Zugriff auf reine Event-Seiten."""
     return session.get("role") == "event"
 
 
 @auth_bp.route("/dashboard", methods=["GET"])
 def dashboard():
+    """Rendert das Dashboard mit Riegenfortschritt und Gesamtstatistiken."""
     if not _require_dashboard_access():
         return redirect(url_for("auth.login"))
 
@@ -1114,6 +1149,7 @@ def dashboard():
 
 @auth_bp.route("/dashboard/data", methods=["GET"])
 def dashboard_data():
+    """Liefert Dashboard-Daten fuer asynchrone Aktualisierungen."""
     if not _require_dashboard_access():
         return jsonify({"error": "Unauthorized"}), 401
 
@@ -1128,6 +1164,7 @@ def dashboard_data():
 
 @auth_bp.route("/event/overview", methods=["GET"])
 def event_overview():
+    """Zeigt die Event-Uebersicht mit Bestenliste und Disziplinfilter."""
     if not _require_event_access():
         return redirect(url_for("auth.login"))
 
@@ -1147,7 +1184,10 @@ def event_overview():
     bestenliste = []
     if disziplin_filter and db:
         bestenliste = db.get_bestenliste(
-            disziplin_filter, limit=20, geschlecht=geschlecht_filter
+            disziplin_filter,
+            limit=20,
+            geschlecht=geschlecht_filter,
+            result_format_override=selected_meta["format"] if selected_meta else None,
         )
 
     return render_template(
@@ -1165,6 +1205,7 @@ def event_overview():
 
 @auth_bp.route("/stats", methods=["GET"])
 def stats_page():
+    """Zeigt die separate Statistikseite fuer das Event an."""
     if not _require_event_access():
         return redirect(url_for("auth.login"))
 
@@ -1178,10 +1219,16 @@ def stats_page():
         selected_disziplin = disziplinen[0]["name"]
 
     bestenliste = []
+    selected_meta = next(
+        (d for d in disziplinen if d["name"] == selected_disziplin), None
+    )
     if selected_disziplin and db:
         geschlecht_filter = request.args.get("geschlecht")
         bestenliste = db.get_bestenliste(
-            selected_disziplin, limit=20, geschlecht=geschlecht_filter
+            selected_disziplin,
+            limit=20,
+            geschlecht=geschlecht_filter,
+            result_format_override=selected_meta["format"] if selected_meta else None,
         )
 
     return render_template(
@@ -1195,6 +1242,7 @@ def stats_page():
 
 @auth_bp.route("/stats/bestenliste", methods=["GET"])
 def stats_bestenliste():
+    """Liefert die Bestenliste einer Disziplin als JSON-Antwort."""
     if not _require_event_access():
         return jsonify({"error": "Unauthorized"}), 401
 
@@ -1205,6 +1253,13 @@ def stats_bestenliste():
 
     geschlecht = request.args.get("geschlecht")
     limit = int(request.args.get("limit", 20))
+    registry = _get_registry()
+    selected_meta = registry.get_disziplin_by_name(disziplin)
 
-    bestenliste = db.get_bestenliste(disziplin, limit=limit, geschlecht=geschlecht)
+    bestenliste = db.get_bestenliste(
+        disziplin,
+        limit=limit,
+        geschlecht=geschlecht,
+        result_format_override=selected_meta.format if selected_meta else None,
+    )
     return jsonify({"bestenliste": bestenliste, "disziplin": disziplin})

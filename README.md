@@ -1,311 +1,126 @@
-# BJS – Bundesjugendspiele Verwaltung
+# BJS Verwaltung
 
-Eine Flask-Webanwendung zur Verwaltung von Schülerdaten, Riegen und Disziplinen für Bundesjugendspiele. Das Projekt bietet verbesserte Sicherheit, modulare Architektur und ein separates Admin-Tool zur Offline-Datenvorbereitung.
+Webanwendung zur Verwaltung von Bundesjugendspielen mit Fokus auf:
 
----
+- Import von Schuelerdaten aus CSV
+- automatische Riegeneinteilung
+- Stations-Login per PIN
+- Ergebniserfassung pro Disziplin
+- Dashboard, Bestenlisten und einfache Event-Statistiken
 
-## Strukturübersicht
+## Ziel des Projekts
 
-```
-├── app/                        # Flask-Webanwendung
-│   ├── __init__.py             # App-Factory, Blueprints, DB-Setup
-│   ├── database/
-│   │   ├── database.py         # Haupt-Datenbank-Klasse (Runtime)
-│   │   ├── create_data.py      # Hilfsskripte für Testdaten
-│   │   └── bjs_database_YYYY.db # SQLite-Datenbank (Jahr-basiert)
-│   ├── routes/
-│   │   ├── auth.py             # Login/Logout, Admin-Dashboard, PIN-Verwaltung
-│   │   └── input.py            # Erfassungs-Flow (Ergebnisse, Abwesenheit)
-│   ├── static/
-│   │   ├── auth.css            # Styles für Login
-│   │   └── input.css           # Styles für Erfassung
-│   └── templates/
-│       ├── auth.html           # Login-Seite (Station + Admin)
-│       ├── input.html          # Ergebnis-Erfassung
-│       ├── admin_dashboard.html # Admin-Dashboard
-│       ├── admin_disziplinen.html # Disziplin-Verwaltung
-│       └── dashboard.html      # Fortschritts-Übersicht
-├── admin/                      # Offline-Admin-Tool (Kivy)
-│   ├── admin.py                # Kivy-App für Riegen-/DB-Verwaltung
-│   ├── admin_database.py       # DB-Schema und Hilfsfunktionen
-│   ├── cli.py                  # CLI für Headless-Export
-│   ├── utils.py                # CSV-Import, Riegen-Erstellung
-│   ├── main.kv                 # Kivy-UI-Definition
-│   └── test_data.csv           # Beispiel-CSV für Import
-├── scripts/                    # Hilfsskripte
-│   ├── start_dev.sh            # Entwicklungsserver starten
-│   ├── start_prod.sh           # Produktionsserver starten
-│   └── admin_export.sh         # Admin CLI Export-Skript
-├── tests/                      # Pytest-Tests
-├── config.py                   # Konfigurationsklassen (Dev/Prod/Test)
-├── main.py                     # Flask-App starten
-├── requirements.txt            # Python-Abhängigkeiten
-└── requirements-dev.txt        # Entwickler-Abhängigkeiten
-```
+Die Anwendung dient dazu, einen Sporttag oder Bundesjugendspiele digital zu begleiten. Eine Administration importiert zuerst die Schuelerdaten und aktiviert eine Event-Datenbank. Danach koennen Stationen per PIN Ergebnisse erfassen, waehrend Event- oder Admin-Nutzer den Fortschritt live einsehen.
 
----
+## Funktionen
+
+- CSV-Import in eine neue SQLite-Datenbank
+- automatische Erstellung von Riegen mit Platzhalternamen
+- nachtraegliches Ersetzen der Platzhalternamen per CSV
+- globale Disziplinverwaltung mit Format und Rundenzahl
+- Stations-PINs fuer die Ergebniserfassung
+- Event-Zugang fuer Uebersicht und Bestenlisten
+- Backups der aktiven Datenbank
 
 ## Schnellstart
 
-### 1. Umgebung einrichten
+### 1. Umgebung vorbereiten
 
 ```bash
-python -m venv venv
-source venv/bin/activate  # Windows: venv\Scripts\activate
+python -m venv .venv
+.venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-### 2. Umgebungsvariablen konfigurieren
-
-Erstelle eine `.env`-Datei im Projektverzeichnis:
+### 2. Optionale `.env` anlegen
 
 ```env
-SECRET_KEY=dein-geheimer-schluessel-hier
-ADMIN_PASSWORD=sicheres-admin-passwort
-DB_PATH=app/database/bjs_database_2025.db
-STATION_DEFAULT_PIN=123456
+SECRET_KEY=bitte-aendern
+ADMIN_PASSWORD=admin123
 STATION_DEFAULT_NAME=Station
+STATION_DEFAULT_PIN=123456
 STATION_DEFAULT_MAX_LOGINS=1
 STATION_DEFAULT_PIN_LENGTH=6
 ```
 
-### 3. Flask-App starten
+### 3. Anwendung starten
 
 ```bash
 python main.py
 ```
 
-Die Anwendung läuft auf **http://localhost:5000**
+Standardadresse:
 
----
-
-## Datenfluss
-
-```
-┌─────────────────┐     CSV-Import      ┌──────────────────┐
-│  Schülerdaten   │ ──────────────────► │   Admin-Tool     │
-│  (CSV-Datei)    │                     │   (Kivy/CLI)     │
-└─────────────────┘                     └────────┬─────────┘
-                                                 │
-                                                 │ Erstellt DB offline
-                                                 ▼
-                                        ┌──────────────────┐
-                                        │  SQLite-DB       │
-                                        │  (bjs_YYYY.db)   │
-                                        └────────┬─────────┘
-                                                 │
-                        ┌────────────────────────┼────────────────────────┐
-                        │                        │                        │
-                        ▼                        ▼                        ▼
-               ┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
-               │  Admin-Upload   │     │  Station-Login  │     │  Dashboard      │
-               │  (Web-UI)       │     │  (PIN-basiert)  │     │  (Fortschritt)  │
-               └────────┬────────┘     └────────┬────────┘     └─────────────────┘
-                        │                       │
-                        ▼                       ▼
-               ┌─────────────────────────────────────────────┐
-               │           Flask-Webanwendung                │
-               │  • Ergebnis-Erfassung                       │
-               │  • Abwesenheits-Markierung                  │
-               │  • Live-Fortschritts-Tracking               │
-               │  • Disziplin-Konfiguration                  │
-               └─────────────────────────────────────────────┘
+```text
+http://127.0.0.1:5000
 ```
 
----
+## Typischer Ablauf
 
-## Admin-Tool (Kivy)
+1. Admin meldet sich an.
+2. CSV mit Schuelerdaten wird importiert.
+3. Die neue Event-Datenbank wird automatisch aktiviert.
+4. Riegen werden erzeugt und bei Bedarf mit echten Namen versehen.
+5. Disziplinen werden gepflegt.
+6. Fuer Stationen werden PINs generiert.
+7. Stationen erfassen Ergebnisse.
+8. Event-Ansichten zeigen Fortschritt und Bestenlisten.
 
-Das Admin-Tool dient zur **Offline-Vorbereitung** der Datenbank.
+## CSV-Format fuer Schueler
 
-### Starten (GUI)
+Pflichtspalten:
 
-```bash
-cd admin
-python admin.py
-```
+- `Geschlecht`
+- `Klasse`
+- `Name`
+- `Vorname`
+- `Geburtsjahr`
 
-### Starten (CLI/Headless)
+Optionale Spalte:
 
-```bash
-python -m admin.cli --csv path/to/schueler.csv --output bjs_database_2025.db
-```
+- `Profil`
 
-Oder mit dem bereitgestellten Skript:
-
-```bash
-./scripts/admin_export.sh --csv path/to/schueler.csv --output bjs_database_2025.db
-```
-
-### Funktionen
-
-1. **CSV-Import**: Schülerdaten aus CSV importieren
-2. **Riegen erstellen**: Riegenführer anlegen und Schüler zuweisen
-3. **DB exportieren**: Fertige Datenbank für Web-App erzeugen
-
-### CSV-Format
+Beispiel:
 
 ```csv
 Geschlecht;Klasse;Name;Vorname;Geburtsjahr;Profil
 m;5a;Mustermann;Max;2012;False
-w;5a;Musterfrau;Maria;2012;True
+w;5a;Musterfrau;Mia;2012;True
 ```
 
-| Spalte      | Beschreibung                          | Beispiel     |
-|-------------|---------------------------------------|--------------|
-| Geschlecht  | `m` oder `w`                          | `m`          |
-| Klasse      | Stufe + Buchstabe                     | `5a`         |
-| Name        | Nachname                              | `Mustermann` |
-| Vorname     | Vorname                               | `Max`        |
-| Geburtsjahr | Geburtsjahr (4-stellig)               | `2012`       |
-| Profil      | Sportprofil (`True`/`False`)          | `False`      |
+## Rollen in der Anwendung
 
----
+- `Admin`: Datenbanken, PINs, Disziplinen, Import, Riegenverwaltung
+- `Event`: Dashboard, Event-Uebersicht, Bestenlisten
+- `Station`: Ergebniserfassung fuer eine Disziplin
 
-## Web-App Nutzung
+## Wichtige Dateien
 
-### Login-Typen
+- `main.py`: Startpunkt der Flask-Anwendung
+- `config.py`: Konfiguration ueber Umgebungsvariablen
+- `app/routes/auth.py`: Login, Admin, Event, Dashboard
+- `app/routes/input.py`: Stations-Erfassung
+- `app/database/database.py`: SQLite-Zugriffsschicht
+- `app/services_csv_import.py`: CSV-Import
+- `app/services_riegen.py`: Riegenerzeugung und Namensersetzung
+- `show_results.py`: kleines CLI-Hilfsskript fuer letzte Ergebnisse
 
-| Typ     | Authentifizierung       | Zugriff                        |
-|---------|-------------------------|--------------------------------|
-| Station | 6-stelliger PIN         | Ergebnis-Erfassung             |
-| Admin   | Admin-Passwort          | Dashboard, PIN-Verwaltung, DB  |
+## Hilfsskript
 
-### Station-Login
-
-1. Disziplin auswählen
-2. PIN eingeben (vom Admin bereitgestellt)
-3. Ergebnisse erfassen
-
-### Admin-Dashboard
-
-- **PIN-Verwaltung**: PINs generieren/widerrufen
-- **DB-Upload**: Neue Datenbank hochladen
-- **Session-Übersicht**: Aktive Geräte einsehen
-- **Disziplin-Konfiguration**: Disziplinen verwalten
-- **Fortschritts-Dashboard**: Riegen-Übersicht
-
----
-
-## Disziplin-Konfiguration
-
-Disziplinen können im Admin-Bereich verwaltet werden:
-
-| Einstellung        | Beschreibung                            |
-|--------------------|----------------------------------------|
-| Name               | Frei benennbar (z.B. "Sprint 50m")     |
-| Format             | `time` (mm:ss) oder `distance` (Meter) |
-| Anzahl Runden      | 1-3 Versuche pro Schüler               |
-
-### API-Endpunkte
-
-- `GET /admin/disziplinen` – Disziplin-Übersicht
-- `POST /admin/disziplinen` – Disziplin erstellen
-- `PUT /admin/disziplinen/<id>` – Disziplin bearbeiten
-- `DELETE /admin/disziplinen/<id>` – Disziplin löschen
-- `GET /admin/disziplinen/export` – JSON-Export
-- `POST /admin/disziplinen/import` – JSON-Import
-
----
-
-## Sicherheitsfeatures
-
-- **CSRF-Schutz**: Flask-WTF für alle Formulare
-- **Rate-Limiting**: Brute-Force-Schutz für Logins
-- **Geräte-Bindung**: PIN nur auf einem Gerät aktiv
-- **Session-Verwaltung**: Admin kann Sessions widerrufen
-- **Automatische Backups**: Vor DB-Upload + regelmäßig
-
----
-
-## Deployment & Umgebungen
-
-- `ENV`/`FLASK_ENV` steuert die Config-Klasse (`development`, `production`, `testing`)
-- `.env` enthält Secrets/DB-Pfad; in Prod `DEBUG=False`, `SESSION_COOKIE_SECURE=True` setzen
-- `DB_PATH` konfiguriert die DB, Uploads/Backups laufen mit SameSite+HttpOnly-Cookies
-
-### Entwicklung
+Letzte Ergebnisse aus einer Datenbank anzeigen:
 
 ```bash
-ENV=development python main.py
-# oder via Skript:
-./scripts/start_dev.sh
+python show_results.py database\\BJS_2026_1.db
 ```
 
-### Produktion (Gunicorn)
+## Hinweise
 
-```bash
-ENV=production HOST=0.0.0.0 PORT=5000 WORKERS=4 TIMEOUT=120 ./scripts/start_prod.sh
-# alternativ direkt:
-gunicorn -w 4 -b 0.0.0.0:5000 main:app
-```
+- Die aktive Event-Datenbank wird ueber die Meta-Datenbank verwaltet.
+- Ohne aktive Event-Datenbank koennen Stations- und Event-Funktionen nicht arbeiten.
+- Die Anwendung nutzt SQLite und ist damit bewusst einfach deploybar.
 
-### Empfohlene Einstellungen
+## Entwicklerdoku
 
-```env
-DEBUG=False
-SECRET_KEY=<langer-zufälliger-schlüssel>
-SESSION_COOKIE_SECURE=True  # Bei HTTPS
-SESSION_COOKIE_SAMESITE=Lax
-SESSION_COOKIE_HTTPONLY=True
-```
+Fuer interne Struktur, Datenfluss und Wartung:
 
----
-
-## Tests & Qualität
-
-```bash
-pip install -r requirements-dev.txt
-pytest
-pre-commit install
-pre-commit run --all-files
-```
-
-- Lint/Format: `black`, `ruff` (Konfiguration in `pyproject.toml`)
-- Git-Hygiene: `.env`, `*.db`, Test-Artefakte sind gitignored; keine DB/CSV ins Repo committen.
-
----
-
-## Backup & Wiederherstellung
-
-### Manuelles Backup
-
-```python
-from app.database.database import Database
-db = Database()
-backup_path = db.backup_to_file(label="manual")
-print(f"Backup erstellt: {backup_path}")
-```
-
-### Automatische Backups
-
-Backups werden automatisch erstellt:
-- Vor jedem DB-Upload
-- Konfigurierbar im Admin-Bereich (Intervall)
-
----
-
-## Troubleshooting
-
-### PIN funktioniert nicht
-
-1. Prüfe im Admin-Dashboard, ob der PIN aktiv ist
-2. Prüfe, ob der PIN bereits auf einem anderen Gerät verwendet wird
-3. Widerrufe den PIN und erstelle einen neuen
-
-### Datenbank-Fehler
-
-1. Prüfe den DB_PATH in `.env`
-2. Stelle sicher, dass die DB-Datei existiert
-3. Führe ggf. einen DB-Upload durch
-
-### Session abgelaufen
-
-- Bei Stations-Login: Erneut mit PIN anmelden
-- Bei Admin-Login: Erneut mit Passwort anmelden
-
----
-
-## Lizenz
-
-Dieses Projekt ist für den internen Schulgebrauch bestimmt.
+- `README_DEV.md`

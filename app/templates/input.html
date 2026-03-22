@@ -274,6 +274,10 @@
                 if (data.meta && data.meta.num_rounds) {
                     numRounds = data.meta.num_rounds;
                 }
+                if (data.meta && data.meta.result_format) {
+                    window.currentResultFormat = data.meta.result_format;
+                    applyMode();
+                }
 
                 // Aktualisiere die Rundenzähler dynamisch
                 if (data.progress && data.progress.rounds_done) {
@@ -1001,12 +1005,8 @@
                     el.addEventListener("keydown", onKeyDown);
                 }
 
-                function determineModeFromDisziplin(value) {
-                    if (!value) return "decimal";
-                    const v = String(value).toLowerCase();
-                    if (v.includes("laufen") || v.includes("sprint"))
-                        return "time";
-                    return "decimal";
+                function determineModeFromFormat(value) {
+                    return value === "time" ? "time" : "decimal";
                 }
 
                 function applyMode() {
@@ -1016,13 +1016,17 @@
 
                     setCommonAttrs(el);
 
-                    const stationName = "{{ station }}";
-                    const mode = determineModeFromDisziplin(stationName);
+                    const resultFormat =
+                        window.currentResultFormat ||
+                        "{{ result_format|default('distance') }}";
+                    const mode = determineModeFromFormat(resultFormat);
                     if (mode === "time") setTimeMode(el);
                     else setDecimalMode(el);
                 }
 
                 function init() {
+                    window.currentResultFormat =
+                        "{{ result_format|default('distance') }}";
                     applyMode();
                 }
 

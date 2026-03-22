@@ -1,3 +1,5 @@
+"""Routen für die Ergebnis-Erfassung an den Stationen."""
+
 from pathlib import Path
 
 from flask import (
@@ -18,159 +20,185 @@ input_bp = Blueprint("input", __name__, template_folder="../templates")
 
 
 def _get_registry() -> DbRegistry:
-    return DbRegistry(default_meta_db_path(Path(current_app.root_path).parent.parent))
+    """Erzeugt eine Registry-Instanz für die globale Meta-Datenbank."""
+    projektwurzel = Path(current_app.root_path).parent
+    return DbRegistry(default_meta_db_path(projektwurzel))
 
 
 def update_schueler_liste(schueler_liste, num_rounds=3):
-    db = get_db()
-    if db is None:
+    """Aktualisiert die in der Session gehaltene Schülerliste mit Rundenergebnissen."""
+    datenbank = get_db()
+    if datenbank is None:
         return schueler_liste
-    discipline = session.get("discipline")
 
+    disziplin = session.get("discipline")
     for schueler in schueler_liste:
         schueler_id = schueler["SchuelerID"]
-        rounds_done = db.get_rounds_done(schueler_id, discipline)
+        vorhandene_runden = datenbank.get_rounds_done(schueler_id, disziplin)
 
-        for ergebnis_nr, status in rounds_done:
-            if 1 <= ergebnis_nr <= num_rounds:
-                schueler[f"Round{ergebnis_nr}"] = status
+        for ergebnis_nummer, statuswert in vorhandene_runden:
+            if 1 <= ergebnis_nummer <= num_rounds:
+                schueler[f"Round{ergebnis_nummer}"] = statuswert
 
     return schueler_liste
 
 
 def update_status_liste(schueler_liste, num_rounds=3):
-    def to_symbol(val):
-        if val is None:
+    """Erzeugt eine frontendfreundliche Statusliste für die aktuelle Riege."""
+
+    def status_zu_symbol(statuswert):
+        """Wandelt interne Statuswerte in gut erkennbare UI-Symbole um."""
+        if statuswert is None:
             return "⬜"
-        if val == "ABWESEND":
+        if statuswert == "ABWESEND":
             return "❌"
         return "✅"
 
-    status_list = []
+    status_liste = []
     for schueler in schueler_liste:
         schueler_id = schueler["SchuelerID"]
-        name = f"{schueler['Vorname']} {schueler['Name']}"
-        rounds_raw = [schueler.get(f"Round{i}") for i in range(1, num_rounds + 1)]
-        rounds = [to_symbol(val) for val in rounds_raw]
-        absent = any(val == "ABWESEND" for val in rounds_raw)
-        completed = all(val not in (None, "ABWESEND") for val in rounds_raw)
-        status_list.append(
+        vollstaendiger_name = f"{schueler['Vorname']} {schueler['Name']}"
+        rohrunden = [schueler.get(f"Round{i}") for i in range(1, num_rounds + 1)]
+        runden_symbole = [status_zu_symbol(statuswert) for statuswert in rohrunden]
+        ist_abwesend = any(statuswert == "ABWESEND" for statuswert in rohrunden)
+        ist_abgeschlossen = all(
+            statuswert not in (None, "ABWESEND") for statuswert in rohrunden
+        )
+        status_liste.append(
             {
                 "id": schueler_id,
-                "name": name,
-                "rounds": rounds,
-                "round_values": rounds_raw,
-                "absent": absent,
-                "completed": completed,
+                "name": vollstaendiger_name,
+                "rounds": runden_symbole,
+                "round_values": rohrunden,
+                "absent": ist_abwesend,
+                "completed": ist_abgeschlossen,
             }
         )
-    return status_list
+    return status_liste
 
 
 def _validate_and_normalize_result(ergebnis: str, discipline: str):
+    """Validiert Nutzereingaben und normalisiert sie in speicherbare Werte."""
     if ergebnis is None:
         return False, None, "Ergebnis erforderlich"
-    value = str(ergebnis).strip()
-    if not value:
+
+    bereinigter_wert = str(ergebnis).strip()
+    if not bereinigter_wert:
         return False, None, "Ergebnis erforderlich"
-    if ":" in value:
-        parts = value.split(":")
-        if len(parts) != 2:
+
+    if ":" in bereinigter_wert:
+        zeitteile = bereinigter_wert.split(":")
+        if len(zeitteile) != 2:
             return False, None, "Zeitformat mm:ss erforderlich"
-        minutes, seconds = parts
-        if not minutes.isdigit() or not seconds.isdigit():
+
+        minuten, sekunden = zeitteile
+        if not minuten.isdigit() or not sekunden.isdigit():
             return False, None, "Zeitformat nur Ziffern erlaubt"
-        seconds_int = int(seconds)
-        if seconds_int >= 60:
-            return False, None, "Sekunden müssen < 60 sein"
-        # Speichere als String mm:ss
-        return True, f"{int(minutes):02d}:{seconds_int:02d}", ""
+
+        sekunden_int = int(sekunden)
+        if sekunden_int >= 60:
+            return False, None, "Sekunden muessen < 60 sein"
+
+        return True, f"{int(minuten):02d}:{sekunden_int:02d}", ""
+
     try:
-        number = float(value.replace(",", "."))
+        numerischer_wert = float(bereinigter_wert.replace(",", "."))
     except ValueError:
-        return False, None, "Ungültiges Ergebnisformat"
-    if number < 0:
+        return False, None, "Ungueltiges Ergebnisformat"
+
+    if numerischer_wert < 0:
         return False, None, "Ergebnis darf nicht negativ sein"
-    return True, number, ""
+
+    return True, numerischer_wert, ""
 
 
-def _require_round_number(round_nr, max_rounds=5):
+def _require_round_number(rundennummer, max_rounds=5):
+    """Prüft, ob eine Rundennummer im erlaubten Bereich liegt."""
     try:
-        round_int = int(round_nr)
+        rundenwert = int(rundennummer)
     except (TypeError, ValueError):
         return None
-    if round_int < 1 or round_int > max_rounds:
+
+    if rundenwert < 1 or rundenwert > max_rounds:
         return None
-    return round_int
+    return rundenwert
 
 
 def _update_round_cache_in_session(schueler_id, round_nr, value):
+    """Aktualisiert den Session-Cache nach einem gespeicherten Ergebnis."""
     schueler_liste = session.get("schueler", [])
-    key = f"Round{round_nr}"
-    updated = False
+    rundenfeld = f"Round{round_nr}"
+    wurde_aktualisiert = False
+
     for schueler in schueler_liste:
         if schueler.get("SchuelerID") == schueler_id:
-            schueler[key] = value
-            updated = True
+            schueler[rundenfeld] = value
+            wurde_aktualisiert = True
             break
-    if updated:
+
+    if wurde_aktualisiert:
         session["schueler"] = schueler_liste
 
 
 def _compute_progress(schueler_liste, num_rounds=3):
-    progress = {
+    """Berechnet den Fortschritt der aktuellen Riege über alle Runden."""
+    fortschritt = {
         "total": len(schueler_liste),
         "absent": 0,
-        "rounds_done": {i: 0 for i in range(1, num_rounds + 1)},
+        "rounds_done": {runde: 0 for runde in range(1, num_rounds + 1)},
     }
+
     for schueler in schueler_liste:
-        absent_for_student = False
-        for round_nr in range(1, num_rounds + 1):
-            val = schueler.get(f"Round{round_nr}")
-            if val == "ABWESEND":
-                absent_for_student = True
-            if val not in (None, "ABWESEND"):
-                progress["rounds_done"][round_nr] += 1
-        if absent_for_student:
-            progress["absent"] += 1
-    return progress
+        schueler_ist_abwesend = False
+        for rundennummer in range(1, num_rounds + 1):
+            statuswert = schueler.get(f"Round{rundennummer}")
+            if statuswert == "ABWESEND":
+                schueler_ist_abwesend = True
+            if statuswert not in (None, "ABWESEND"):
+                fortschritt["rounds_done"][rundennummer] += 1
+        if schueler_ist_abwesend:
+            fortschritt["absent"] += 1
+
+    return fortschritt
 
 
 def _collect_meta_data(schueler_liste):
-    gender_counts = {}
-    age_buckets = {}
-    class_buckets = {}
-    profile_counts = {"profil": 0, "kein_profil": 0, "unbekannt": 0}
-    for schueler in schueler_liste:
-        gender = (schueler.get("Geschlecht") or "unbekannt").strip()
-        gender_counts[gender] = gender_counts.get(gender, 0) + 1
+    """Sammelt Zusatzinformationen für Hinweise und Statistiken im Frontend."""
+    geschlechter = {}
+    altersgruppen = {}
+    klassen = {}
+    profil_zaehler = {"profil": 0, "kein_profil": 0, "unbekannt": 0}
 
-        age = schueler.get("Bundesjugendspielalter")
-        if age is not None:
-            age_buckets[age] = age_buckets.get(age, 0) + 1
+    for schueler in schueler_liste:
+        geschlecht = (schueler.get("Geschlecht") or "unbekannt").strip()
+        geschlechter[geschlecht] = geschlechter.get(geschlecht, 0) + 1
+
+        alter = schueler.get("Bundesjugendspielalter")
+        if alter is not None:
+            altersgruppen[alter] = altersgruppen.get(alter, 0) + 1
 
         klasse = schueler.get("Klasse")
         if klasse is not None:
-            class_buckets[klasse] = class_buckets.get(klasse, 0) + 1
+            klassen[klasse] = klassen.get(klasse, 0) + 1
 
         profil_flag = schueler.get("Profil")
         if profil_flag is True:
-            profile_counts["profil"] += 1
+            profil_zaehler["profil"] += 1
         elif profil_flag is False:
-            profile_counts["kein_profil"] += 1
+            profil_zaehler["kein_profil"] += 1
         else:
-            profile_counts["unbekannt"] += 1
+            profil_zaehler["unbekannt"] += 1
 
     return {
-        "gender_counts": gender_counts,
-        "age_buckets": age_buckets,
-        "class_buckets": class_buckets,
-        "profile_counts": profile_counts,
+        "gender_counts": geschlechter,
+        "age_buckets": altersgruppen,
+        "class_buckets": klassen,
+        "profile_counts": profil_zaehler,
     }
 
 
 def _get_num_rounds_for_discipline(discipline):
-    """Holt die Anzahl der Runden für eine Disziplin aus der Registry."""
+    """Liest die konfigurierte Rundenzahl für eine Disziplin aus der Registry."""
     if not discipline:
         return 3
     registry = _get_registry()
@@ -180,100 +208,113 @@ def _get_num_rounds_for_discipline(discipline):
     return 3
 
 
+def _get_result_format_for_discipline(discipline):
+    """Liest das konfigurierte Ergebnisformat für eine Disziplin aus der Registry."""
+    if not discipline:
+        return "distance"
+    registry = _get_registry()
+    disziplin = registry.get_disziplin_by_name(discipline)
+    if disziplin:
+        return disziplin.format
+    return "distance"
+
+
 def build_status_payload(last_saved=None):
-    """
-    Aktualisiert die in der Session gespeicherte Schülerliste aus der DB
-    und gibt eine strukturierte Payload mit Statusliste und Fortschritt zurück.
-    """
-    discipline = session.get("discipline")
-    num_rounds = _get_num_rounds_for_discipline(discipline)
-    progress_empty = {
+    """Baut die vollständige Antwort für die Statusansicht der Erfassung."""
+    disziplin = session.get("discipline")
+    anzahl_runden = _get_num_rounds_for_discipline(disziplin)
+    leerer_fortschritt = {
         "total": 0,
         "absent": 0,
-        "rounds_done": {i: 0 for i in range(1, num_rounds + 1)},
+        "rounds_done": {runde: 0 for runde in range(1, anzahl_runden + 1)},
     }
 
-    if not (schueler_liste := session.get("schueler", [])):
+    schueler_liste = session.get("schueler", [])
+    if not schueler_liste:
         return {
             "status_list": [],
-            "progress": progress_empty,
+            "progress": leerer_fortschritt,
             "last_saved": last_saved,
             "meta": {
-                "discipline": discipline,
-                "num_rounds": num_rounds,
+                "discipline": disziplin,
+                "result_format": _get_result_format_for_discipline(disziplin),
+                "num_rounds": anzahl_runden,
                 "total": 0,
                 "active_total": 0,
                 "all_completed": False,
             },
         }
-    schueler_liste = update_schueler_liste(schueler_liste, num_rounds)
+
+    schueler_liste = update_schueler_liste(schueler_liste, anzahl_runden)
     session["schueler"] = schueler_liste
-    status_list = update_status_liste(schueler_liste, num_rounds)
-    progress = _compute_progress(schueler_liste, num_rounds)
-    active_total = max(progress["total"] - progress["absent"], 0)
-    # all_completed wenn die letzte Runde für alle aktiven Schüler fertig ist
-    all_completed = (
-        active_total > 0 and progress["rounds_done"].get(num_rounds, 0) >= active_total
-    )
-    remaining_active = max(active_total - progress["rounds_done"].get(num_rounds, 0), 0)
-    demographics = _collect_meta_data(schueler_liste)
-    first_student = schueler_liste[0] if schueler_liste else {}
-    first_class = None
-    if first_student:
-        klasse_val = first_student.get("Klasse")
-        klassenbuchstabe = first_student.get("Klassenbuchstabe") or ""
-        if klasse_val is not None:
-            first_class = f"{klasse_val}{klassenbuchstabe}"
-    first_profile = first_student.get("Profil") if first_student else None
-    meta = {
-        "discipline": discipline,
-        "num_rounds": num_rounds,
-        "total": progress["total"],
-        "active_total": active_total,
-        "remaining_active": remaining_active,
-        "all_completed": all_completed,
+    status_liste = update_status_liste(schueler_liste, anzahl_runden)
+    fortschritt = _compute_progress(schueler_liste, anzahl_runden)
+    aktive_schueler = max(fortschritt["total"] - fortschritt["absent"], 0)
+    letzte_runde_erfasst = fortschritt["rounds_done"].get(anzahl_runden, 0)
+    alle_fertig = aktive_schueler > 0 and letzte_runde_erfasst >= aktive_schueler
+    offene_aktive = max(aktive_schueler - letzte_runde_erfasst, 0)
+    metadaten = _collect_meta_data(schueler_liste)
+
+    erster_schueler = schueler_liste[0] if schueler_liste else {}
+    erste_klasse = None
+    if erster_schueler:
+        klassenstufe = erster_schueler.get("Klasse")
+        klassenbuchstabe = erster_schueler.get("Klassenbuchstabe") or ""
+        if klassenstufe is not None:
+            erste_klasse = f"{klassenstufe}{klassenbuchstabe}"
+
+    meta_informationen = {
+        "discipline": disziplin,
+        "result_format": _get_result_format_for_discipline(disziplin),
+        "num_rounds": anzahl_runden,
+        "total": fortschritt["total"],
+        "active_total": aktive_schueler,
+        "remaining_active": offene_aktive,
+        "all_completed": alle_fertig,
         "completion_message": "Alle Ergebnisse erfasst."
-        if all_completed
-        else f"Noch {remaining_active} Ergebnisse offen.",
-        "gender_counts": demographics.get("gender_counts"),
-        "age_buckets": demographics.get("age_buckets"),
-        "class_buckets": demographics.get("class_buckets"),
-        "profile_counts": demographics.get("profile_counts"),
-        "first_gender": first_student.get("Geschlecht") if first_student else None,
-        "first_class": first_class,
-        "first_profile": first_profile,
+        if alle_fertig
+        else f"Noch {offene_aktive} Ergebnisse offen.",
+        "gender_counts": metadaten.get("gender_counts"),
+        "age_buckets": metadaten.get("age_buckets"),
+        "class_buckets": metadaten.get("class_buckets"),
+        "profile_counts": metadaten.get("profile_counts"),
+        "first_gender": erster_schueler.get("Geschlecht") if erster_schueler else None,
+        "first_class": erste_klasse,
+        "first_profile": erster_schueler.get("Profil") if erster_schueler else None,
     }
+
     return {
-        "status_list": status_list,
-        "progress": progress,
+        "status_list": status_liste,
+        "progress": fortschritt,
         "last_saved": last_saved,
-        "meta": meta,
+        "meta": meta_informationen,
     }
 
 
 @input_bp.route("/input")
 def input_page():
+    """Zeigt die Haupterfassungsseite für eine eingeloggte Station an."""
     if not session.get("is_logged_in") or session.get("role") != "station":
         return redirect(url_for("auth.login"))
 
-    db = get_db()
-    if db is None:
+    datenbank = get_db()
+    if datenbank is None:
         session.clear()
         return redirect(url_for("auth.login"))
 
-    discipline = session.get("discipline")
-    num_rounds = _get_num_rounds_for_discipline(discipline)
-
-    # Disziplin-Info aus Registry
+    disziplin = session.get("discipline")
+    anzahl_runden = _get_num_rounds_for_discipline(disziplin)
     registry = _get_registry()
-    disziplin_info = registry.get_disziplin_by_name(discipline) if discipline else None
+    disziplin_info = registry.get_disziplin_by_name(disziplin) if disziplin else None
+    result_format = disziplin_info.format if disziplin_info else "distance"
 
     return render_template(
         "input.html",
-        riegenfuehrer=db.get_riegenfuehrer(),
-        station=disziplin_info.name if disziplin_info else discipline or "Station",
-        discipline=discipline,
-        num_rounds=num_rounds,
+        riegenfuehrer=datenbank.get_riegenfuehrer(),
+        station=disziplin_info.name if disziplin_info else disziplin or "Station",
+        discipline=disziplin,
+        result_format=result_format,
+        num_rounds=anzahl_runden,
         ipad_stations_nummer="1",
         schueler_gesamt=0,
         schueler_abwesend=0,
@@ -282,184 +323,185 @@ def input_page():
 
 @input_bp.route("/get_riege", methods=["POST"])
 def get_riege():
+    """Lädt die ausgewählte Riege und speichert sie im Session-Kontext."""
     if not session.get("is_logged_in") or session.get("role") != "station":
         return jsonify({"error": "unauthorized"}), 401
 
-    data = request.get_json() or {}
-    riegenfuehrer_id = data.get("riegenfuehrer_id")
+    anfrage_daten = request.get_json() or {}
+    riegenfuehrer_id = anfrage_daten.get("riegenfuehrer_id")
     if not riegenfuehrer_id:
         return jsonify({"error": "riegenfuehrer_id fehlt"}), 400
 
-    db = get_db()
-    if db is None:
+    datenbank = get_db()
+    if datenbank is None:
         return jsonify({"error": "Keine Datenbank vorhanden"}), 503
-    schueler_liste = db.get_riege(riegenfuehrer_id)
-    session["schueler"] = schueler_liste
 
-    payload = build_status_payload()
-    return jsonify(payload)
+    schueler_liste = datenbank.get_riege(riegenfuehrer_id)
+    session["schueler"] = schueler_liste
+    return jsonify(build_status_payload())
 
 
 @input_bp.route("/next_student", methods=["POST"])
 def next_student():
+    """Speichert ein Ergebnis für eine Runde und liefert den aktualisierten Status zurück."""
     if not session.get("is_logged_in") or session.get("role") != "station":
         return jsonify({"error": "unauthorized"}), 401
 
-    data = request.get_json() or {}
-    schueler_id = data.get("schueler_id")
-    ergebnis = data.get("ergebnis")
-    round_nr = _require_round_number(data.get("round"))
-    discipline = session.get("discipline")
+    anfrage_daten = request.get_json() or {}
+    schueler_id = anfrage_daten.get("schueler_id")
+    ergebnis = anfrage_daten.get("ergebnis")
+    rundennummer = _require_round_number(anfrage_daten.get("round"))
+    disziplin = session.get("discipline")
 
-    if not schueler_id or round_nr is None:
+    if not schueler_id or rundennummer is None:
         return jsonify({"error": "schueler_id und round erforderlich"}), 400
-    if not discipline:
+    if not disziplin:
         return jsonify({"error": "disziplin nicht gesetzt"}), 400
 
-    ok, normalized_value, err = _validate_and_normalize_result(ergebnis, discipline)
-    if not ok:
-        return jsonify({"error": err}), 400
+    ist_gueltig, normalisierter_wert, fehlermeldung = _validate_and_normalize_result(
+        ergebnis,
+        disziplin,
+    )
+    if not ist_gueltig:
+        return jsonify({"error": fehlermeldung}), 400
 
-    db = get_db()
-    if db is None:
+    datenbank = get_db()
+    if datenbank is None:
         return jsonify({"error": "Keine Datenbank vorhanden"}), 503
+
     try:
-        db.add_entry(
+        datenbank.add_entry(
             schueler_id=schueler_id,
-            disziplin=discipline,
-            ergebnis_nr=round_nr,
-            result_value=normalized_value,
+            disziplin=disziplin,
+            ergebnis_nr=rundennummer,
+            result_value=normalisierter_wert,
             status="OK",
             source_ipad_number=1,
             source_station=1,
         )
-    except Exception as exc:
-        return jsonify({"error": str(exc)}), 500
+    except Exception as fehler:
+        return jsonify({"error": str(fehler)}), 500
 
-    _update_round_cache_in_session(schueler_id, round_nr, normalized_value)
+    _update_round_cache_in_session(schueler_id, rundennummer, normalisierter_wert)
 
-    display_value = normalized_value
-    if isinstance(normalized_value, float):
-        display_value = f"{normalized_value:.2f}".replace(".", ",")
+    anzeigewert = normalisierter_wert
+    if isinstance(normalisierter_wert, float):
+        anzeigewert = f"{normalisierter_wert:.2f}".replace(".", ",")
 
-    payload = build_status_payload(
-        last_saved={
-            "schueler_id": schueler_id,
-            "round": round_nr,
-            "status": "OK",
-            "value": display_value,
-        }
+    return jsonify(
+        build_status_payload(
+            last_saved={
+                "schueler_id": schueler_id,
+                "round": rundennummer,
+                "status": "OK",
+                "value": anzeigewert,
+            }
+        )
     )
-
-    return jsonify(payload)
 
 
 @input_bp.route("/get_current_result", methods=["GET"])
 def get_current_result():
-    """Holt das aktuelle Ergebnis für einen Schüler und eine Runde."""
+    """Liefert das bereits gespeicherte Ergebnis für eine bestimmte Runde zurück."""
     if not session.get("is_logged_in") or session.get("role") != "station":
         return jsonify({"error": "unauthorized"}), 401
 
     schueler_id = request.args.get("schueler_id")
-    runde = request.args.get("runde")
-    discipline = session.get("discipline")
+    rundennummer = request.args.get("runde")
+    disziplin = session.get("discipline")
 
-    if not schueler_id or not runde:
+    if not schueler_id or not rundennummer or not disziplin:
         return jsonify({"has_result": False, "result": "NA"})
 
     try:
-        runde_int = int(runde)
+        rundennummer_int = int(rundennummer)
     except (TypeError, ValueError):
         return jsonify({"has_result": False, "result": "NA"})
 
-    if not discipline:
-        return jsonify({"has_result": False, "result": "NA"})
-
-    db = get_db()
-    if db is None:
+    datenbank = get_db()
+    if datenbank is None:
         return jsonify({"error": "Keine Datenbank vorhanden"}), 503
 
-    # Hole alle Runden für diesen Schüler
-    rounds_done = db.get_rounds_done(schueler_id, discipline)
-
-    # Suche nach der gewünschten Runde
-    for ergebnis_nr, value in rounds_done:
-        if ergebnis_nr == runde_int:
-            if value == "ABWESEND":
-                return jsonify({"has_result": True, "result": "ABWESEND"})
-            elif value is not None:
-                # Formatiere das Ergebnis
-                if isinstance(value, float):
-                    return jsonify(
-                        {"has_result": True, "result": f"{value:.2f}".replace(".", ",")}
-                    )
-                return jsonify({"has_result": True, "result": str(value)})
-            break
+    vorhandene_runden = datenbank.get_rounds_done(schueler_id, disziplin)
+    for ergebnis_nummer, statuswert in vorhandene_runden:
+        if ergebnis_nummer != rundennummer_int:
+            continue
+        if statuswert == "ABWESEND":
+            return jsonify({"has_result": True, "result": "ABWESEND"})
+        if isinstance(statuswert, float):
+            return jsonify(
+                {"has_result": True, "result": f"{statuswert:.2f}".replace(".", ",")}
+            )
+        if statuswert is not None:
+            return jsonify({"has_result": True, "result": str(statuswert)})
 
     return jsonify({"has_result": False, "result": "NA"})
 
 
 @input_bp.route("/mark_absent", methods=["POST"])
 def mark_absent():
+    """Markiert eine einzelne Runde oder alle Runden eines Schülers als abwesend."""
     if not session.get("is_logged_in") or session.get("role") != "station":
         return jsonify({"error": "unauthorized"}), 401
 
-    data = request.get_json() or {}
-    schueler_id = data.get("schueler_id")
-    round_nr = data.get(
-        "round"
-    )  # Optional - wenn nicht angegeben, alle Runden als abwesend
-    discipline = session.get("discipline")
+    anfrage_daten = request.get_json() or {}
+    schueler_id = anfrage_daten.get("schueler_id")
+    rundennummer = anfrage_daten.get("round")
+    disziplin = session.get("discipline")
 
     if not schueler_id:
         return jsonify({"error": "schueler_id erforderlich"}), 400
-    if not discipline:
+    if not disziplin:
         return jsonify({"error": "disziplin nicht gesetzt"}), 400
 
-    num_rounds = _get_num_rounds_for_discipline(discipline)
-
-    db = get_db()
-    if db is None:
+    anzahl_runden = _get_num_rounds_for_discipline(disziplin)
+    datenbank = get_db()
+    if datenbank is None:
         return jsonify({"error": "Keine Datenbank vorhanden"}), 503
+
     try:
-        if round_nr is not None:
-            # Nur eine bestimmte Runde als abwesend markieren
-            round_int = _require_round_number(round_nr, num_rounds)
-            if round_int is None:
-                return jsonify({"error": "ungültige Rundennummer"}), 400
-            db.add_entry(
+        if rundennummer is not None:
+            gepruefte_runde = _require_round_number(rundennummer, anzahl_runden)
+            if gepruefte_runde is None:
+                return jsonify({"error": "ungueltige Rundennummer"}), 400
+
+            datenbank.add_entry(
                 schueler_id=schueler_id,
-                disziplin=discipline,
-                ergebnis_nr=round_int,
+                disziplin=disziplin,
+                ergebnis_nr=gepruefte_runde,
                 result_value=None,
                 status="ABWESEND",
                 source_ipad_number=1,
                 source_station=1,
             )
-            _update_round_cache_in_session(schueler_id, round_int, "ABWESEND")
+            _update_round_cache_in_session(schueler_id, gepruefte_runde, "ABWESEND")
         else:
-            # Alle Runden als abwesend markieren
-            for r in range(1, num_rounds + 1):
-                db.add_entry(
+            # Ohne Rundennummer wird der Schüler als komplett abwesend behandelt.
+            for laufende_runde in range(1, anzahl_runden + 1):
+                datenbank.add_entry(
                     schueler_id=schueler_id,
-                    disziplin=discipline,
-                    ergebnis_nr=r,
+                    disziplin=disziplin,
+                    ergebnis_nr=laufende_runde,
                     result_value=None,
                     status="ABWESEND",
                     source_ipad_number=1,
                     source_station=1,
                 )
-                _update_round_cache_in_session(schueler_id, r, "ABWESEND")
-    except Exception as exc:
-        return jsonify({"error": str(exc)}), 500
+                _update_round_cache_in_session(
+                    schueler_id,
+                    laufende_runde,
+                    "ABWESEND",
+                )
+    except Exception as fehler:
+        return jsonify({"error": str(fehler)}), 500
 
-    payload = build_status_payload(
-        last_saved={
-            "schueler_id": schueler_id,
-            "round": round_nr if round_nr else "all",
-            "status": "ABWESEND",
-            "value": None,
-        }
+    return jsonify(
+        build_status_payload(
+            last_saved={
+                "schueler_id": schueler_id,
+                "round": rundennummer if rundennummer else "all",
+                "status": "ABWESEND",
+                "value": None,
+            }
+        )
     )
-
-    return jsonify(payload)

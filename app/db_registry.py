@@ -1,3 +1,5 @@
+"""Verwaltet die Registry für Event-Datenbanken und globale Disziplinen."""
+
 from __future__ import annotations
 
 import json
@@ -10,6 +12,8 @@ from typing import Any, Optional
 
 @dataclass(frozen=True)
 class RegisteredDb:
+    """Beschreibt eine in der Meta-Datenbank registrierte Event-Datenbank."""
+
     name: str
     path: str
     label: str
@@ -20,26 +24,33 @@ class RegisteredDb:
 
 @dataclass(frozen=True)
 class Disziplin:
+    """Beschreibt eine global verwaltete Disziplin."""
+
     id: int
     name: str
-    format: str  # 'time' or 'distance'
+    format: str
     num_rounds: int
 
 
 class DbRegistry:
+    """Kapselt die Meta-Datenbank für Datenbankauswahl und Disziplinverwaltung."""
+
     def __init__(self, meta_db_path: str | Path):
+        """Initialisiert die Registry und stellt das Schema sicher."""
         self.meta_db_path = Path(meta_db_path)
         self.meta_db_path.parent.mkdir(parents=True, exist_ok=True)
         self._ensure_schema()
 
     def _connect(self) -> sqlite3.Connection:
-        conn = sqlite3.connect(str(self.meta_db_path))
-        conn.execute("PRAGMA foreign_keys = ON;")
-        return conn
+        """Öffnet eine SQLite-Verbindung zur Meta-Datenbank."""
+        verbindung = sqlite3.connect(str(self.meta_db_path))
+        verbindung.execute("PRAGMA foreign_keys = ON;")
+        return verbindung
 
     def _ensure_schema(self) -> None:
-        with self._connect() as conn:
-            conn.execute(
+        """Legt alle benötigten Tabellen der Meta-Datenbank an."""
+        with self._connect() as verbindung:
+            verbindung.execute(
                 """
                 CREATE TABLE IF NOT EXISTS Db_Registry (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -53,7 +64,7 @@ class DbRegistry:
                 );
                 """
             )
-            conn.execute(
+            verbindung.execute(
                 """
                 CREATE TABLE IF NOT EXISTS App_Config (
                     key TEXT PRIMARY KEY,
@@ -61,7 +72,7 @@ class DbRegistry:
                 );
                 """
             )
-            conn.execute(
+            verbindung.execute(
                 """
                 CREATE TABLE IF NOT EXISTS Disziplinen (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -73,15 +84,17 @@ class DbRegistry:
                 """
             )
 
-            # Migration: entferne alte unit-Spalte falls vorhanden
-            cols = [
-                row[1]
-                for row in conn.execute("PRAGMA table_info(Disziplinen)").fetchall()
+            vorhandene_spalten = [
+                zeile[1]
+                for zeile in verbindung.execute(
+                    "PRAGMA table_info(Disziplinen)"
+                ).fetchall()
             ]
-            if "unit" in cols:
-                conn.execute("PRAGMA foreign_keys = OFF;")
-                conn.execute("ALTER TABLE Disziplinen RENAME TO Disziplinen_old;")
-                conn.execute(
+            if "unit" in vorhandene_spalten:
+                # Alte Datenbanken enthielten noch eine `unit`-Spalte, die heute nicht mehr genutzt wird.
+                verbindung.execute("PRAGMA foreign_keys = OFF;")
+                verbindung.execute("ALTER TABLE Disziplinen RENAME TO Disziplinen_old;")
+                verbindung.execute(
                     """
                     CREATE TABLE Disziplinen (
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -92,38 +105,42 @@ class DbRegistry:
                     );
                     """
                 )
-                conn.execute(
+                verbindung.execute(
                     """
                     INSERT INTO Disziplinen (id, name, format, num_rounds, created_at)
                     SELECT id, name, format, num_rounds, created_at
                     FROM Disziplinen_old;
                     """
                 )
-                conn.execute("DROP TABLE Disziplinen_old;")
-                conn.execute("PRAGMA foreign_keys = ON;")
+                verbindung.execute("DROP TABLE Disziplinen_old;")
+                verbindung.execute("PRAGMA foreign_keys = ON;")
 
     def get_active_db_path(self) -> Optional[str]:
-        with self._connect() as conn:
-            row = conn.execute(
+        """Liest den Pfad der aktuell ausgewählten Event-Datenbank aus."""
+        with self._connect() as verbindung:
+            zeile = verbindung.execute(
                 "SELECT value FROM App_Config WHERE key = 'active_db_path'"
             ).fetchone()
-            if not row:
+            if not zeile:
                 return None
-            value = row[0]
+
+            gespeicherter_wert = zeile[0]
             try:
-                parsed = json.loads(value)
+                dekodierter_wert = json.loads(gespeicherter_wert)
             except Exception:
-                parsed = value
-            if not parsed:
+                dekodierter_wert = gespeicherter_wert
+
+            if not dekodierter_wert:
                 return None
-            return str(parsed)
+            return str(dekodierter_wert)
 
     def set_active_db_path(self, path: str | Path) -> None:
-        path_str = str(Path(path))
-        with self._connect() as conn:
-            conn.execute(
+        """Speichert den Pfad der aktuell aktiven Event-Datenbank."""
+        datenbankpfad = str(Path(path))
+        with self._connect() as verbindung:
+            verbindung.execute(
                 "INSERT OR REPLACE INTO App_Config (key, value) VALUES (?, ?)",
-                ("active_db_path", json.dumps(path_str)),
+                ("active_db_path", json.dumps(datenbankpfad)),
             )
 
     def register_db(
@@ -136,29 +153,32 @@ class DbRegistry:
         created_at: Optional[str] = None,
         extra: Optional[dict[str, Any]] = None,
     ) -> None:
-        db_path = Path(path)
-        created = created_at or datetime.now().isoformat(timespec="seconds")
-        file_size = db_path.stat().st_size if db_path.exists() else 0
-        with self._connect() as conn:
-            conn.execute(
+        """Registriert eine Event-Datenbank oder aktualisiert einen vorhandenen Eintrag."""
+        datenbankpfad = Path(path)
+        erstellt_am = created_at or datetime.now().isoformat(timespec="seconds")
+        dateigroesse = datenbankpfad.stat().st_size if datenbankpfad.exists() else 0
+
+        with self._connect() as verbindung:
+            verbindung.execute(
                 """
                 INSERT OR REPLACE INTO Db_Registry (name, path, label, year, created_at, file_size, extra_json)
                 VALUES (?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     name,
-                    str(db_path),
+                    str(datenbankpfad),
                     label,
                     year,
-                    created,
-                    file_size,
+                    erstellt_am,
+                    dateigroesse,
                     json.dumps(extra or {}),
                 ),
             )
 
     def list_dbs(self) -> list[RegisteredDb]:
-        with self._connect() as conn:
-            rows = conn.execute(
+        """Liefert alle registrierten Event-Datenbanken in absteigender Zeitreihenfolge."""
+        with self._connect() as verbindung:
+            zeilen = verbindung.execute(
                 """
                 SELECT name, path, COALESCE(label, ''), year, created_at, file_size
                 FROM Db_Registry
@@ -168,19 +188,20 @@ class DbRegistry:
 
         return [
             RegisteredDb(
-                name=row[0],
-                path=row[1],
-                label=row[2] or "",
-                year=row[3],
-                created_at=row[4],
-                file_size=int(row[5] or 0),
+                name=zeile[0],
+                path=zeile[1],
+                label=zeile[2] or "",
+                year=zeile[3],
+                created_at=zeile[4],
+                file_size=int(zeile[5] or 0),
             )
-            for row in rows
+            for zeile in zeilen
         ]
 
     def get_by_name(self, name: str) -> Optional[RegisteredDb]:
-        with self._connect() as conn:
-            row = conn.execute(
+        """Lädt genau einen Registry-Eintrag über seinen Dateinamen."""
+        with self._connect() as verbindung:
+            zeile = verbindung.execute(
                 """
                 SELECT name, path, COALESCE(label, ''), year, created_at, file_size
                 FROM Db_Registry
@@ -189,67 +210,56 @@ class DbRegistry:
                 (name,),
             ).fetchone()
 
-        if not row:
+        if not zeile:
             return None
+
         return RegisteredDb(
-            name=row[0],
-            path=row[1],
-            label=row[2] or "",
-            year=row[3],
-            created_at=row[4],
-            file_size=int(row[5] or 0),
+            name=zeile[0],
+            path=zeile[1],
+            label=zeile[2] or "",
+            year=zeile[3],
+            created_at=zeile[4],
+            file_size=int(zeile[5] or 0),
         )
 
     def ensure_registered(
         self, db_path: str | Path, *, default_label: str = ""
     ) -> None:
-        db_path = Path(db_path)
-        name = db_path.name
-        if self.get_by_name(name):
+        """Registriert eine Datenbank nur dann, wenn sie noch nicht bekannt ist."""
+        datenbankpfad = Path(db_path)
+        if self.get_by_name(datenbankpfad.name):
             return
-        self.register_db(path=db_path, name=name, label=default_label)
+        self.register_db(
+            path=datenbankpfad,
+            name=datenbankpfad.name,
+            label=default_label,
+        )
 
     def delete_db(self, name: str, *, delete_file: bool = True) -> bool:
-        """Löscht eine Datenbank aus der Registry und optional die Datei.
-
-        Args:
-            name: Der Name der Datenbank in der Registry.
-            delete_file: Wenn True, wird auch die Datenbankdatei gelöscht.
-
-        Returns:
-            True wenn erfolgreich gelöscht, False wenn nicht gefunden.
-        """
-        entry = self.get_by_name(name)
-        if not entry:
+        """Entfernt einen Registry-Eintrag und optional die eigentliche Datenbankdatei."""
+        eintrag = self.get_by_name(name)
+        if not eintrag:
             return False
 
-        # Prüfen ob dies die aktive DB ist
-        active_path = self.get_active_db_path()
-        if active_path and Path(active_path) == Path(entry.path):
-            # Aktive DB zurücksetzen
-            with self._connect() as conn:
-                conn.execute("DELETE FROM App_Config WHERE key = 'active_db_path'")
+        aktiver_pfad = self.get_active_db_path()
+        if aktiver_pfad and Path(aktiver_pfad) == Path(eintrag.path):
+            with self._connect() as verbindung:
+                verbindung.execute("DELETE FROM App_Config WHERE key = 'active_db_path'")
 
-        # Aus Registry entfernen
-        with self._connect() as conn:
-            conn.execute("DELETE FROM Db_Registry WHERE name = ?", (name,))
+        with self._connect() as verbindung:
+            verbindung.execute("DELETE FROM Db_Registry WHERE name = ?", (name,))
 
-        # Datei löschen wenn gewünscht
         if delete_file:
-            db_path = Path(entry.path)
-            if db_path.exists():
-                db_path.unlink()
+            datenbankpfad = Path(eintrag.path)
+            if datenbankpfad.exists():
+                datenbankpfad.unlink()
 
         return True
 
-    # ========================================
-    # Disziplinen Management (global, not per-DB)
-    # ========================================
-
     def get_disziplinen(self) -> list[Disziplin]:
-        """Holt alle Disziplinen."""
-        with self._connect() as conn:
-            rows = conn.execute(
+        """Liefert alle globalen Disziplinen alphabetisch sortiert."""
+        with self._connect() as verbindung:
+            zeilen = verbindung.execute(
                 """
                 SELECT id, name, format, num_rounds
                 FROM Disziplinen
@@ -259,18 +269,18 @@ class DbRegistry:
 
         return [
             Disziplin(
-                id=row[0],
-                name=row[1],
-                format=row[2],
-                num_rounds=row[3],
+                id=zeile[0],
+                name=zeile[1],
+                format=zeile[2],
+                num_rounds=zeile[3],
             )
-            for row in rows
+            for zeile in zeilen
         ]
 
     def get_disziplin(self, disziplin_id: int) -> Optional[Disziplin]:
-        """Holt eine einzelne Disziplin nach ID."""
-        with self._connect() as conn:
-            row = conn.execute(
+        """Lädt eine Disziplin anhand ihrer ID."""
+        with self._connect() as verbindung:
+            zeile = verbindung.execute(
                 """
                 SELECT id, name, format, num_rounds
                 FROM Disziplinen WHERE id = ?
@@ -278,19 +288,20 @@ class DbRegistry:
                 (disziplin_id,),
             ).fetchone()
 
-        if not row:
+        if not zeile:
             return None
+
         return Disziplin(
-            id=row[0],
-            name=row[1],
-            format=row[2],
-            num_rounds=row[3],
+            id=zeile[0],
+            name=zeile[1],
+            format=zeile[2],
+            num_rounds=zeile[3],
         )
 
     def get_disziplin_by_name(self, name: str) -> Optional[Disziplin]:
-        """Holt Disziplin nach Name."""
-        with self._connect() as conn:
-            row = conn.execute(
+        """Lädt eine Disziplin anhand ihres eindeutigen Namens."""
+        with self._connect() as verbindung:
+            zeile = verbindung.execute(
                 """
                 SELECT id, name, format, num_rounds
                 FROM Disziplinen WHERE name = ?
@@ -298,13 +309,14 @@ class DbRegistry:
                 (name,),
             ).fetchone()
 
-        if not row:
+        if not zeile:
             return None
+
         return Disziplin(
-            id=row[0],
-            name=row[1],
-            format=row[2],
-            num_rounds=row[3],
+            id=zeile[0],
+            name=zeile[1],
+            format=zeile[2],
+            num_rounds=zeile[3],
         )
 
     def create_disziplin(
@@ -313,16 +325,16 @@ class DbRegistry:
         format: str = "distance",
         num_rounds: int = 3,
     ) -> int:
-        """Erstellt eine neue Disziplin. Gibt die ID zurück."""
-        with self._connect() as conn:
-            cur = conn.execute(
+        """Legt eine neue Disziplin in der Meta-Datenbank an."""
+        with self._connect() as verbindung:
+            cursor = verbindung.execute(
                 """
                 INSERT INTO Disziplinen (name, format, num_rounds)
                 VALUES (?, ?, ?)
                 """,
                 (name, format, num_rounds),
             )
-            return cur.lastrowid or 0
+            return cursor.lastrowid or 0
 
     def update_disziplin(
         self,
@@ -331,41 +343,42 @@ class DbRegistry:
         format: Optional[str] = None,
         num_rounds: Optional[int] = None,
     ) -> bool:
-        """Aktualisiert eine Disziplin. Gibt True zurück wenn gefunden."""
-        updates = []
-        params = []
+        """Aktualisiert einzelne Felder einer vorhandenen Disziplin."""
+        aktualisierungen: list[str] = []
+        parameter: list[object] = []
 
         if name is not None:
-            updates.append("name = ?")
-            params.append(name)
+            aktualisierungen.append("name = ?")
+            parameter.append(name)
         if format is not None:
-            updates.append("format = ?")
-            params.append(format)
+            aktualisierungen.append("format = ?")
+            parameter.append(format)
         if num_rounds is not None:
-            updates.append("num_rounds = ?")
-            params.append(num_rounds)
+            aktualisierungen.append("num_rounds = ?")
+            parameter.append(num_rounds)
 
-        if not updates:
+        if not aktualisierungen:
             return True
 
-        params.append(disziplin_id)
-        with self._connect() as conn:
-            cur = conn.execute(
-                f"UPDATE Disziplinen SET {', '.join(updates)} WHERE id = ?",
-                params,
+        parameter.append(disziplin_id)
+        with self._connect() as verbindung:
+            cursor = verbindung.execute(
+                f"UPDATE Disziplinen SET {', '.join(aktualisierungen)} WHERE id = ?",
+                parameter,
             )
-            return cur.rowcount > 0
+            return cursor.rowcount > 0
 
     def delete_disziplin(self, disziplin_id: int) -> bool:
-        """Löscht eine Disziplin. Gibt True zurück wenn gefunden."""
-        with self._connect() as conn:
-            cur = conn.execute(
+        """Löscht eine Disziplin anhand ihrer ID."""
+        with self._connect() as verbindung:
+            cursor = verbindung.execute(
                 "DELETE FROM Disziplinen WHERE id = ?",
                 (disziplin_id,),
             )
-            return cur.rowcount > 0
+            return cursor.rowcount > 0
 
 
 def default_meta_db_path(project_root: str | Path) -> Path:
-    root = Path(project_root)
-    return root / "alles_neu" / "app" / "database" / "bjs_meta.db"
+    """Liefert den Standardpfad zur Meta-Datenbank des Projekts."""
+    projektwurzel = Path(project_root)
+    return projektwurzel / "database" / "bjs_meta.db"
