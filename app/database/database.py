@@ -1,6 +1,7 @@
 """SQLite-Zugriffsschicht fuer Schueler, Riegen, Ergebnisse, PINs und Backups."""
 
 import json
+import logging
 import secrets
 import sqlite3
 import string
@@ -9,6 +10,8 @@ import time
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Literal, Optional, Tuple
+
+logger = logging.getLogger(__name__)
 
 
 class Database:
@@ -37,9 +40,15 @@ class Database:
         Path(path).parent.mkdir(parents=True, exist_ok=True)
 
         self.connection = sqlite3.connect(
-            path, detect_types=sqlite3.PARSE_DECLTYPES, check_same_thread=False
+            path,
+            detect_types=sqlite3.PARSE_DECLTYPES,
+            check_same_thread=False,
+            timeout=5.0,
         )
         self.connection.execute("PRAGMA foreign_keys = ON;")
+        self.connection.execute("PRAGMA journal_mode = WAL;")
+        self.connection.execute("PRAGMA synchronous = NORMAL;")
+        self.connection.execute("PRAGMA busy_timeout = 5000;")
         self.cursor = self.connection.cursor()
         self._ensure_base_tables()
         self._ensure_runtime_tables()
@@ -739,8 +748,12 @@ class Database:
         source_station,
     ):
         """Speichert oder aktualisiert ein Ergebnis fuer Schueler, Disziplin und Runde."""
-        print(
-            f"Adding entry: SchuelerID={schueler_id}, Disziplin={disziplin}, ErgebnisNR={ergebnis_nr}, result_value={result_value}, status={status}, source_ipad_number={source_ipad_number}, source_station={source_station}"
+        logger.info(
+            "Ergebnis gespeichert: schueler_id=%s disziplin=%s runde=%s status=%s",
+            schueler_id,
+            disziplin,
+            ergebnis_nr,
+            status,
         )
         self._execute_tx(
             """
@@ -1388,7 +1401,7 @@ class Database:
                         if should_backup:
                             self.backup_to_file(label="auto", backup_type="auto")
                 except Exception as e:
-                    print(f"Auto-backup error: {e}")
+                    logger.exception("Auto-Backup fehlgeschlagen: %s", e)
 
                 # Warte 60 Sekunden oder bis Stop-Event
                 stop_event.wait(60)

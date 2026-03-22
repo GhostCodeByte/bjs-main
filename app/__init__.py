@@ -1,10 +1,14 @@
-"""App-Factory und Datenbankzugriff für die Flask-Anwendung."""
+"""App-Factory und Datenbankzugriff fuer die Flask-Anwendung."""
 
+import logging
+from http import HTTPStatus
 from pathlib import Path
 
 from dotenv import load_dotenv
-from flask import Flask, current_app, g
-from flask_wtf.csrf import CSRFProtect, generate_csrf
+from flask import Flask, current_app, g, jsonify, request
+from flask_wtf.csrf import CSRFError, CSRFProtect, generate_csrf
+from werkzeug.exceptions import RequestEntityTooLarge
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 from config import get_config
 
@@ -15,41 +19,104 @@ csrf = CSRFProtect()
 load_dotenv()
 
 
+def _configure_logging(app: Flask) -> None:
+    """Initialisiert eine einfache Logging-Konfiguration fuer App und Gunicorn."""
+    log_level_name = str(app.config.get("LOG_LEVEL", "INFO")).upper()
+    log_level = getattr(logging, log_level_name, logging.INFO)
+
+    if not logging.getLogger().handlers:
+        logging.basicConfig(
+            level=log_level,
+            format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
+        )
+
+    app.logger.setLevel(log_level)
+
+
+def _is_production(app: Flask) -> bool:
+    """Prueft, ob die App im Produktionsmodus laeuft."""
+    return str(app.config.get("ENV_NAME", "")).lower() == "production"
+
+
+def _validate_production_config(app: Flask) -> None:
+    """Blockiert unsichere Produktionsstarts mit klaren Fehlermeldungen."""
+    if not _is_production(app):
+        return
+
+    fehler: list[str] = []
+    if app.config.get("SECRET_KEY") in {None, "", "change-me"}:
+        fehler.append("SECRET_KEY muss in Produktion gesetzt sein und darf nicht 'change-me' sein.")
+    if app.config.get("ADMIN_PASSWORD") in {None, "", "admin123"}:
+        fehler.append("ADMIN_PASSWORD muss in Produktion gesetzt sein und darf nicht 'admin123' sein.")
+    if app.config.get("STATION_DEFAULT_PIN"):
+        fehler.append("STATION_DEFAULT_PIN darf in Produktion nicht gesetzt sein.")
+    if app.config.get("SESSION_COOKIE_SECURE") and app.config.get("PREFERRED_URL_SCHEME") != "https":
+        fehler.append("PREFERRED_URL_SCHEME muss 'https' sein, wenn SESSION_COOKIE_SECURE aktiviert ist.")
+
+    if fehler:
+        raise RuntimeError("Produktionskonfiguration ungueltig:\n- " + "\n- ".join(fehler))
+
+
+def _register_error_handlers(app: Flask) -> None:
+    """Registriert produktionsfreundliche Fehlerbehandlung fuer Uploads und CSRF."""
+
+    @app.errorhandler(RequestEntityTooLarge)
+    def handle_request_entity_too_large(_error):
+        nachricht = "Upload zu gross. Bitte eine kleinere Datei verwenden."
+        app.logger.warning("Upload wegen MAX_CONTENT_LENGTH abgewiesen: path=%s", request.path)
+        if request.is_json:
+            return jsonify({"error": nachricht}), HTTPStatus.REQUEST_ENTITY_TOO_LARGE
+        return nachricht, HTTPStatus.REQUEST_ENTITY_TOO_LARGE
+
+    @app.errorhandler(CSRFError)
+    def handle_csrf_error(error: CSRFError):
+        nachricht = f"CSRF-Fehler: {error.description}"
+        app.logger.warning("CSRF-Fehler auf %s", request.path)
+        if request.is_json:
+            return jsonify({"error": nachricht}), HTTPStatus.BAD_REQUEST
+        return nachricht, HTTPStatus.BAD_REQUEST
+
+
 def create_app():
     """Erzeugt und konfiguriert die Flask-Anwendung samt Blueprints."""
     konfigurationsklasse = get_config()
     app = Flask(__name__)
     app.config.from_object(konfigurationsklasse)
+
+    _configure_logging(app)
+    _validate_production_config(app)
+
+    if app.config.get("TRUST_PROXY"):
+        app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_port=1)
+
     csrf.init_app(app)
+    _register_error_handlers(app)
 
     @app.teardown_appcontext
     def close_db(_exc=None):
-        """Schließt die pro Request gecachte Datenbankverbindung."""
+        """Schliesst die pro Request gecachte Datenbankverbindung."""
         datenbank = g.pop("db", None)
         if datenbank is not None:
             datenbank.close()
 
     def get_db():
-        """Lädt die aktuell aktive Event-Datenbank aus der Registry."""
+        """Laedt die aktuell aktive Event-Datenbank aus der Registry."""
         if "db" not in g:
-            registry = DbRegistry(
-                default_meta_db_path(Path(app.root_path).parent)
-            )
+            registry = DbRegistry(default_meta_db_path(Path(app.root_path).parent))
             aktive_datenbank = registry.get_active_db_path()
-            # Es wird bewusst nur die in der Registry gewählte Event-Datenbank verwendet.
             datenbankpfad = aktive_datenbank
             g.db = Database(path=datenbankpfad) if datenbankpfad else None
+            if datenbankpfad is None:
+                app.logger.info("Keine aktive Event-Datenbank gesetzt.")
         return g.db
 
-    # Die Modul-Funktion `get_db()` soll innerhalb anderer Module auf dieselbe Logik zeigen.
     globals()["get_db"] = get_db
 
     @app.context_processor
     def inject_csrf_token():
-        """Stellt das CSRF-Token global für Jinja-Templates bereit."""
+        """Stellt das CSRF-Token global fuer Jinja-Templates bereit."""
         return {"csrf_token": generate_csrf}
 
-    # Blueprints werden erst hier importiert, damit die App vorher vollständig konfiguriert ist.
     from .routes.auth import auth_bp
     from .routes.input import input_bp
 
@@ -62,11 +129,10 @@ def create_app():
 def get_db():
     """Liefert die aktuell aktive Event-Datenbank im Flask-Request-Kontext."""
     if "db" not in g:
-        registry = DbRegistry(
-            default_meta_db_path(Path(current_app.root_path).parent)
-        )
+        registry = DbRegistry(default_meta_db_path(Path(current_app.root_path).parent))
         aktive_datenbank = registry.get_active_db_path()
-        # Es gibt absichtlich keinen Fallback auf eine Standarddatenbank.
         datenbankpfad = aktive_datenbank
         g.db = Database(path=datenbankpfad) if datenbankpfad else None
+        if datenbankpfad is None:
+            current_app.logger.info("Keine aktive Event-Datenbank gesetzt.")
     return g.db

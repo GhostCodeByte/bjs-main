@@ -62,7 +62,7 @@ bjs-main/
 Standardpfad:
 
 ```text
-alles_neu/app/database/bjs_meta.db
+database/bjs_meta.db
 ```
 
 ### 3. Event-Datenbank
@@ -104,17 +104,6 @@ alles_neu/app/database/bjs_meta.db
 4. Ergebnisse werden rundenweise ueber `Database.add_entry()` gespeichert
 5. Statusliste und Fortschritt werden aus Session und DB zusammengesetzt
 
-### Dashboard und Event-Uebersicht
-
-`auth.py` rendert:
-
-- Admin-Dashboard
-- allgemeines Dashboard
-- Event-Uebersicht
-- Statistikseite
-
-Die Fortschrittszahlen stammen groesstenteils aus `Database.get_all_riegen_with_progress()` und `Database.get_stats()`.
-
 ## Entwickler-Insides
 
 - `get_db()` verwendet bewusst nur die aktive Datenbank aus der Registry. Es gibt keinen stillen Fallback.
@@ -122,18 +111,7 @@ Die Fortschrittszahlen stammen groesstenteils aus `Database.get_all_riegen_with_
 - Die Session enthaelt bei Stations-Workflows einen Cache der aktuellen Schuelerliste. Das reduziert Roundtrips fuer die UI, muss aber nach jedem Speichern wieder mit der DB abgeglichen werden.
 - `add_entry()` ist der fachlich kritische Punkt fuer die Ergebniserfassung. Aenderungen dort immer gegen echte Mehrfachrunden pruefen.
 - `claim_station_pin()` laesst absichtlich keine harte Disziplin-Gleichheitspruefung auf dem PIN zu, damit Standard-PINs nicht unbrauchbar werden.
-- Backups laufen in derselben Event-Datenbanklogik mit Historie und optionalem Hintergrundthread.
-
-## Namens- und Kommentarstil
-
-Fuer die Python-Module gilt jetzt als Richtung:
-
-- sprechende Bezeichner
-- deutsche Kommentare
-- kurze deutsche Docstrings fuer Funktionen
-- Kommentare nur dort, wo die Fachlogik nicht sofort offensichtlich ist
-
-Wenn neue Dateien dazukommen, sollte dieser Stil beibehalten werden.
+- Auto-Backups existieren im Code, gehoeren aber derzeit nicht zum Standard-Produktivbetrieb.
 
 ## Lokale Entwicklung
 
@@ -157,14 +135,26 @@ Wichtige Variablen in `.env`:
 
 - `SECRET_KEY`
 - `ADMIN_PASSWORD`
+- `EVENT_PASSWORD`
 - `DB_PATH`
 - `STATION_DEFAULT_NAME`
 - `STATION_DEFAULT_PIN`
 - `STATION_DEFAULT_MAX_LOGINS`
 - `STATION_DEFAULT_PIN_LENGTH`
+- `MAX_CONTENT_LENGTH`
+- `TRUST_PROXY`
+- `LOG_LEVEL`
 
 Hinweis:
 `DB_PATH` wird in der aktuellen Web-App nicht als primaerer Laufzeitpfad genutzt, sobald die Registry eine aktive Event-Datenbank verwaltet.
+
+## Produktion intern
+
+- Lokale Entwicklung laeuft weiterhin bewusst bequem ueber `python main.py`.
+- Produktion soll nur ueber `scripts/start_linux_prod.sh` gestartet werden.
+- Harte Konfigurationspruefungen greifen nur bei `ENV=production`.
+- Unsichere Defaults wie `SECRET_KEY=change-me`, `ADMIN_PASSWORD=admin123` oder `STATION_DEFAULT_PIN` blockieren den Produktionsstart.
+- Standardziel ist internes Netz mit SQLite, 1 Gunicorn-Worker und Threads.
 
 ## Wartungshinweise
 
@@ -172,9 +162,3 @@ Hinweis:
 - Bei Aenderungen an Disziplinen sowohl Registry als auch UI-Flows pruefen.
 - Bei Session- oder PIN-Aenderungen immer Login, Logout und Mehrgeraeteverhalten testen.
 - Die bestehende Dokumentation beschreibt bewusst den aktuellen Ist-Zustand und nicht alte Planungen.
-
-## Sinnvolle naechste technische Schritte
-
-- echte Tests fuer Login, CSV-Import und Ergebniserfassung ergaenzen
-- Route-Helfer aus `auth.py` weiter in Services zerlegen
-- die Datenbankklasse langfristig in kleinere fachliche Module aufteilen

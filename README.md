@@ -22,7 +22,9 @@ Die Anwendung dient dazu, einen Sporttag oder Bundesjugendspiele digital zu begl
 - Event-Zugang fuer Uebersicht und Bestenlisten
 - Backups der aktiven Datenbank
 
-## Schnellstart
+## Entwicklung lokal
+
+Lokale Entwicklung bleibt absichtlich einfach. Ohne gesetztes `ENV` startet die App im Entwicklungsmodus und laesst sich weiter direkt mit `python main.py` starten.
 
 ### 1. Umgebung vorbereiten
 
@@ -35,8 +37,8 @@ pip install -r requirements.txt
 ### 2. Optionale `.env` anlegen
 
 ```env
-SECRET_KEY=bitte-aendern
-ADMIN_PASSWORD=admin123
+SECRET_KEY=lokal-dev-secret
+ADMIN_PASSWORD=lokal-admin
 STATION_DEFAULT_NAME=Station
 STATION_DEFAULT_PIN=123456
 STATION_DEFAULT_MAX_LOGINS=1
@@ -54,6 +56,73 @@ Standardadresse:
 ```text
 http://127.0.0.1:5000
 ```
+
+## Produktion internes Netz
+
+Die Produktionskonfiguration ist bewusst strenger als lokal. Produktion wird nur ueber `scripts/start_linux_prod.sh` gestartet.
+
+### Voraussetzungen
+
+- Linux-Host im internen Netz
+- Python-Umgebung oder projektlokales `.venv`
+- Abhaengigkeiten vorab installiert: `pip install -r requirements.txt`
+- HTTPS oder Reverse Proxy empfohlen, wenn `SESSION_COOKIE_SECURE=true`
+
+### Env-Datei
+
+Nutze `.env.example` als Vorlage. Fuer Produktion muessen mindestens diese Werte gesetzt sein:
+
+```env
+ENV=production
+SECRET_KEY=replace-with-a-long-random-secret
+ADMIN_PASSWORD=replace-with-a-strong-admin-password
+SESSION_COOKIE_SECURE=true
+PREFERRED_URL_SCHEME=https
+STATION_DEFAULT_NAME=Station
+```
+
+Wichtig:
+
+- `SECRET_KEY=change-me` ist in Produktion verboten.
+- `ADMIN_PASSWORD=admin123` ist in Produktion verboten.
+- `STATION_DEFAULT_PIN` darf in Produktion nicht gesetzt sein.
+- Ein Event-Login funktioniert nur, wenn ein Event-Passwort gesetzt wurde.
+
+### Start
+
+```bash
+chmod +x scripts/start_linux_prod.sh
+./scripts/start_linux_prod.sh
+```
+
+Standardbetrieb:
+
+- `WORKERS=1`
+- `THREADS=8`
+
+Das ist absichtlich konservativ, weil SQLite mit einem Worker plus Threads fuer dieses interne Szenario robuster ist als mit mehreren Gunicorn-Prozessen.
+
+### Datenordner
+
+Alle produktionsrelevanten SQLite-Dateien liegen im Ordner `database/`:
+
+- `database/bjs_meta.db`
+- aktive Event-Datenbanken
+- Backups der Event-Datenbanken
+
+### Backup und Wiederherstellung
+
+Im Standardbetrieb ist kein automatisches In-App-Backup aktiviert. Fuer den ersten Produktivbetrieb ist vorgesehen:
+
+- manuelle Backups ueber die Admin-Funktionen
+- zusaetzlich regelmaessiges Host-/Dateisystem-Backup des ganzen Ordners `database/`
+
+Wiederherstellung:
+
+1. Aktive Datenbank zusaetzlich sichern.
+2. Gewuenschte Backup-Datei in `database/` ablegen.
+3. Im Admin-Bereich hochladen oder als aktive DB auswaehlen.
+4. Danach Login, Dashboard und Stationsfluss kurz pruefen.
 
 ## Typischer Ablauf
 
@@ -94,30 +163,18 @@ w;5a;Musterfrau;Mia;2012;True
 - `Event`: Dashboard, Event-Uebersicht, Bestenlisten
 - `Station`: Ergebniserfassung fuer eine Disziplin
 
-## Wichtige Dateien
-
-- `main.py`: Startpunkt der Flask-Anwendung
-- `config.py`: Konfiguration ueber Umgebungsvariablen
-- `app/routes/auth.py`: Login, Admin, Event, Dashboard
-- `app/routes/input.py`: Stations-Erfassung
-- `app/database/database.py`: SQLite-Zugriffsschicht
-- `app/services_csv_import.py`: CSV-Import
-- `app/services_riegen.py`: Riegenerzeugung und Namensersetzung
-- `show_results.py`: kleines CLI-Hilfsskript fuer letzte Ergebnisse
-
-## Hilfsskript
-
-Letzte Ergebnisse aus einer Datenbank anzeigen:
-
-```bash
-python show_results.py database\\BJS_2026_1.db
-```
-
 ## Hinweise
 
 - Die aktive Event-Datenbank wird ueber die Meta-Datenbank verwaltet.
 - Ohne aktive Event-Datenbank koennen Stations- und Event-Funktionen nicht arbeiten.
 - Die Anwendung nutzt SQLite und ist damit bewusst einfach deploybar.
+
+## Betriebsgrenzen
+
+- Zielbild ist internes Netz, nicht oeffentliches Internet.
+- SQLite ist fuer wenige gleichzeitige Geraete geeignet, aber nicht fuer hohe Parallelitaet.
+- Das empfohlene Produktionsmodell ist 1 Gunicorn-Worker mit Threads.
+- Fuer einen oeffentlichen Internetbetrieb waeren weitere Security- und Betriebsmaßnahmen noetig.
 
 ## Entwicklerdoku
 

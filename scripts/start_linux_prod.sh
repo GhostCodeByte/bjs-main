@@ -1,68 +1,47 @@
 #!/bin/bash
-# start_linux_prod.sh
-# Startet die Anwendung im Produktions-Modus (nutzt Conda 'base' Environment)
+# Startet die Anwendung reproduzierbar im Produktions-Modus.
 
-# 1. Zum Projektverzeichnis wechseln (wo dieses Skript liegt)
-DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-cd "$DIR"
+set -euo pipefail
 
-echo "--- Starte BJS Produktion (Conda Base) ---"
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+PROJECT_DIR="$( cd "$SCRIPT_DIR/.." && pwd )"
+cd "$PROJECT_DIR"
 
-# 2. Versuche Conda zu initialisieren
-# Da 'conda activate' in Skripten oft Probleme macht, nutzen wir den Hook.
-if ! command -v conda &> /dev/null
-then
-    echo "Conda Befehl nicht gefunden. Suche in Standard-Pfaden..."
-    POSSIBLE_PATHS=(
-        "$HOME/anaconda3/etc/profile.d/conda.sh"
-        "$HOME/miniconda3/etc/profile.d/conda.sh"
-        "/opt/conda/etc/profile.d/conda.sh"
-        "/usr/local/miniconda3/etc/profile.d/conda.sh"
-    )
+echo "--- Starte BJS Produktion ---"
 
-    CONDA_FOUND=false
-    for path in "${POSSIBLE_PATHS[@]}"; do
-        if [ -f "$path" ]; then
-            source "$path"
-            CONDA_FOUND=true
-            echo "Conda gefunden in: $path"
-            break
-        fi
-    done
-else
-    # Conda ist im Pfad, Hook initialisieren
-    eval "$(conda shell.bash hook)"
+if [ -f ".venv/bin/activate" ]; then
+    echo "Aktiviere projektlokales Virtual Environment (.venv)..."
+    # shellcheck disable=SC1091
+    source ".venv/bin/activate"
 fi
 
-# 3. Base Environment aktivieren
-echo "Aktiviere Conda 'base' Environment..."
-conda activate base
-
-# 4. Prüfen ob gunicorn installiert ist
-if ! command -v gunicorn &> /dev/null
-then
-    echo "Gunicorn ist nicht installiert. Installiere es jetzt..."
-    pip install gunicorn
+if ! command -v gunicorn >/dev/null 2>&1; then
+    echo "Gunicorn wurde nicht gefunden."
+    echo "Installiere die Abhaengigkeiten zuerst, z. B. mit:"
+    echo "  python -m venv .venv"
+    echo "  source .venv/bin/activate"
+    echo "  pip install -r requirements.txt"
+    exit 1
 fi
 
-# 5. Umgebungsvariablen für Produktion setzen
 export ENV=production
 export FLASK_APP=main:app
-# PYTHONPATH stellt sicher, dass Module im aktuellen Ordner gefunden werden
-export PYTHONPATH=$(pwd)
+export PYTHONPATH="$PROJECT_DIR"
 
-# Einstellungen
-HOST="0.0.0.0"
-PORT="5000"
-# Anzahl Worker: Formel (2 x CPUs) + 1 ist oft gut. 4 reicht locker für 20 Geräte.
-WORKERS=4
+HOST="${HOST:-0.0.0.0}"
+PORT="${PORT:-5000}"
+# SQLite laeuft stabiler mit einem Worker und Threads statt mehreren Prozessen.
+WORKERS="${WORKERS:-1}"
+THREADS="${THREADS:-8}"
 
-echo "Starten auf http://$HOST:$PORT mit $WORKERS Workern..."
+echo "Projektverzeichnis: $PROJECT_DIR"
+echo "Starten auf http://$HOST:$PORT mit $WORKERS Worker und $THREADS Threads..."
 echo "Druecke STRG+C zum Beenden."
 
-# 6. Gunicorn starten
-exec gunicorn -w $WORKERS \
-    -b $HOST:$PORT \
+exec gunicorn \
+    --workers "$WORKERS" \
+    --threads "$THREADS" \
+    --bind "$HOST:$PORT" \
     --access-logfile - \
     --error-logfile - \
     --timeout 120 \

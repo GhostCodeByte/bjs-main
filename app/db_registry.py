@@ -1,4 +1,4 @@
-"""Verwaltet die Registry für Event-Datenbanken und globale Disziplinen."""
+"""Verwaltet die Registry fuer Event-Datenbanken und globale Disziplinen."""
 
 from __future__ import annotations
 
@@ -33,7 +33,7 @@ class Disziplin:
 
 
 class DbRegistry:
-    """Kapselt die Meta-Datenbank für Datenbankauswahl und Disziplinverwaltung."""
+    """Kapselt die Meta-Datenbank fuer Datenbankauswahl und Disziplinverwaltung."""
 
     def __init__(self, meta_db_path: str | Path):
         """Initialisiert die Registry und stellt das Schema sicher."""
@@ -42,13 +42,16 @@ class DbRegistry:
         self._ensure_schema()
 
     def _connect(self) -> sqlite3.Connection:
-        """Öffnet eine SQLite-Verbindung zur Meta-Datenbank."""
-        verbindung = sqlite3.connect(str(self.meta_db_path))
+        """Oeffnet eine SQLite-Verbindung zur Meta-Datenbank."""
+        verbindung = sqlite3.connect(str(self.meta_db_path), timeout=5.0)
         verbindung.execute("PRAGMA foreign_keys = ON;")
+        verbindung.execute("PRAGMA journal_mode = WAL;")
+        verbindung.execute("PRAGMA synchronous = NORMAL;")
+        verbindung.execute("PRAGMA busy_timeout = 5000;")
         return verbindung
 
     def _ensure_schema(self) -> None:
-        """Legt alle benötigten Tabellen der Meta-Datenbank an."""
+        """Legt alle benoetigten Tabellen der Meta-Datenbank an."""
         with self._connect() as verbindung:
             verbindung.execute(
                 """
@@ -86,12 +89,9 @@ class DbRegistry:
 
             vorhandene_spalten = [
                 zeile[1]
-                for zeile in verbindung.execute(
-                    "PRAGMA table_info(Disziplinen)"
-                ).fetchall()
+                for zeile in verbindung.execute("PRAGMA table_info(Disziplinen)").fetchall()
             ]
             if "unit" in vorhandene_spalten:
-                # Alte Datenbanken enthielten noch eine `unit`-Spalte, die heute nicht mehr genutzt wird.
                 verbindung.execute("PRAGMA foreign_keys = OFF;")
                 verbindung.execute("ALTER TABLE Disziplinen RENAME TO Disziplinen_old;")
                 verbindung.execute(
@@ -116,7 +116,7 @@ class DbRegistry:
                 verbindung.execute("PRAGMA foreign_keys = ON;")
 
     def get_active_db_path(self) -> Optional[str]:
-        """Liest den Pfad der aktuell ausgewählten Event-Datenbank aus."""
+        """Liest den Pfad der aktuell ausgewaehlten Event-Datenbank aus."""
         with self._connect() as verbindung:
             zeile = verbindung.execute(
                 "SELECT value FROM App_Config WHERE key = 'active_db_path'"
@@ -199,7 +199,7 @@ class DbRegistry:
         ]
 
     def get_by_name(self, name: str) -> Optional[RegisteredDb]:
-        """Lädt genau einen Registry-Eintrag über seinen Dateinamen."""
+        """Laedt genau einen Registry-Eintrag ueber seinen Dateinamen."""
         with self._connect() as verbindung:
             zeile = verbindung.execute(
                 """
@@ -222,18 +222,12 @@ class DbRegistry:
             file_size=int(zeile[5] or 0),
         )
 
-    def ensure_registered(
-        self, db_path: str | Path, *, default_label: str = ""
-    ) -> None:
+    def ensure_registered(self, db_path: str | Path, *, default_label: str = "") -> None:
         """Registriert eine Datenbank nur dann, wenn sie noch nicht bekannt ist."""
         datenbankpfad = Path(db_path)
         if self.get_by_name(datenbankpfad.name):
             return
-        self.register_db(
-            path=datenbankpfad,
-            name=datenbankpfad.name,
-            label=default_label,
-        )
+        self.register_db(path=datenbankpfad, name=datenbankpfad.name, label=default_label)
 
     def delete_db(self, name: str, *, delete_file: bool = True) -> bool:
         """Entfernt einen Registry-Eintrag und optional die eigentliche Datenbankdatei."""
@@ -268,17 +262,12 @@ class DbRegistry:
             ).fetchall()
 
         return [
-            Disziplin(
-                id=zeile[0],
-                name=zeile[1],
-                format=zeile[2],
-                num_rounds=zeile[3],
-            )
+            Disziplin(id=zeile[0], name=zeile[1], format=zeile[2], num_rounds=zeile[3])
             for zeile in zeilen
         ]
 
     def get_disziplin(self, disziplin_id: int) -> Optional[Disziplin]:
-        """Lädt eine Disziplin anhand ihrer ID."""
+        """Laedt eine Disziplin anhand ihrer ID."""
         with self._connect() as verbindung:
             zeile = verbindung.execute(
                 """
@@ -291,15 +280,10 @@ class DbRegistry:
         if not zeile:
             return None
 
-        return Disziplin(
-            id=zeile[0],
-            name=zeile[1],
-            format=zeile[2],
-            num_rounds=zeile[3],
-        )
+        return Disziplin(id=zeile[0], name=zeile[1], format=zeile[2], num_rounds=zeile[3])
 
     def get_disziplin_by_name(self, name: str) -> Optional[Disziplin]:
-        """Lädt eine Disziplin anhand ihres eindeutigen Namens."""
+        """Laedt eine Disziplin anhand ihres eindeutigen Namens."""
         with self._connect() as verbindung:
             zeile = verbindung.execute(
                 """
@@ -312,19 +296,9 @@ class DbRegistry:
         if not zeile:
             return None
 
-        return Disziplin(
-            id=zeile[0],
-            name=zeile[1],
-            format=zeile[2],
-            num_rounds=zeile[3],
-        )
+        return Disziplin(id=zeile[0], name=zeile[1], format=zeile[2], num_rounds=zeile[3])
 
-    def create_disziplin(
-        self,
-        name: str,
-        format: str = "distance",
-        num_rounds: int = 3,
-    ) -> int:
+    def create_disziplin(self, name: str, format: str = "distance", num_rounds: int = 3) -> int:
         """Legt eine neue Disziplin in der Meta-Datenbank an."""
         with self._connect() as verbindung:
             cursor = verbindung.execute(
@@ -369,7 +343,7 @@ class DbRegistry:
             return cursor.rowcount > 0
 
     def delete_disziplin(self, disziplin_id: int) -> bool:
-        """Löscht eine Disziplin anhand ihrer ID."""
+        """Loescht eine Disziplin anhand ihrer ID."""
         with self._connect() as verbindung:
             cursor = verbindung.execute(
                 "DELETE FROM Disziplinen WHERE id = ?",

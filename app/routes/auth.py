@@ -2,6 +2,7 @@
 
 import io
 import json
+import logging
 import secrets
 import shutil
 import tempfile
@@ -35,6 +36,7 @@ from app.services_riegen import (
 )
 
 auth_bp = Blueprint("auth", __name__, template_folder="../templates")
+logger = logging.getLogger(__name__)
 
 # Einfaches In-Memory-Rate-Limit pro IP und Login-Modus.
 _RATE_LIMIT_BUCKETS = {}
@@ -42,7 +44,6 @@ _RATE_LIMIT_WINDOW = 300  # Sekunden
 _RATE_LIMIT_MAX = 10
 _DEVICE_COOKIE_NAME = "device_id"
 _EVENT_PASSWORD_KEY = "event_password"
-_DEFAULT_EVENT_PASSWORD = "event123"
 
 
 def _check_rate_limit(
@@ -97,11 +98,11 @@ def _get_event_password():
     """Liest das aktuell gueltige Event-Passwort aus DB oder Konfiguration."""
     db = get_db()
     if db is None:
-        return current_app.config.get("EVENT_PASSWORD", _DEFAULT_EVENT_PASSWORD)
+        return current_app.config.get("EVENT_PASSWORD")
     pw = db.get_setting(_EVENT_PASSWORD_KEY, None)
     if pw:
         return pw
-    return current_app.config.get("EVENT_PASSWORD", _DEFAULT_EVENT_PASSWORD)
+    return current_app.config.get("EVENT_PASSWORD")
 
 
 def _seed_default_pin():
@@ -176,16 +177,26 @@ def login():
             session["is_logged_in"] = True
             session["role"] = "admin"
             session["admin_login_at"] = time.time()
+            session.permanent = True
             flash("Admin-Login erfolgreich.", "success")
             return redirect(url_for("auth.admin_dashboard"))
 
         if login_mode == "event":
+            event_password = str(_get_event_password() or "").strip()
+            if not event_password:
+                flash(
+                    "Event-Zugang ist nicht eingerichtet. Bitte Event-PIN im Admin-Bereich setzen.",
+                    "error",
+                )
+                resp = make_response(render_template("auth.html"))
+                resp.status_code = 503
+                return resp
             if not password:
                 flash("Event-Passwort erforderlich.", "error")
                 resp = make_response(render_template("auth.html"))
                 resp.status_code = 401
                 return resp
-            if password != str(_get_event_password() or "").strip():
+            if password != event_password:
                 flash("Ungültiges Event-Passwort.", "error")
                 resp = make_response(render_template("auth.html"))
                 resp.status_code = 401
@@ -194,6 +205,7 @@ def login():
             session["is_logged_in"] = True
             session["role"] = "event"
             session["event_login_at"] = time.time()
+            session.permanent = True
             flash("Event-Login erfolgreich.", "success")
             return redirect(url_for("auth.event_overview"))
 
@@ -233,6 +245,7 @@ def login():
         session["station_pin"] = pin
         session["device_id"] = device_id
         session["station_login_at"] = time.time()
+        session.permanent = True
 
         resp = redirect(url_for("input.input_page"))
         if not request.cookies.get(_DEVICE_COOKIE_NAME):
@@ -243,6 +256,7 @@ def login():
                 max_age=60 * 60 * 24 * 365,
                 httponly=True,
                 samesite="Lax",
+                secure=current_app.config.get("SESSION_COOKIE_SECURE", False),
             )
         flash("Login erfolgreich.", "success")
         return resp
@@ -268,6 +282,7 @@ def login():
             max_age=60 * 60 * 24 * 365,
             httponly=True,
             samesite="Lax",
+            secure=current_app.config.get("SESSION_COOKIE_SECURE", False),
         )
     return resp
 
@@ -286,7 +301,12 @@ def logout():
             pass
     session.clear()
     resp = redirect(url_for("auth.login"))
-    resp.set_cookie(_DEVICE_COOKIE_NAME, "", expires=0)
+    resp.set_cookie(
+        _DEVICE_COOKIE_NAME,
+        "",
+        expires=0,
+        secure=current_app.config.get("SESSION_COOKIE_SECURE", False),
+    )
     flash("Abgemeldet.", "info")
     return resp
 
@@ -636,7 +656,9 @@ def admin_upload_db():
         if backup_path:
             msg += f" Backup: {backup_path}"
         flash(msg, "success")
+        logger.info("Datenbank hochgeladen und aktiviert: %s", filename)
     except Exception as exc:
+        logger.exception("DB-Upload fehlgeschlagen: %s", exc)
         flash(f"Upload fehlgeschlagen: {exc}", "error")
         if temp_path.exists():
             temp_path.unlink(missing_ok=True)
@@ -808,6 +830,7 @@ def admin_import_csv_to_new_db():
             delimiter=";",
         )
     except Exception as exc:
+        logger.exception("CSV-Import fehlgeschlagen: %s", exc)
         flash(f"CSV Import fehlgeschlagen: {exc}", "error")
         return redirect(url_for("auth.admin_riegeneinteilung"))
 
@@ -836,6 +859,12 @@ def admin_import_csv_to_new_db():
     flash(
         f"{result.imported} Schüler importiert, {riegen_result.created_riegen} Riegen erstellt.",
         "success" if result.errors == 0 else "info",
+    )
+    logger.info(
+        "CSV importiert: db=%s imported=%s errors=%s",
+        result.db_name,
+        result.imported,
+        result.errors,
     )
     return redirect(url_for("auth.admin_riegeneinteilung"))
 
@@ -884,6 +913,7 @@ def admin_replace_leader_names():
         raw = leader_file.stream.read().decode("utf-8-sig", errors="replace")
         leader_names = parse_leader_names_csv(csv_text=raw)
     except Exception as exc:
+        logger.exception("Leiter-CSV konnte nicht gelesen werden: %s", exc)
         flash(f"Leiter-CSV konnte nicht gelesen werden: {exc}", "error")
         return redirect(url_for("auth.admin_riegeneinteilung"))
 
