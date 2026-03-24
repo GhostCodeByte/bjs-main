@@ -296,7 +296,7 @@
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
                     <div class="row">
                         <div>
-                            <label for="csv_file">CSV Datei</label>
+                            <label for="csv_file">Schüler CSV</label>
                             <input id="csv_file" name="csv_file" type="file" accept=".csv,text/csv" required />
                         </div>
                     </div>
@@ -308,19 +308,23 @@
 
             <!-- Namen ersetzen -->
             <section class="card">
-                <h3>Riegenführer-Namen ersetzen</h3>
+                <h3>Riegenführer CSV Import</h3>
                 <form method="post" enctype="multipart/form-data" action="{{ url_for('auth.admin_replace_leader_names') }}">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
                     <div class="row">
                         <div>
-                            <label for="leaders_file">Namen CSV</label>
+                            <label for="leaders_file">Riegenführer CSV</label>
                             <input id="leaders_file" name="leaders_file" type="file" accept=".csv,text/csv" required />
                         </div>
                     </div>
                     <div class="btnrow">
-                        <button class="primary" type="submit">Namen ersetzen</button>
+                        <button class="primary" type="submit">Import starten</button>
                     </div>
                 </form>
+                <p class="muted">
+                    {{ leader_name_stats.with_extra_leader }} Riegen haben schon einen extra Riegenführer,
+                    {{ leader_name_stats.missing_extra_leader }} fehlen noch.
+                </p>
             </section>
 
             <!-- Riegen Tabelle -->

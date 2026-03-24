@@ -3,6 +3,7 @@
 import io
 import json
 import logging
+import re
 import secrets
 import shutil
 import tempfile
@@ -37,6 +38,7 @@ from app.services_riegen import (
 
 auth_bp = Blueprint("auth", __name__, template_folder="../templates")
 logger = logging.getLogger(__name__)
+_PLACEHOLDER_RIEGENFUEHRER_RE = re.compile(r"^Riegenfuehrer\s*\d+$", re.IGNORECASE)
 
 # Einfaches In-Memory-Rate-Limit pro IP und Login-Modus.
 _RATE_LIMIT_BUCKETS = {}
@@ -700,6 +702,10 @@ def admin_riegeneinteilung():
             "profil_assigned": 0,
         }
         classes = []
+        leader_name_stats = {
+            "with_extra_leader": 0,
+            "missing_extra_leader": 0,
+        }
     else:
         try:
             riegen = db.get_all_riegen_with_progress()
@@ -720,6 +726,23 @@ def admin_riegeneinteilung():
             }
             classes = []
 
+        leader_name_stats = {
+            "with_extra_leader": sum(
+                1
+                for riege in riegen
+                if not _PLACEHOLDER_RIEGENFUEHRER_RE.match(
+                    str(riege.get("name", "") or "").strip()
+                )
+            ),
+            "missing_extra_leader": sum(
+                1
+                for riege in riegen
+                if _PLACEHOLDER_RIEGENFUEHRER_RE.match(
+                    str(riege.get("name", "") or "").strip()
+                )
+            ),
+        }
+
     return render_template(
         "admin_riegeneinteilung.html",
         dbs=dbs,
@@ -727,6 +750,7 @@ def admin_riegeneinteilung():
         riegen=riegen,
         stats=stats,
         classes=classes,
+        leader_name_stats=leader_name_stats,
         no_database=db is None,
     )
 
