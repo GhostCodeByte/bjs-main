@@ -20,3 +20,4 @@ database/
 htmlcov/
 .cache/
 .DS_Store
+auswertung/
