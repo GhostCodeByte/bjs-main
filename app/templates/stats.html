@@ -4,406 +4,214 @@
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <title>Statistiken & Bestenliste</title>
+        <link
+            rel="stylesheet"
+            href="{{ url_for('static', filename='ui.css') }}"
+        />
         <style>
-            :root {
-                --primary: #2563eb;
-                --success: #15803d;
-                --danger: #b91c1c;
-                --warning: #d97706;
-                --gold: #f59e0b;
-                --silver: #9ca3af;
-                --bronze: #b45309;
-                --gray-100: #f3f4f6;
-                --gray-200: #e5e7eb;
-                --gray-400: #9ca3af;
-                --gray-600: #4b5563;
-                --gray-800: #1f2937;
-            }
-            * {
-                box-sizing: border-box;
-            }
-            body {
-                font-family:
-                    system-ui,
-                    -apple-system,
-                    sans-serif;
-                margin: 0;
-                background: #f7f7f8;
-                color: var(--gray-800);
-            }
-            header {
-                background: #111827;
-                color: #fff;
-                padding: 12px 16px;
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-            }
-            header a {
-                color: #fff;
-                text-decoration: none;
-                margin-left: 16px;
-            }
-            header a:hover {
-                text-decoration: underline;
-            }
-            main {
-                padding: 16px;
-                max-width: 1200px;
-                margin: 0 auto;
-            }
-            h1 {
-                margin: 0 0 8px;
-            }
-            h2 {
-                margin: 24px 0 12px;
-                font-size: 1.25rem;
-            }
-            .subtitle {
-                color: var(--gray-600);
-                margin-bottom: 16px;
-            }
-            /* Stats Overview */
-            .stats-grid {
+            .stats-grid,
+            .disziplin-stats {
                 display: grid;
-                grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
                 gap: 12px;
                 margin-bottom: 24px;
             }
-            .stat-card {
-                background: #fff;
-                border: 1px solid var(--gray-200);
-                border-radius: 10px;
+
+            .stats-grid {
+                grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            }
+
+            .disziplin-stats {
+                grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            }
+
+            .stat-card,
+            .disziplin-stat {
                 padding: 16px;
-                text-align: center;
             }
-            .stat-value {
-                font-size: 1.75rem;
+
+            .stat-value,
+            .result {
+                font-size: 1.5rem;
                 font-weight: 700;
-                color: var(--primary);
             }
-            .stat-label {
-                font-size: 0.85rem;
-                color: var(--gray-600);
-                margin-top: 4px;
+
+            .stat-label,
+            .athlete-details,
+            .subtitle {
+                color: var(--muted);
             }
-            /* Filter */
+
             .filter-bar {
                 display: flex;
                 gap: 12px;
-                align-items: center;
+                align-items: end;
                 margin-bottom: 16px;
                 flex-wrap: wrap;
-                background: #fff;
                 padding: 16px;
-                border-radius: 10px;
-                border: 1px solid var(--gray-200);
             }
+
             .filter-group {
-                display: flex;
-                flex-direction: column;
-                gap: 4px;
-            }
-            .filter-group label {
-                font-weight: 600;
-                font-size: 0.85rem;
-                color: var(--gray-600);
-            }
-            .filter-group select {
-                padding: 8px 12px;
-                border: 1px solid var(--gray-200);
-                border-radius: 6px;
-                font-size: 1rem;
                 min-width: 180px;
             }
-            .filter-bar button {
-                padding: 10px 20px;
-                border: none;
-                border-radius: 6px;
-                background: var(--primary);
-                color: #fff;
-                font-weight: 600;
-                cursor: pointer;
-                align-self: flex-end;
-            }
-            .filter-bar button:hover {
-                opacity: 0.9;
-            }
-            .refresh-btn {
-                background: var(--gray-200) !important;
-                color: var(--gray-800) !important;
-            }
-            /* Leaderboard */
-            .leaderboard {
-                background: #fff;
-                border: 1px solid var(--gray-200);
-                border-radius: 10px;
-                overflow: hidden;
-            }
+
             .leaderboard-header {
-                background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
-                color: #fff;
-                padding: 20px;
-                text-align: center;
+                padding: 16px;
+                border-bottom: 1px solid var(--border);
+                background: var(--panel-muted);
             }
-            .leaderboard-header h2 {
-                margin: 0;
-                font-size: 1.5rem;
-            }
-            .leaderboard-header .disziplin-name {
-                opacity: 0.9;
-                margin-top: 4px;
-            }
+
             .leaderboard-list {
                 list-style: none;
                 margin: 0;
                 padding: 0;
             }
+
             .leaderboard-item {
                 display: flex;
                 align-items: center;
-                padding: 14px 20px;
-                border-bottom: 1px solid var(--gray-200);
-                transition: background 0.2s;
+                padding: 14px 16px;
+                border-bottom: 1px solid var(--border);
+                gap: 12px;
             }
+
             .leaderboard-item:last-child {
                 border-bottom: none;
             }
-            .leaderboard-item:hover {
-                background: #fafafa;
-            }
+
             .rank {
-                width: 40px;
-                height: 40px;
+                width: 36px;
+                height: 36px;
                 display: flex;
                 align-items: center;
                 justify-content: center;
-                border-radius: 50%;
+                border-radius: 999px;
+                background: var(--panel-muted);
+                border: 1px solid var(--border);
                 font-weight: 700;
-                font-size: 1rem;
-                margin-right: 16px;
                 flex-shrink: 0;
             }
-            .rank.gold {
-                background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
-                color: #fff;
-                box-shadow: 0 2px 8px rgba(245, 158, 11, 0.4);
-            }
-            .rank.silver {
-                background: linear-gradient(135deg, #d1d5db 0%, #9ca3af 100%);
-                color: #fff;
-                box-shadow: 0 2px 8px rgba(156, 163, 175, 0.4);
-            }
-            .rank.bronze {
-                background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
-                color: #fff;
-                box-shadow: 0 2px 8px rgba(180, 83, 9, 0.4);
-            }
-            .rank.default {
-                background: var(--gray-100);
-                color: var(--gray-600);
-            }
+
             .athlete-info {
                 flex: 1;
             }
-            .athlete-name {
-                font-weight: 600;
-                font-size: 1rem;
-            }
-            .athlete-details {
-                font-size: 0.85rem;
-                color: var(--gray-600);
-                margin-top: 2px;
-            }
-            .result {
-                font-weight: 700;
-                font-size: 1.25rem;
-                color: var(--primary);
+
+            .empty-state {
+                padding: 32px 20px;
+                text-align: center;
             }
 
-            /* Empty State */
-            .empty-state {
-                text-align: center;
-                padding: 60px 20px;
-                color: var(--gray-600);
-            }
-            .empty-state svg {
-                width: 80px;
-                height: 80px;
-                opacity: 0.4;
-                margin-bottom: 16px;
-            }
-            /* Disziplin Stats */
-            .disziplin-stats {
-                display: grid;
-                grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-                gap: 12px;
-                margin-bottom: 24px;
-            }
-            .disziplin-stat {
-                background: #fff;
-                border: 1px solid var(--gray-200);
-                border-radius: 10px;
-                padding: 12px 16px;
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-            }
-            .disziplin-stat .name {
-                font-weight: 600;
-            }
-            .disziplin-stat .count {
-                font-weight: 700;
-                color: var(--primary);
-            }
-            /* Live indicator */
             .live-indicator {
                 display: inline-flex;
                 align-items: center;
                 gap: 6px;
-                font-size: 0.85rem;
-                color: var(--gray-600);
+                font-size: 0.9rem;
             }
+
             .live-dot {
                 width: 8px;
                 height: 8px;
-                background: var(--success);
-                border-radius: 50%;
-                animation: pulse 2s infinite;
-            }
-            @keyframes pulse {
-                0%,
-                100% {
-                    opacity: 1;
-                }
-                50% {
-                    opacity: 0.5;
-                }
-            }
-            /* Toast */
-            .toast {
-                position: fixed;
-                bottom: 20px;
-                right: 20px;
-                padding: 12px 20px;
-                border-radius: 8px;
-                color: #fff;
-                font-weight: 600;
-                z-index: 200;
-                transform: translateY(100px);
-                opacity: 0;
-                transition: all 0.3s ease;
-            }
-            .toast.show {
-                transform: translateY(0);
-                opacity: 1;
-            }
-            .toast.success {
+                border-radius: 999px;
                 background: var(--success);
             }
-            .toast.info {
-                background: var(--primary);
-            }
-            /* Responsive */
+
             @media (max-width: 600px) {
                 .leaderboard-item {
-                    padding: 12px 14px;
+                    align-items: flex-start;
                 }
-                .rank {
-                    width: 32px;
-                    height: 32px;
-                    font-size: 0.85rem;
-                    margin-right: 12px;
-                }
-                .athlete-name {
-                    font-size: 0.9rem;
-                }
+
                 .result {
-                    font-size: 1.1rem;
+                    font-size: 1.2rem;
                 }
             }
         </style>
     </head>
     <body>
-        <header>
-            <div><strong>Statistiken & Bestenliste</strong></div>
-            <nav>
-                <a href="/admin">Admin</a>
-                <a href="/dashboard">Fortschritt</a>
-                <a href="/admin/disziplinen">Disziplinen</a>
-                <a href="/logout">Logout</a>
-            </nav>
+        <header class="app-header">
+            <div class="app-header__inner">
+                <div class="app-header__title">Statistiken & Bestenliste</div>
+                <nav class="app-nav">
+                    <a href="/admin">Admin</a>
+                    <a href="/dashboard">Fortschritt</a>
+                    <a href="/admin/disziplinen">Disziplinen</a>
+                    <form action="/logout" method="POST" style="display: inline">
+                        <input
+                            type="hidden"
+                            name="csrf_token"
+                            value="{{ csrf_token() }}"
+                        />
+                        <button type="submit">Logout</button>
+                    </form>
+                </nav>
+            </div>
         </header>
 
-        <main>
-            <h1>Live-Bestenliste</h1>
-            <p class="subtitle">
-                Top-Ergebnisse nach Disziplin
-                <span class="live-indicator">
-                    <span class="live-dot"></span>
-                    Live-Aktualisierung
-                </span>
-            </p>
-
-            <!-- Stats Overview -->
-            <div class="stats-grid">
-                <div class="stat-card">
-                    <div class="stat-value">
-                        {{ stats.total_schueler or 0 }}
-                    </div>
-                    <div class="stat-label">Schüler</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-value">
-                        {{ stats.total_ergebnisse or 0 }}
-                    </div>
-                    <div class="stat-label">Ergebnisse</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-value">
-                        {{ stats.active_sessions or 0 }}
-                    </div>
-                    <div class="stat-label">Aktive Stationen</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-value" id="last-activity">
-                        {% if stats.last_activity %} {{ stats.last_activity[:16]
-                        if stats.last_activity|length > 16 else
-                        stats.last_activity }} {% else %} - {% endif %}
-                    </div>
-                    <div class="stat-label">Letzte Aktivität</div>
+        <main class="page">
+            <div class="page-head">
+                <div>
+                    <h1>Live-Bestenliste</h1>
+                    <p class="subtitle">
+                        Top-Ergebnisse nach Disziplin
+                        <span class="live-indicator">
+                            <span class="live-dot"></span>
+                            Live-Aktualisierung
+                        </span>
+                    </p>
                 </div>
             </div>
 
-            <!-- Ergebnisse pro Disziplin -->
+            <div class="stats-grid">
+                <div class="card stat-card">
+                    <div class="stat-value">{{ stats.total_schueler or 0 }}</div>
+                    <div class="stat-label">Schüler</div>
+                </div>
+                <div class="card stat-card">
+                    <div class="stat-value">{{ stats.total_ergebnisse or 0 }}</div>
+                    <div class="stat-label">Ergebnisse</div>
+                </div>
+                <div class="card stat-card">
+                    <div class="stat-value">{{ stats.active_sessions or 0 }}</div>
+                    <div class="stat-label">Aktive Stationen</div>
+                </div>
+                <div class="card stat-card">
+                    <div class="stat-value" id="last-activity">
+                        {% if stats.last_activity %}{{ stats.last_activity[:16]
+                        if stats.last_activity|length > 16 else
+                        stats.last_activity }}{% else %}-{% endif %}
+                    </div>
+                    <div class="stat-label">Letzte Aktivität</div>
+                </div>
+                <div class="card stat-card">
+                    <div class="stat-value">{{ auswertung_summary.evaluated or 0 }}</div>
+                    <div class="stat-label">Ausgewertet</div>
+                </div>
+                <div class="card stat-card">
+                    <div class="stat-value">{{ auswertung_summary.ehrenurkunden or 0 }}</div>
+                    <div class="stat-label">Ehrenurkunden</div>
+                </div>
+                <div class="card stat-card">
+                    <div class="stat-value">{{ auswertung_summary.siegerurkunden or 0 }}</div>
+                    <div class="stat-label">Siegerurkunden</div>
+                </div>
+            </div>
+
             {% if stats.ergebnisse_pro_disziplin %}
             <h2>Ergebnisse pro Disziplin</h2>
             <div class="disziplin-stats">
                 {% for name, count in stats.ergebnisse_pro_disziplin.items() %}
-                <div class="disziplin-stat">
+                <div class="card disziplin-stat">
                     <span class="name">{{ name }}</span>
-                    <span class="count">{{ count }}</span>
+                    <span class="result">{{ count }}</span>
                 </div>
                 {% endfor %}
             </div>
             {% endif %}
 
-            <!-- Filter -->
             <div class="filter-bar">
                 <div class="filter-group">
                     <label for="disziplin-select">Disziplin</label>
                     <select id="disziplin-select" onchange="loadBestenliste()">
                         {% for d in disziplinen %}
-                        <option
-                            value="{{ d.name }}"
-                            {%
-                            if
-                            selected_disziplin=""
-                            ="d.name"
-                            %}selected{%
-                            endif
-                            %}
-                        >
+                        <option value="{{ d.name }}" {% if selected_disziplin == d.name %}selected{% endif %}>
                             {{ d.display_name or d.name }}
                         </option>
                         {% endfor %}
@@ -412,21 +220,46 @@
                 <div class="filter-group">
                     <label for="geschlecht-select">Geschlecht</label>
                     <select id="geschlecht-select" onchange="loadBestenliste()">
-                        <option value="">Alle</option>
-                        <option value="m">Jungen</option>
-                        <option value="w">Mädchen</option>
+                        <option value="" {% if not request.args.get("geschlecht") %}selected{% endif %}>Alle</option>
+                        <option value="m" {% if request.args.get("geschlecht") == "m" %}selected{% endif %}>Jungen</option>
+                        <option value="w" {% if request.args.get("geschlecht") == "w" %}selected{% endif %}>Mädchen</option>
                     </select>
                 </div>
-                <button class="refresh-btn" onclick="loadBestenliste()">
-                    🔄 Aktualisieren
-                </button>
+                <button class="btn-secondary" type="button" onclick="loadBestenliste()">Aktualisieren</button>
+                <button type="button" onclick="runAuswertung()">Auswertung berechnen</button>
             </div>
 
-            <!-- Leaderboard -->
+            <h2>Gesamtwertung</h2>
+            {% if gesamt_bestenliste %}
             <div class="leaderboard">
                 <div class="leaderboard-header">
-                    <h2>🏆 Bestenliste</h2>
-                    <div class="disziplin-name" id="current-disziplin">
+                    <h2>Gesamtpunktzahl</h2>
+                    <div class="subtitle">Top 20 nach berechneter Auswertung</div>
+                </div>
+                <ul class="leaderboard-list">
+                    {% for entry in gesamt_bestenliste %}
+                    <li class="leaderboard-item">
+                        <div class="rank">{{ entry.rank }}</div>
+                        <div class="athlete-info">
+                            <div><strong>{{ entry.vorname }} {{ entry.name }}</strong></div>
+                            <div class="athlete-details">Klasse {{ entry.klasse }} | {{ entry.urkunde or 'Keine Urkunde' }}</div>
+                        </div>
+                        <div class="result">{{ entry.gesamtpunktzahl }}</div>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% else %}
+            <div class="leaderboard empty-state">
+                <h3>Noch keine Gesamtwertung</h3>
+                <p>Die Auswertung wurde für diese Datenbank noch nicht berechnet.</p>
+            </div>
+            {% endif %}
+
+            <div class="leaderboard">
+                <div class="leaderboard-header">
+                    <h2>Bestenliste</h2>
+                    <div class="subtitle" id="current-disziplin">
                         {{ selected_disziplin or 'Disziplin wählen' }}
                     </div>
                 </div>
@@ -435,53 +268,26 @@
                 <ul class="leaderboard-list" id="leaderboard-list">
                     {% for entry in bestenliste %}
                     <li class="leaderboard-item">
-                        <div
-                            class="rank {% if entry.rank == 1 %}gold{% elif entry.rank == 2 %}silver{% elif entry.rank == 3 %}bronze{% else %}default{% endif %}"
-                        >
-                            {{ entry.rank }}
-                        </div>
+                        <div class="rank">{{ entry.rank }}</div>
                         <div class="athlete-info">
-                            <div class="athlete-name">
-                                {{ entry.vorname }} {{ entry.name }}
-                            </div>
+                            <div><strong>{{ entry.vorname }} {{ entry.name }}</strong></div>
                             <div class="athlete-details">
-                                Klasse {{ entry.klasse }} · {{ 'Junge' if
-                                entry.geschlecht == 'm' else 'Mädchen' }}
+                                Klasse {{ entry.klasse }} | {{ 'Junge' if entry.geschlecht == 'm' else 'Mädchen' }}
                             </div>
                         </div>
-                        <div class="result">
-                            {{ "%.2f"|format(entry.result) if entry.result else
-                            '-' }}
-                        </div>
+                        <div class="result">{{ "%.2f"|format(entry.result) if entry.result else '-' }}</div>
                     </li>
                     {% endfor %}
                 </ul>
                 {% else %}
                 <div class="empty-state" id="empty-state">
-                    <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                    >
-                        <path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            stroke-width="2"
-                            d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
-                        />
-                    </svg>
                     <h3>Noch keine Ergebnisse</h3>
-                    <p>
-                        Für diese Disziplin wurden noch keine Ergebnisse
-                        erfasst.
-                    </p>
+                    <p>Für diese Disziplin wurden noch keine Ergebnisse erfasst.</p>
                 </div>
                 {% endif %}
             </div>
         </main>
 
-        <!-- Toast -->
         <div class="toast" id="toast"></div>
 
         <script>
@@ -498,11 +304,8 @@
             }
 
             async function loadBestenliste() {
-                const disziplin =
-                    document.getElementById("disziplin-select").value;
-                const geschlecht =
-                    document.getElementById("geschlecht-select").value;
-
+                const disziplin = document.getElementById("disziplin-select").value;
+                const geschlecht = document.getElementById("geschlecht-select").value;
                 if (!disziplin) return;
 
                 try {
@@ -512,32 +315,51 @@
                     }
 
                     const res = await fetch(url, {
-                        headers: {
-                            "X-CSRFToken": csrfToken,
-                        },
+                        headers: { "X-CSRFToken": csrfToken },
                     });
                     const data = await res.json();
-
                     if (!res.ok) {
                         throw new Error(data.error || "Fehler beim Laden");
                     }
 
                     updateLeaderboard(data.bestenliste, data.disziplin);
-                    showToast("Bestenliste aktualisiert", "info");
+                    const currentUrl = new URL(window.location.href);
+                    currentUrl.searchParams.set("disziplin", disziplin);
+                    if (geschlecht) currentUrl.searchParams.set("geschlecht", geschlecht);
+                    else currentUrl.searchParams.delete("geschlecht");
+                    window.history.replaceState({}, "", currentUrl);
                 } catch (err) {
                     console.error("Load error:", err);
                     showToast("Fehler: " + err.message, "error");
                 }
             }
 
-            function updateLeaderboard(bestenliste, disziplin) {
-                // Update header
-                document.getElementById("current-disziplin").textContent =
-                    disziplin;
+            async function runAuswertung() {
+                try {
+                    const res = await fetch("/stats/auswertung/run", {
+                        method: "POST",
+                        headers: { "X-CSRFToken": csrfToken },
+                    });
+                    const data = await res.json();
+                    if (!res.ok) {
+                        throw new Error(data.error || "Fehler bei der Auswertung");
+                    }
+                    showToast(
+                        `Auswertung fertig: ${data.evaluated_students} bewertet, ${data.skipped_students} übersprungen`,
+                        "success",
+                    );
+                    window.location.reload();
+                } catch (err) {
+                    console.error("Auswertung error:", err);
+                    showToast("Fehler: " + err.message, "error");
+                }
+            }
 
-                const container = document.querySelector(".leaderboard");
-                const existingList =
-                    document.getElementById("leaderboard-list");
+            function updateLeaderboard(bestenliste, disziplin) {
+                document.getElementById("current-disziplin").textContent = disziplin;
+
+                const container = document.querySelectorAll(".leaderboard")[1];
+                const existingList = document.getElementById("leaderboard-list");
                 const existingEmpty = document.getElementById("empty-state");
 
                 if (existingList) existingList.remove();
@@ -548,9 +370,6 @@
                     emptyState.className = "empty-state";
                     emptyState.id = "empty-state";
                     emptyState.innerHTML = `
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                        </svg>
                         <h3>Noch keine Ergebnisse</h3>
                         <p>Für diese Disziplin wurden noch keine Ergebnisse erfasst.</p>
                     `;
@@ -563,34 +382,18 @@
                 list.id = "leaderboard-list";
 
                 bestenliste.forEach((entry) => {
-                    const rankClass =
-                        entry.rank === 1
-                            ? "gold"
-                            : entry.rank === 2
-                              ? "silver"
-                              : entry.rank === 3
-                                ? "bronze"
-                                : "default";
-
-                    const geschlechtText =
-                        entry.geschlecht === "m" ? "Junge" : "Mädchen";
-                    const resultFormatted = entry.result
-                        ? entry.result.toFixed(2)
-                        : "-";
+                    const geschlechtText = entry.geschlecht === "m" ? "Junge" : "Mädchen";
+                    const resultFormatted = entry.result ? entry.result.toFixed(2) : "-";
 
                     const li = document.createElement("li");
                     li.className = "leaderboard-item";
                     li.innerHTML = `
-                        <div class="rank ${rankClass}">${entry.rank}</div>
+                        <div class="rank">${entry.rank}</div>
                         <div class="athlete-info">
-                            <div class="athlete-name">${entry.vorname} ${entry.name}</div>
-                            <div class="athlete-details">
-                                Klasse ${entry.klasse} · ${geschlechtText}
-                            </div>
+                            <div><strong>${entry.vorname} ${entry.name}</strong></div>
+                            <div class="athlete-details">Klasse ${entry.klasse} | ${geschlechtText}</div>
                         </div>
-                        <div class="result">
-                            ${resultFormatted}
-                        </div>
+                        <div class="result">${resultFormatted}</div>
                     `;
                     list.appendChild(li);
                 });
@@ -598,12 +401,10 @@
                 container.appendChild(list);
             }
 
-            // Auto-refresh every 30 seconds
             function startAutoRefresh() {
                 autoRefreshInterval = setInterval(loadBestenliste, 30000);
             }
 
-            // Stop auto-refresh when page is hidden
             document.addEventListener("visibilitychange", () => {
                 if (document.hidden) {
                     if (autoRefreshInterval) {
@@ -616,7 +417,6 @@
                 }
             });
 
-            // Start auto-refresh on page load
             startAutoRefresh();
         </script>
     </body>

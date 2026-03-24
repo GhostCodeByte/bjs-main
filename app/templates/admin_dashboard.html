@@ -7,156 +7,22 @@
             content="width=device-width, initial-scale=1.0, viewport-fit=cover"
         />
         <title>Admin Dashboard</title>
-
+        <link
+            rel="stylesheet"
+            href="{{ url_for('static', filename='ui.css') }}"
+        />
         <style>
-            :root {
-                --bg: #f7f7f8;
-                --panel: #ffffff;
-                --border: #e5e7eb;
-                --text: #111827;
-                --muted: #6b7280;
-
-                --primary: #2563eb;
-                --success: #15803d;
-                --danger: #b91c1c;
-
-                --shadow: 0 10px 30px rgba(17, 24, 39, 0.08);
-                --radius: 12px;
-            }
-
-            * {
-                box-sizing: border-box;
-            }
-
-            body {
-                margin: 0;
-                font-family:
-                    system-ui,
-                    -apple-system,
-                    sans-serif;
-                background: var(--bg);
-                color: var(--text);
-            }
-
-            header {
-                background: #111827;
-                color: #fff;
-                padding: 12px 16px;
-                display: flex;
-                align-items: center;
-                justify-content: space-between;
-                gap: 12px;
-            }
-
-            header strong {
-                letter-spacing: 0.2px;
-            }
-
-            header nav a {
-                color: #fff;
-                text-decoration: none;
-                margin-left: 14px;
-                opacity: 0.95;
-            }
-
-            header nav a:hover {
-                opacity: 1;
-                text-decoration: underline;
-            }
-
-            main {
-                max-width: 1100px;
-                margin: 0 auto;
-                padding: 18px 16px 28px;
-            }
-
-            h1 {
-                margin: 0 0 8px;
-                font-size: 1.6rem;
-            }
-
-            h2 {
-                margin: 22px 0 10px;
-                font-size: 1.05rem;
-                color: var(--text);
-            }
-
-            .muted {
-                color: var(--muted);
-                font-size: 0.92rem;
-                line-height: 1.35;
-            }
-
-            .flash {
-                padding: 10px 12px;
-                border-radius: 10px;
-                margin-bottom: 10px;
-                font-weight: 650;
-                border: 1px solid var(--border);
-                background: #fff;
-            }
-
-            .flash.success {
-                background: #e8f5e9;
-                color: #1b5e20;
-                border-color: #c8e6c9;
-            }
-
-            .flash.error {
-                background: #ffebee;
-                color: #b71c1c;
-                border-color: #ffcdd2;
-            }
-
-            .flash.info {
-                background: #e3f2fd;
-                color: #0d47a1;
-                border-color: #bbdefb;
+            .section {
+                margin-top: 24px;
             }
 
             .stack {
                 display: grid;
-                grid-template-columns: 1fr;
                 gap: 12px;
-                align-items: start;
-            }
-
-            .card {
-                background: var(--panel);
-                border: 1px solid var(--border);
-                border-radius: var(--radius);
-                padding: 16px;
-                box-shadow: var(--shadow);
-                display: flex;
-                flex-direction: column;
-                gap: 10px;
             }
 
             .card h3 {
-                margin: 0 0 2px;
-                font-size: 1rem;
-            }
-
-            label {
-                font-weight: 650;
-                font-size: 0.9rem;
-            }
-
-            input,
-            select {
-                width: 100%;
-                padding: 9px 10px;
-                border: 1px solid #d1d5db;
-                border-radius: 10px;
-                font-size: 0.95rem;
-                background: #fff;
-            }
-
-            input:focus,
-            select:focus {
-                outline: none;
-                border-color: var(--primary);
-                box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+                margin-bottom: 6px;
             }
 
             .btnrow {
@@ -166,157 +32,45 @@
                 flex-wrap: wrap;
             }
 
-            button {
-                border: none;
-                border-radius: 10px;
-                padding: 10px 14px;
-                font-weight: 750;
-                color: #fff;
-                cursor: pointer;
-                font-size: 0.92rem;
-            }
-
-            button:disabled {
-                opacity: 0.65;
-                cursor: not-allowed;
-            }
-
-            .primary {
-                background: var(--primary);
-            }
-
-            .danger {
-                background: var(--danger);
-            }
-
-            .secondary {
-                background: #374151;
-            }
-
-            code {
-                background: #f3f4f6;
-                padding: 2px 6px;
-                border-radius: 8px;
-                font-family:
-                    ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
-                    "Liberation Mono", "Courier New", monospace;
-            }
-
-            /* Event PIN highlight */
             .event-pin-box {
                 display: flex;
                 align-items: center;
                 justify-content: space-between;
                 gap: 12px;
                 padding: 12px 14px;
-                border: 1px solid rgba(37, 99, 235, 0.25);
-                background: rgba(37, 99, 235, 0.06);
-                border-radius: 12px;
+                border: 1px solid var(--border);
+                border-radius: var(--radius);
+                background: var(--panel-muted);
             }
 
             .event-pin-label {
-                font-weight: 800;
+                font-weight: 600;
             }
 
             .event-pin-value {
-                font-size: 1.05rem;
-                font-weight: 900;
-                letter-spacing: 0.6px;
-                color: #0f172a;
-                background: #fff;
-                border: 1px solid var(--border);
-                padding: 6px 10px;
-                border-radius: 10px;
                 min-width: 92px;
                 text-align: center;
+                font-weight: 700;
+                background: var(--panel);
             }
 
-            /* Table */
-            table {
-                width: 100%;
-                border-collapse: collapse;
-                background: #fff;
-                border: 1px solid var(--border);
-                border-radius: var(--radius);
-                overflow: hidden;
-                box-shadow: var(--shadow);
-                margin-top: 8px;
-            }
-
-            th,
-            td {
-                padding: 10px 12px;
-                border-bottom: 1px solid var(--border);
-                text-align: left;
-                font-size: 0.92rem;
-                vertical-align: middle;
-            }
-
-            th {
-                background: #f3f4f6;
-                font-weight: 650;
-            }
-
-            .badge {
-                padding: 2px 8px;
-                border-radius: 999px;
-                color: #fff;
-                font-size: 0.75rem;
-                font-weight: 750;
-                display: inline-block;
-            }
-
-            .badge.green {
-                background: var(--success);
-            }
-
-            .badge.red {
-                background: var(--danger);
-            }
-
-            /* Hover row actions */
-            .pin-row {
-                position: relative;
-            }
-
-            .row-actions {
-                opacity: 0;
-                pointer-events: none;
-                transition: opacity 0.12s ease;
-                display: inline-flex;
-                gap: 10px;
+            .pin-row .row-actions {
+                display: flex;
+                gap: 8px;
                 align-items: center;
                 justify-content: flex-end;
             }
 
-            .pin-row:hover .row-actions {
-                opacity: 1;
-                pointer-events: auto;
-            }
-
             .mini-btn {
                 padding: 8px 10px;
-                border-radius: 10px;
                 font-size: 0.85rem;
-                font-weight: 800;
-                line-height: 1;
-                border: 1px solid rgba(185, 28, 28, 0.25);
-                background: rgba(185, 28, 28, 0.08);
-                color: #7f1d1d;
-                cursor: pointer;
             }
 
-            .mini-btn:hover {
-                background: rgba(185, 28, 28, 0.12);
-            }
-
-            /* Switch */
             .switch {
                 position: relative;
                 display: inline-block;
-                width: 44px;
-                height: 26px;
-                vertical-align: middle;
+                width: 40px;
+                height: 24px;
             }
 
             .switch input {
@@ -327,323 +81,288 @@
 
             .slider {
                 position: absolute;
-                cursor: pointer;
                 inset: 0;
-                background-color: #d1d5db;
-                transition: 0.14s;
+                cursor: pointer;
+                background-color: #c4cabf;
                 border-radius: 999px;
+                transition: 0.14s;
             }
 
             .slider:before {
                 position: absolute;
                 content: "";
-                height: 20px;
-                width: 20px;
+                width: 18px;
+                height: 18px;
                 left: 3px;
                 top: 3px;
-                background-color: white;
-                transition: 0.14s;
+                background-color: #fff;
                 border-radius: 999px;
-                box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+                transition: 0.14s;
+                box-shadow: var(--shadow-sm);
             }
 
             .switch input:checked + .slider {
-                background-color: rgba(21, 128, 61, 0.9);
+                background-color: var(--success);
             }
 
             .switch input:checked + .slider:before {
-                transform: translateX(18px);
-            }
-
-            /* Toast */
-            .toast {
-                position: fixed;
-                bottom: 18px;
-                right: 18px;
-                padding: 12px 16px;
-                border-radius: 12px;
-                color: #fff;
-                font-weight: 650;
-                z-index: 200;
-                transform: translateY(80px);
-                opacity: 0;
-                transition: all 0.25s ease;
-            }
-
-            .toast.show {
-                transform: translateY(0);
-                opacity: 1;
-            }
-
-            .toast.success {
-                background: var(--success);
-            }
-
-            .toast.error {
-                background: var(--danger);
-            }
-
-            .toast.info {
-                background: var(--primary);
+                transform: translateX(16px);
             }
         </style>
     </head>
-
     <body>
-        <header>
-            <div><strong>Admin</strong></div>
-            <nav>
-                <a href="/admin">Dashboard</a>
-                <a href="/admin/riegeneinteilung">Riegeneinteilung</a>
-                <a href="/admin/disziplinen">Disziplinen</a>
-                <a href="/logout">Logout</a>
-            </nav>
+        <header class="app-header">
+            <div class="app-header__inner">
+                <div class="app-header__title">Admin</div>
+                <nav class="app-nav">
+                    <a href="/admin">Dashboard</a>
+                    <a href="/admin/riegeneinteilung">Riegeneinteilung</a>
+                    <a href="/admin/disziplinen">Disziplinen</a>
+                    <form action="/logout" method="POST" style="display: inline">
+                        <input
+                            type="hidden"
+                            name="csrf_token"
+                            value="{{ csrf_token() }}"
+                        />
+                        <button type="submit">Logout</button>
+                    </form>
+                </nav>
+            </div>
         </header>
 
-        <main>
+        <main class="page">
             {% with messages = get_flashed_messages(with_categories=True) %} {%
             if messages %} {% for category, message in messages %}
             <div class="flash {{ category }}">{{ message }}</div>
             {% endfor %} {% endif %} {% endwith %}
 
-            <h1>Admin Dashboard</h1>
-            <div class="muted">
-                Disziplinen werden unter <strong>Disziplinen</strong> verwaltet.
-                Hier erzeugst du die Event-PIN und Stations-PINs.
+            <div class="page-head">
+                <div>
+                    <h1>Admin Dashboard</h1>
+                    <div class="page-note">
+                        Datenbank, Event-PIN und Stations-PINs werden hier verwaltet.
+                    </div>
+                </div>
             </div>
 
             {% if no_database %}
-            <div class="flash info" style="margin-top: 1rem">
+            <div class="flash info">
                 <strong>Keine Datenbank vorhanden.</strong><br />
                 Bitte importiere zuerst eine CSV-Datei unter
-                <a href="{{ url_for('auth.admin_riegeneinteilung') }}"
-                    >Riegeneinteilung</a
-                >, um eine neue Datenbank zu erstellen.
+                <a href="{{ url_for('auth.admin_riegeneinteilung') }}">Riegeneinteilung</a>,
+                um eine neue Datenbank zu erstellen.
             </div>
             {% endif %}
 
-            <h2>Datenbank</h2>
-            <div class="stack">
-                <div class="card">
-                    <h3>Datenbank wechseln</h3>
-                    <div class="muted">
-                        Aktuelle DB:
-                        <code>{{ active_db_path or 'Keine ausgewählt' }}</code>
+            <section class="section">
+                <h2>Datenbank</h2>
+                <div class="stack">
+                    <div class="card">
+                        <h3>Datenbank wechseln</h3>
+                        <div class="muted">
+                            Aktuelle DB:
+                            <code>{{ active_db_path or 'Keine ausgewählt' }}</code>
+                        </div>
+
+                        {% if dbs %}
+                        <form
+                            method="post"
+                            action="{{ url_for('auth.admin_select_db') }}"
+                        >
+                            <input
+                                type="hidden"
+                                name="csrf_token"
+                                value="{{ csrf_token() }}"
+                            />
+                            <label for="db_name">Datenbank auswählen</label>
+                            <select id="db_name" name="db_name" required>
+                                <option value="" disabled selected>
+                                    Bitte auswählen
+                                </option>
+                                {% for item in dbs %}
+                                <option value="{{ item.name }}">
+                                    {{ item.name }}{% if item.label %} - {{ item.label }}{% endif %}
+                                </option>
+                                {% endfor %}
+                            </select>
+
+                            <div class="btnrow" style="margin-top: 10px">
+                                <button class="primary" type="submit">
+                                    Aktiv setzen
+                                </button>
+                            </div>
+                        </form>
+                        {% else %}
+                        <div class="muted" style="margin-top: 10px">
+                            Keine Datenbanken vorhanden. Importiere eine CSV-Datei
+                            unter
+                            <a href="{{ url_for('auth.admin_riegeneinteilung') }}">Riegeneinteilung</a>.
+                        </div>
+                        {% endif %}
                     </div>
 
                     {% if dbs %}
-
-                    <form
-                        method="post"
-                        action="{{ url_for('auth.admin_select_db') }}"
-                    >
-                        <input
-                            type="hidden"
-                            name="csrf_token"
-                            value="{{ csrf_token() }}"
-                        />
-                        <label for="db_name">Datenbank auswählen</label>
-                        <select id="db_name" name="db_name" required>
-                            <option value="" disabled selected>
-                                Bitte auswählen
-                            </option>
-                            {% for item in dbs %}
-                            <option value="{{ item.name }}">
-                                {{ item.name }}{% if item.label %} — {{
-                                item.label }}{% endif %}
-                            </option>
-                            {% endfor %}
-                        </select>
-
-                        <div class="btnrow" style="margin-top: 10px">
-                            <button class="primary" type="submit">
-                                Aktiv setzen
-                            </button>
+                    <div class="card">
+                        <h3>Datenbank löschen</h3>
+                        <div class="muted">
+                            Gelöschte Datenbanken können nicht wiederhergestellt werden.
                         </div>
-                    </form>
-                    {% else %}
-                    <div class="muted" style="margin-top: 10px">
-                        Keine Datenbanken vorhanden. Importiere eine CSV-Datei
-                        unter
-                        <a href="{{ url_for('auth.admin_riegeneinteilung') }}"
-                            >Riegeneinteilung</a
-                        >.
-                    </div>
-                    {% endif %}
-                </div>
 
-                {% if dbs %}
-                <div class="card">
-                    <h3>Datenbank löschen</h3>
-                    <div class="muted">
-                        Achtung: Gelöschte Datenbanken können nicht
-                        wiederhergestellt werden!
-                    </div>
-
-                    <form
-                        method="post"
-                        action="{{ url_for('auth.admin_delete_db') }}"
-                        onsubmit="return confirmDeleteDb(this);"
-                    >
-                        <input
-                            type="hidden"
-                            name="csrf_token"
-                            value="{{ csrf_token() }}"
-                        />
-                        <input type="hidden" name="delete_file" value="true" />
-                        <label for="delete_db_name"
-                            >Datenbank zum Löschen auswählen</label
+                        <form
+                            method="post"
+                            action="{{ url_for('auth.admin_delete_db') }}"
+                            onsubmit="return confirmDeleteDb(this);"
                         >
-                        <select id="delete_db_name" name="db_name" required>
-                            <option value="" disabled selected>
-                                Bitte auswählen
-                            </option>
-                            {% for item in dbs %}
-                            <option value="{{ item.name }}">
-                                {{ item.name }}{% if item.label %} — {{
-                                item.label }}{% endif %}
-                            </option>
-                            {% endfor %}
-                        </select>
+                            <input
+                                type="hidden"
+                                name="csrf_token"
+                                value="{{ csrf_token() }}"
+                            />
+                            <input type="hidden" name="delete_file" value="true" />
+                            <label for="delete_db_name">Datenbank wählen</label>
+                            <select id="delete_db_name" name="db_name" required>
+                                <option value="" disabled selected>
+                                    Bitte auswählen
+                                </option>
+                                {% for item in dbs %}
+                                <option value="{{ item.name }}">
+                                    {{ item.name }}{% if item.label %} - {{ item.label }}{% endif %}
+                                </option>
+                                {% endfor %}
+                            </select>
 
-                        <div class="btnrow" style="margin-top: 10px">
-                            <button class="danger" type="submit">
-                                Datenbank löschen
-                            </button>
-                        </div>
-                    </form>
-                </div>
-                {% endif %}
-            </div>
-
-            {% if not no_database %}
-            <h2>PINs</h2>
-            <div class="stack">
-                <div class="card" id="event-pin-card">
-                    <h3>Event</h3>
-
-                    <div class="event-pin-box">
-                        <div class="event-pin-label">Aktueller event pin:</div>
-                        <div class="event-pin-value" id="current-event-pin">
-                            {% if event_pin %}{{ event_pin }}{% else %}—{% endif
-                            %}
-                        </div>
-                    </div>
-
-                    <div class="muted">
-                        Es gibt immer genau eine gültige Event-PIN. Beim
-                        Neugenerieren wird die bisherige ersetzt.
-                    </div>
-
-                    <div class="btnrow">
-                        <button
-                            class="primary"
-                            type="button"
-                            onclick="generateEventPin()"
-                        >
-                            Neue Event-PIN generieren
-                        </button>
-                        <div class="muted" id="event-pin-result"></div>
-                    </div>
-                </div>
-
-                <div class="card" id="station-pin-card">
-                    <h3>Stations-PIN</h3>
-                    <div class="muted">
-                        Wähle eine Disziplin/Station (wird in der
-                        Disziplin-Verwaltung angelegt) und erzeuge einen
-                        6-stelligen PIN.
-                    </div>
-
-                    <form id="generate-pin-form">
-                        <input
-                            type="hidden"
-                            name="csrf_token"
-                            value="{{ csrf_token() }}"
-                        />
-
-                        <label for="station_id">Disziplin / Station</label>
-                        <select id="station_id" name="station_id" required>
-                            <option value="" selected disabled>
-                                Station auswählen…
-                            </option>
-                        </select>
-
-                        <div class="btnrow" style="margin-top: 10px">
-                            <button class="primary" type="submit">
-                                Stations-PIN generieren
-                            </button>
-                            <div class="muted" id="generate-pin-result"></div>
-                        </div>
-                    </form>
-                </div>
-            </div>
-
-            <h2>Aktive Stations-PINs</h2>
-            <div class="muted">
-                Tipp: Fahre mit der Maus über eine Zeile, um Aktionen zu sehen.
-            </div>
-
-            <table>
-                <thead>
-                    <tr>
-                        <th style="width: 70px">ID</th>
-                        <th>Station</th>
-                        <th>PIN</th>
-                        <th>Status</th>
-                        <th style="width: 210px">Aktionen</th>
-                        <th style="width: 220px">Erstellt</th>
-                    </tr>
-                </thead>
-
-                <tbody>
-                    {% if pins %} {% for pin in pins %}
-                    <tr class="pin-row" data-pin="{{ pin.pin }}">
-                        <td>{{ pin.id }}</td>
-                        <td>{{ pin.station }}</td>
-                        <td><code>{{ pin.pin }}</code></td>
-                        <td>
-                            {% if pin.active %}
-                            <span class="badge green">aktiv</span>
-                            {% else %}
-                            <span class="badge red">inaktiv</span>
-                            {% endif %}
-                        </td>
-                        <td>
-                            <div class="row-actions">
-                                <label class="switch" title="Aktiv / Inaktiv">
-                                    <input
-                                        type="checkbox"
-                                        {%
-                                        if
-                                        pin.active
-                                        %}checked{%
-                                        endif
-                                        %}
-                                        onchange="togglePinActive('{{ pin.pin }}', this.checked)"
-                                    />
-                                    <span class="slider"></span>
-                                </label>
-
-                                <button
-                                    class="mini-btn"
-                                    type="button"
-                                    onclick="deletePin('{{ pin.pin }}')"
-                                    title="PIN löschen"
-                                >
-                                    Löschen
+                            <div class="btnrow" style="margin-top: 10px">
+                                <button class="danger" type="submit">
+                                    Datenbank löschen
                                 </button>
                             </div>
-                        </td>
-                        <td>{{ pin.created_at }}</td>
-                    </tr>
-                    {% endfor %} {% else %}
-                    <tr>
-                        <td colspan="6" class="muted">Keine PINs vorhanden.</td>
-                    </tr>
+                        </form>
+                    </div>
                     {% endif %}
-                </tbody>
-            </table>
+                </div>
+            </section>
+
+            {% if not no_database %}
+            <section class="section">
+                <h2>PINs</h2>
+                <div class="stack">
+                    <div class="card" id="event-pin-card">
+                        <h3>Event</h3>
+
+                        <div class="event-pin-box">
+                            <div class="event-pin-label">Aktuelle Event-PIN</div>
+                            <div class="event-pin-value" id="current-event-pin">
+                                {% if event_pin %}{{ event_pin }}{% else %}-{% endif %}
+                            </div>
+                        </div>
+
+                        <div class="muted">
+                            Beim Neugenerieren wird die bisherige Event-PIN ersetzt.
+                        </div>
+
+                        <div class="btnrow">
+                            <button
+                                class="primary"
+                                type="button"
+                                onclick="generateEventPin()"
+                            >
+                                Neue Event-PIN generieren
+                            </button>
+                            <div class="muted" id="event-pin-result"></div>
+                        </div>
+                    </div>
+
+                    <div class="card" id="station-pin-card">
+                        <h3>Stations-PIN</h3>
+                        <div class="muted">
+                            Wähle eine Disziplin und erzeuge einen 6-stelligen PIN.
+                        </div>
+
+                        <form id="generate-pin-form">
+                            <input
+                                type="hidden"
+                                name="csrf_token"
+                                value="{{ csrf_token() }}"
+                            />
+
+                            <label for="station_id">Disziplin / Station</label>
+                            <select id="station_id" name="station_id" required>
+                                <option value="" selected disabled>
+                                    Station auswählen
+                                </option>
+                            </select>
+
+                            <div class="btnrow" style="margin-top: 10px">
+                                <button class="primary" type="submit">
+                                    Stations-PIN generieren
+                                </button>
+                                <div class="muted" id="generate-pin-result"></div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>Aktive Stations-PINs</h2>
+                <div class="table-shell">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th style="width: 70px">ID</th>
+                                <th>Station</th>
+                                <th>PIN</th>
+                                <th>Status</th>
+                                <th style="width: 210px">Aktionen</th>
+                                <th style="width: 220px">Erstellt</th>
+                            </tr>
+                        </thead>
+
+                        <tbody>
+                            {% if pins %} {% for pin in pins %}
+                            <tr class="pin-row" data-pin="{{ pin.pin }}">
+                                <td>{{ pin.id }}</td>
+                                <td>{{ pin.station }}</td>
+                                <td><code>{{ pin.pin }}</code></td>
+                                <td>
+                                    {% if pin.active %}
+                                    <span class="status ok">aktiv</span>
+                                    {% else %}
+                                    <span class="status bad">inaktiv</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div class="row-actions">
+                                        <label class="switch" title="Aktiv / Inaktiv">
+                                            <input
+                                                type="checkbox"
+                                                {% if pin.active %}checked{% endif %}
+                                                onchange="togglePinActive('{{ pin.pin }}', this.checked)"
+                                            />
+                                            <span class="slider"></span>
+                                        </label>
+
+                                        <button
+                                            class="mini-btn btn-danger"
+                                            type="button"
+                                            onclick="deletePin('{{ pin.pin }}')"
+                                            title="PIN löschen"
+                                        >
+                                            Löschen
+                                        </button>
+                                    </div>
+                                </td>
+                                <td>{{ pin.created_at }}</td>
+                            </tr>
+                            {% endfor %} {% else %}
+                            <tr>
+                                <td colspan="6" class="muted">Keine PINs vorhanden.</td>
+                            </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </section>
             {% endif %}
         </main>
 
@@ -682,10 +401,9 @@
                 placeholder.value = "";
                 placeholder.disabled = true;
                 placeholder.selected = true;
-                placeholder.textContent = "Station auswählen…";
+                placeholder.textContent = "Station auswählen";
                 sel.appendChild(placeholder);
 
-                // NOTE: currently backed by /admin/stations.
                 const data = await fetch("/admin/stations", {
                     headers: { "X-CSRFToken": csrfToken },
                 })
@@ -707,7 +425,7 @@
             async function generateEventPin() {
                 const el = document.getElementById("event-pin-result");
                 const current = document.getElementById("current-event-pin");
-                el.textContent = "Generiere…";
+                el.textContent = "Generiere...";
                 try {
                     const data = await jsonFetch(
                         "/admin/event_pin/generate",
@@ -723,12 +441,11 @@
                 }
             }
 
-            // Station PIN
             const genForm = document.getElementById("generate-pin-form");
             const genResult = document.getElementById("generate-pin-result");
             genForm?.addEventListener("submit", async (e) => {
                 e.preventDefault();
-                genResult.textContent = "Generiere…";
+                genResult.textContent = "Generiere...";
                 try {
                     const payload = {
                         station_id: parseInt(genForm.station_id.value, 10),
@@ -747,12 +464,9 @@
                 }
             });
 
-            // Row actions
             async function togglePinActive(pin, desiredActive) {
                 try {
                     if (desiredActive) {
-                        // "Aktivieren" gibt es serverseitig nicht.
-                        // UX: Wir erklären das und rollen den Switch zurück.
                         throw new Error(
                             "Aktivieren ist aktuell nicht implementiert. Bitte neuen PIN generieren.",
                         );

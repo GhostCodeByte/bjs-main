@@ -6,47 +6,52 @@
         <title>Station Login</title>
         <link
             rel="stylesheet"
+            href="{{ url_for('static', filename='ui.css') }}"
+        />
+        <link
+            rel="stylesheet"
             href="{{ url_for('static', filename='auth.css') }}"
         />
         <style>
             .hidden {
                 display: none !important;
             }
+
             .popup {
                 position: fixed;
-                bottom: 80px;
-                right: 22px;
-                width: 260px;
+                right: 18px;
+                bottom: 72px;
+                width: min(280px, calc(100vw - 24px));
                 z-index: 20;
                 padding-top: 14px;
-                background: #fff;
-                border: 1px solid #e5e7eb;
-                border-radius: 12px;
-                box-shadow: 0 10px 30px rgba(17, 24, 39, 0.12);
             }
+
             .popup h3 {
                 margin: 0 0 12px;
-                font-size: 16px;
-                color: #111827;
                 padding: 0 16px;
+                font-size: 16px;
             }
+
             .popup form {
                 padding: 0 16px 16px;
             }
+
             .close-btn {
                 position: absolute;
                 top: 10px;
                 right: 10px;
                 border: none;
                 background: transparent;
-                color: #6b7280;
+                color: var(--muted);
                 font-size: 18px;
                 cursor: pointer;
                 line-height: 1;
                 padding: 4px;
             }
+
             .close-btn:hover {
-                color: #111827;
+                color: var(--text);
+                background: transparent;
             }
         </style>
     </head>
@@ -54,7 +59,7 @@
         <div class="shell">
             <header>
                 <h1>Station-Login</h1>
-                <p>Disziplin wählen, 6-stelligen PIN eingeben.</p>
+                <p>Disziplin auswählen und PIN eingeben.</p>
             </header>
 
             {% with messages = get_flashed_messages(with_categories=True) %} {%
@@ -85,15 +90,13 @@
                 >
                     <option value="" disabled selected>Bitte wählen</option>
                     {% if disziplinen %} {% for d in disziplinen %}
-
                     <option
                         value="{{ d.name }}"
                         data-format="{{ d.format }}"
                         data-rounds="{{ d.num_rounds }}"
                     >
-                        {{ d.name }}
+                        {{ d.display_name or d.label or d.name }}
                     </option>
-
                     {% endfor %} {% else %}
                     <option value="Sprinten">Sprinten</option>
                     <option value="Weitsprung">Weitsprung</option>
@@ -126,15 +129,15 @@
         </div>
 
         <div class="admin-toggle">
-            <button class="pill" type="button" onclick="openPopup('admin')">
+            <button class="pill btn-secondary" type="button" onclick="openPopup('admin')">
                 Admin
             </button>
-            <button class="pill" type="button" onclick="openPopup('event')">
+            <button class="pill btn-secondary" type="button" onclick="openPopup('event')">
                 Event
             </button>
         </div>
 
-        <div id="auth-popup" class="popup hidden">
+        <div id="auth-popup" class="popup card hidden">
             <button
                 type="button"
                 class="close-btn"

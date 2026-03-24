@@ -5,6 +5,10 @@
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <meta name="csrf-token" content="{{ csrf_token() }}" />
         <title>Eingabe</title>
+        <link
+            rel="stylesheet"
+            href="{{ url_for('static', filename='ui.css') }}"
+        />
 
         <!-- Externe CSS-Dateien für Styling -->
         <link
@@ -15,12 +19,65 @@
             href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
             rel="stylesheet"
         />
+        <style>
+            .page-shell {
+                max-width: 1180px;
+                margin: 0 auto;
+                padding: 20px 16px 28px;
+            }
+
+            .topbar {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                gap: 12px;
+                margin-bottom: 16px;
+                flex-wrap: wrap;
+            }
+
+            .workspace {
+                display: grid;
+                grid-template-columns: 320px minmax(0, 1fr);
+                gap: 16px;
+            }
+
+            .box {
+                min-width: 0;
+            }
+
+            .result-row {
+                display: flex;
+                align-items: center;
+                gap: 12px;
+            }
+
+            @media (max-width: 900px) {
+                .workspace {
+                    grid-template-columns: 1fr;
+                }
+            }
+        </style>
     </head>
     <body>
-        <div class="container">
-            <!-- Oberer Navigationsbereich mit Buttons und Dropdowns -->
-            <div class="d-flex justify-content-between mt-3">
-                <!-- Mittlerer Dropdown-Bereich -->
+        <header class="app-header">
+            <div class="app-header__inner">
+                <div class="app-header__title">Erfassung</div>
+                <nav class="app-nav">
+                    <span>Station {{ station }}</span>
+                    <span>iPad {{ ipad_stations_nummer }}</span>
+                    <form action="/logout" method="POST" style="display: inline">
+                        <input
+                            type="hidden"
+                            name="csrf_token"
+                            value="{{ csrf_token() }}"
+                        />
+                        <button type="submit">Logout</button>
+                    </form>
+                </nav>
+            </div>
+        </header>
+        <div class="page-shell">
+            <div class="topbar">
                 <div>
                     <select
                         id="riegenfuehrer"
@@ -36,27 +93,12 @@
                     </button>
                 </div>
 
-                <!-- Riege, Station und Logout rechts -->
-                <div class="d-flex align-items-center gap-2">
-                    <div class="text-muted small ms-2">
-                        Station: <strong>{{ station }}</strong>
-                        <span class="ms-2"
-                            >iPad:
-                            <strong>{{ ipad_stations_nummer }}</strong></span
-                        >
-                    </div>
-                    <button
-                        class="btn btn-danger ms-2"
-                        onclick="window.location.href = '/logout'"
-                    >
-                        Logout
-                    </button>
+                <div class="text-muted small">
+                    Riege laden und Ergebnisse direkt erfassen.
                 </div>
             </div>
 
-            <!-- Hauptcontainer mit Informations- und Eingabebereichen -->
-            <div class="d-flex mt-4 gap-4">
-                <!-- Linker Informationscontainer -->
+            <div class="workspace">
                 <div class="box p-3">
                     <p><strong>Klasse:</strong> <span id="klasse"></span></p>
                     <p>
@@ -112,7 +154,7 @@
                     </div>
 
                     <!-- Eingabefeld für Ergebnis mit Anzeige des gespeicherten Werts -->
-                    <div class="d-flex align-items-center mt-2 gap-3">
+                    <div class="result-row mt-2">
                         <input
                             type="text"
                             id="ergebnis"
@@ -129,7 +171,6 @@
                         <div
                             id="current-result-display"
                             class="text-muted"
-                            style="min-width: 150px"
                         >
                             <!-- Hier wird das bereits gespeicherte Ergebnis angezeigt -->
                         </div>

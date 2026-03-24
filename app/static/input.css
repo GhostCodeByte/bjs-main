@@ -1,58 +1,19 @@
-/* ============================================
-   BJS Input Page Styles
-   ============================================ */
-
-/* CSS Variables */
 :root {
-    --primary: #2563eb;
-    --primary-hover: #1d4ed8;
-    --success: #15803d;
-    --success-light: #22c55e;
-    --danger: #b91c1c;
-    --danger-light: #ef4444;
-    --warning: #d97706;
-    --info: #0284c7;
-    --gray-100: #f3f4f6;
-    --gray-200: #e5e7eb;
-    --gray-300: #d1d5db;
-    --gray-400: #9ca3af;
-    --gray-500: #6b7280;
-    --gray-600: #4b5563;
-    --gray-700: #374151;
-    --gray-800: #1f2937;
-    --gray-900: #111827;
-    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-    --shadow:
-        0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
-    --shadow-lg:
-        0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
     --transition-fast: 0.15s ease;
     --transition-normal: 0.3s ease;
 }
 
-/* Base Styles */
 * {
     box-sizing: border-box;
 }
 
 body {
-    background-color: #f7f7f8;
-    font-family:
-        system-ui,
-        -apple-system,
-        sans-serif;
-    margin: 0;
-    padding: 0;
+    background-color: var(--bg);
 }
 
-/* Box Container */
 .box {
-    background: #fff;
-    border: 1px solid var(--gray-200);
-    border-radius: 12px;
     min-width: 250px;
     padding: 20px;
-    box-shadow: var(--shadow-sm);
 }
 
 /* Layout Utilities */
@@ -104,52 +65,43 @@ body {
     width: 50%;
 }
 
-/* Typography */
 p {
     margin-bottom: 8px;
-    color: var(--gray-700);
 }
 
 strong {
-    color: var(--gray-800);
+    color: var(--text);
 }
 
 .text-muted {
-    color: var(--gray-500);
+    color: var(--muted);
 }
 
 .small {
     font-size: 0.875rem;
 }
 
-/* Buttons Base */
 .btn {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    font-weight: 600;
     text-align: center;
     white-space: nowrap;
     vertical-align: middle;
     user-select: none;
-    border: none;
     padding: 12px 24px;
     font-size: 1rem;
     line-height: 1.5;
-    border-radius: 8px;
-    cursor: pointer;
-    transition: all var(--transition-fast);
     position: relative;
     overflow: hidden;
 }
 
 .btn:hover:not(:disabled) {
-    transform: translateY(-1px);
-    box-shadow: var(--shadow);
+    transform: none;
 }
 
 .btn:active:not(:disabled) {
-    transform: translateY(0);
+    transform: none;
 }
 
 .btn:disabled {
@@ -160,50 +112,24 @@ strong {
 
 .btn-primary {
     color: #fff;
-    background-color: var(--primary);
-}
-
-.btn-primary:hover:not(:disabled) {
-    background-color: var(--primary-hover);
 }
 
 .btn-secondary {
-    color: #fff;
-    background-color: var(--gray-600);
-}
-
-.btn-secondary:hover:not(:disabled) {
-    background-color: var(--gray-700);
+    color: var(--text);
 }
 
 .btn-info {
     color: #fff;
-    background-color: var(--info);
-}
-
-.btn-info:hover:not(:disabled) {
-    background-color: #0369a1;
 }
 
 .btn-success {
     color: #fff;
-    background-color: var(--success);
-}
-
-.btn-success:hover:not(:disabled) {
-    background-color: #166534;
 }
 
 .btn-danger {
     color: #fff;
-    background-color: var(--danger);
 }
 
-.btn-danger:hover:not(:disabled) {
-    background-color: #991b1b;
-}
-
-/* Form Controls */
 .form-select,
 .form-control {
     display: block;
@@ -211,11 +137,8 @@ strong {
     padding: 12px 16px;
     font-size: 1rem;
     line-height: 1.5;
-    color: var(--gray-800);
     background-color: #fff;
     background-clip: padding-box;
-    border: 2px solid var(--gray-300);
-    border-radius: 8px;
     transition:
         border-color var(--transition-fast),
         box-shadow var(--transition-fast);
@@ -223,14 +146,12 @@ strong {
 
 .form-select:focus,
 .form-control:focus {
-    outline: none;
-    border-color: var(--primary);
-    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+    background-color: #fff;
 }
 
 .form-select:disabled,
 .form-control:disabled {
-    background-color: var(--gray-100);
+    background-color: var(--panel-muted);
     cursor: not-allowed;
 }
 
@@ -238,32 +159,30 @@ strong {
     display: inline;
 }
 
-/* Toggle Buttons (Round Selection) */
 .toggle-btn {
     padding: 14px 24px;
     margin: 4px;
-    border: 3px solid var(--gray-400);
-    background: var(--gray-400);
-    color: white;
+    border: 1px solid var(--border-strong);
+    background: var(--panel);
+    color: var(--text);
     cursor: pointer;
-    border-radius: 10px;
+    border-radius: 6px;
     outline: none;
-    font-weight: 700;
+    font-weight: 600;
     font-size: 1rem;
-    transition: all var(--transition-fast);
     min-width: 100px;
 }
 
 .toggle-btn:hover:not(.active) {
-    background: var(--gray-500);
-    border-color: var(--gray-500);
-    transform: translateY(-2px);
+    background: var(--panel-muted);
+    border-color: var(--border-strong);
 }
 
 .toggle-btn.active {
     border-color: var(--primary);
     background: var(--primary);
-    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.3);
+    color: #fff;
+    box-shadow: 0 0 0 3px rgba(95, 111, 82, 0.14);
 }
 
 .toggle-btn.green {
@@ -271,40 +190,33 @@ strong {
     border-color: var(--success);
 }
 
-/* Badges */
 .badge {
     display: inline-block;
     padding: 4px 10px;
     font-size: 0.75rem;
-    font-weight: 700;
-    border-radius: 999px;
-    text-transform: uppercase;
-    letter-spacing: 0.025em;
+    font-weight: 600;
 }
 
 .bg-secondary {
-    background-color: var(--gray-500);
-    color: #fff;
+    background-color: var(--panel-muted);
+    color: var(--muted);
 }
 
 .bg-danger {
-    background-color: var(--danger);
-    color: #fff;
+    background-color: var(--danger-soft);
+    color: #7e3024;
 }
 
 .bg-success {
-    background-color: var(--success);
-    color: #fff;
+    background-color: var(--success-soft);
+    color: #244d2b;
 }
 
 .bg-warning {
-    background-color: var(--warning);
-    color: #fff;
+    background-color: var(--warning-soft);
+    color: #735119;
 }
 
-/* ============================================
-   Toast Notifications
-   ============================================ */
 .toast-container {
     position: fixed;
     bottom: 20px;
@@ -318,11 +230,10 @@ strong {
 
 .toast {
     padding: 14px 24px;
-    border-radius: 10px;
+    border-radius: 8px;
     color: #fff;
     font-weight: 600;
     font-size: 0.95rem;
-    box-shadow: var(--shadow-lg);
     transform: translateX(120%);
     opacity: 0;
     transition: all var(--transition-normal);
@@ -339,27 +250,19 @@ strong {
 }
 
 .toast.success {
-    background: linear-gradient(
-        135deg,
-        var(--success) 0%,
-        var(--success-light) 100%
-    );
+    background: var(--success);
 }
 
 .toast.error {
-    background: linear-gradient(
-        135deg,
-        var(--danger) 0%,
-        var(--danger-light) 100%
-    );
+    background: var(--danger);
 }
 
 .toast.info {
-    background: linear-gradient(135deg, var(--primary) 0%, #60a5fa 100%);
+    background: #5a6253;
 }
 
 .toast.warning {
-    background: linear-gradient(135deg, var(--warning) 0%, #fbbf24 100%);
+    background: var(--warning);
 }
 
 .toast-icon {
@@ -377,7 +280,7 @@ strong {
     color: #fff;
     width: 24px;
     height: 24px;
-    border-radius: 50%;
+    border-radius: 6px;
     cursor: pointer;
     display: flex;
     align-items: center;
@@ -391,9 +294,6 @@ strong {
     background: rgba(255, 255, 255, 0.3);
 }
 
-/* ============================================
-   Loading States
-   ============================================ */
 .loading {
     position: relative;
     pointer-events: none;
@@ -451,9 +351,6 @@ strong {
     animation: spin 0.8s linear infinite;
 }
 
-/* ============================================
-   Visual Feedback - Save Animation
-   ============================================ */
 .save-flash {
     animation: saveFlash 0.6s ease;
 }
@@ -489,7 +386,6 @@ strong {
     }
 }
 
-/* Success checkmark animation */
 .success-check {
     display: inline-flex;
     align-items: center;
@@ -517,47 +413,33 @@ strong {
     }
 }
 
-/* ============================================
-   Progress Indicators
-   ============================================ */
 .progress-bar {
     width: 100%;
     height: 8px;
-    background: var(--gray-200);
-    border-radius: 999px;
+    background: var(--panel-muted);
+    border-radius: 6px;
     overflow: hidden;
     margin: 8px 0;
 }
 
 .progress-fill {
     height: 100%;
-    border-radius: 999px;
+    border-radius: 6px;
     transition: width var(--transition-normal);
 }
 
 .progress-fill.low {
-    background: linear-gradient(
-        90deg,
-        var(--danger) 0%,
-        var(--danger-light) 100%
-    );
+    background: var(--danger);
 }
 
 .progress-fill.medium {
-    background: linear-gradient(90deg, var(--warning) 0%, #fbbf24 100%);
+    background: var(--warning);
 }
 
 .progress-fill.high {
-    background: linear-gradient(
-        90deg,
-        var(--success) 0%,
-        var(--success-light) 100%
-    );
+    background: var(--success);
 }
 
-/* ============================================
-   Status Indicators
-   ============================================ */
 .status-dot {
     display: inline-block;
     width: 10px;
@@ -568,53 +450,36 @@ strong {
 
 .status-dot.active {
     background: var(--success);
-    animation: pulse 2s infinite;
+    animation: none;
 }
 
 .status-dot.inactive {
-    background: var(--gray-400);
+    background: var(--border-strong);
 }
 
-@keyframes pulse {
-    0%,
-    100% {
-        opacity: 1;
-        box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4);
-    }
-    50% {
-        opacity: 0.8;
-        box-shadow: 0 0 0 6px rgba(34, 197, 94, 0);
-    }
-}
-
-/* ============================================
-   Result Display
-   ============================================ */
 #current-result-display {
     padding: 10px 16px;
-    background: var(--gray-100);
-    border-radius: 8px;
+    background: var(--panel-muted);
+    border-radius: 6px;
     font-weight: 600;
-    color: var(--gray-700);
+    color: var(--muted);
     min-width: 150px;
     text-align: center;
+    border: 1px solid var(--border);
 }
 
 #current-result-display.has-value {
-    background: rgba(34, 197, 94, 0.1);
+    background: var(--success-soft);
     color: var(--success);
-    border: 1px solid rgba(34, 197, 94, 0.3);
+    border: 1px solid #bfd3c1;
 }
 
 #current-result-display.absent {
-    background: rgba(185, 28, 28, 0.1);
+    background: var(--danger-soft);
     color: var(--danger);
-    border: 1px solid rgba(185, 28, 28, 0.3);
+    border: 1px solid #e3c1ba;
 }
 
-/* ============================================
-   Mobile Optimization
-   ============================================ */
 @media (max-width: 768px) {
     .container {
         padding: 12px;
@@ -641,7 +506,7 @@ strong {
     .form-select,
     .form-control {
         padding: 14px 16px;
-        font-size: 16px; /* Prevents zoom on iOS */
+            font-size: 16px;
     }
 
     .toast {
@@ -651,7 +516,6 @@ strong {
     }
 }
 
-/* Touch-friendly sizing for tablets */
 @media (min-width: 768px) and (max-width: 1024px) {
     .toggle-btn {
         padding: 18px 28px;
@@ -668,9 +532,6 @@ strong {
     }
 }
 
-/* ============================================
-   Overlay for Loading States
-   ============================================ */
 .overlay {
     position: fixed;
     top: 0;
@@ -697,31 +558,24 @@ strong {
     animation: spin 0.8s linear infinite;
 }
 
-/* ============================================
-   Dropdown Enhancements
-   ============================================ */
 #schuelerDropdown option {
     padding: 10px;
 }
 
 #schuelerDropdown option:disabled {
-    color: var(--gray-400);
+    color: var(--muted);
     font-style: italic;
 }
 
-/* Highlight completed students */
 #schuelerDropdown option.completed {
-    background: rgba(34, 197, 94, 0.1);
+    background: var(--success-soft);
 }
 
 #schuelerDropdown option.absent {
-    background: rgba(185, 28, 28, 0.1);
-    color: var(--gray-500);
+    background: var(--danger-soft);
+    color: var(--muted);
 }
 
-/* ============================================
-   Container Styles from Bootstrap
-   ============================================ */
 .container {
     width: 100%;
     max-width: 1200px;
@@ -729,16 +583,13 @@ strong {
     padding: 0 16px;
 }
 
-/* ============================================
-   Keyboard Shortcut Hints
-   ============================================ */
 .shortcut-hint {
     display: inline-block;
     padding: 2px 6px;
-    background: var(--gray-200);
+    background: var(--panel-muted);
     border-radius: 4px;
     font-size: 0.75rem;
     font-family: monospace;
-    color: var(--gray-600);
+    color: var(--muted);
     margin-left: 8px;
 }

@@ -832,6 +832,158 @@ class Database:
 
         return results
 
+    def get_auswertung_candidates(
+        self,
+    ) -> List[Dict[str, Any]]:
+        """Liefert alle Schueler mit ihren besten vier BJS-Disziplinen."""
+        rows = self.cursor.execute(
+            """
+            WITH latest_results AS (
+                SELECT e.SchuelerID, e.Disziplin, e.ErgebnisNR, e.result_value, e.status
+                FROM Schueler_Disziplin_Ergebnis e
+                JOIN (
+                    SELECT SchuelerID, Disziplin, ErgebnisNR, MAX(ID) AS max_id
+                    FROM Schueler_Disziplin_Ergebnis
+                    GROUP BY SchuelerID, Disziplin, ErgebnisNR
+                ) latest ON latest.max_id = e.ID
+                WHERE e.status = 'OK' AND e.result_value IS NOT NULL
+            ),
+            best_results AS (
+                SELECT
+                    SchuelerID,
+                    Disziplin,
+                    CASE
+                        WHEN lower(Disziplin) IN ('sprint', 'lauf') THEN MIN(result_value)
+                        ELSE MAX(result_value)
+                    END AS best_value
+                FROM latest_results
+                GROUP BY SchuelerID, Disziplin
+            )
+            SELECT
+                s.SchuelerID,
+                s.Vorname,
+                s.Name,
+                s.Geschlecht,
+                s.Klasse,
+                s.Klassenbuchstabe,
+                s.Geburtsjahr,
+                MAX(CASE WHEN lower(br.Disziplin) = 'sprint' THEN br.best_value END) AS sprint,
+                MAX(CASE WHEN lower(br.Disziplin) = 'lauf' THEN br.best_value END) AS lauf,
+                MAX(CASE WHEN lower(br.Disziplin) = 'wurf' THEN br.best_value END) AS wurf,
+                MAX(CASE WHEN lower(br.Disziplin) = 'sprung' THEN br.best_value END) AS sprung
+            FROM Schueler s
+            LEFT JOIN best_results br ON br.SchuelerID = s.SchuelerID
+            GROUP BY s.SchuelerID
+            ORDER BY s.Name, s.Vorname
+            """
+        ).fetchall()
+        return [
+            {
+                "schueler_id": row[0],
+                "vorname": row[1],
+                "name": row[2],
+                "geschlecht": row[3],
+                "klasse": row[4],
+                "klassenbuchstabe": row[5],
+                "geburtsjahr": row[6],
+                "sprint": row[7],
+                "lauf": row[8],
+                "wurf": row[9],
+                "sprung": row[10],
+            }
+            for row in rows
+        ]
+
+    def update_auswertung_result(
+        self,
+        *,
+        schueler_id: int,
+        gesamtpunktzahl: Optional[int],
+        urkunde: Optional[str],
+    ) -> None:
+        """Speichert das berechnete Auswertungsergebnis eines Schuelers."""
+        self._execute_tx(
+            """
+            UPDATE Schueler
+            SET Gesamtpunktzahl = ?, Urkunde = ?
+            WHERE SchuelerID = ?
+            """,
+            (gesamtpunktzahl, urkunde, int(schueler_id)),
+        )
+
+    def get_auswertung_summary(self) -> Dict[str, int]:
+        """Aggregiert den aktuellen Stand der gespeicherten Auswertung."""
+        self.cursor.execute(
+            """
+            SELECT
+                COUNT(*) AS total,
+                SUM(CASE WHEN Gesamtpunktzahl IS NOT NULL THEN 1 ELSE 0 END) AS evaluated,
+                SUM(CASE WHEN Urkunde = 'Ehrenurkunde' THEN 1 ELSE 0 END) AS ehrenurkunden,
+                SUM(CASE WHEN Urkunde = 'Siegerurkunde' THEN 1 ELSE 0 END) AS siegerurkunden
+            FROM Schueler
+            """
+        )
+        row = self.cursor.fetchone() or (0, 0, 0, 0)
+        total = int(row[0] or 0)
+        evaluated = int(row[1] or 0)
+        return {
+            "total": total,
+            "evaluated": evaluated,
+            "pending": max(total - evaluated, 0),
+            "ehrenurkunden": int(row[2] or 0),
+            "siegerurkunden": int(row[3] or 0),
+        }
+
+    def get_gesamt_bestenliste(
+        self,
+        limit: int = 20,
+        geschlecht: Optional[str] = None,
+    ) -> List[Dict[str, Any]]:
+        """Liefert die Bestenliste nach berechneter Gesamtpunktzahl."""
+        query = """
+            SELECT
+                SchuelerID,
+                Name,
+                Vorname,
+                Klasse,
+                Klassenbuchstabe,
+                Geschlecht,
+                Gesamtpunktzahl,
+                Urkunde
+            FROM Schueler
+            WHERE Gesamtpunktzahl IS NOT NULL
+        """
+        params: tuple[Any, ...]
+        if geschlecht:
+            query += """
+            AND Geschlecht = ?
+            """
+            params = (geschlecht, limit)
+        else:
+            params = (limit,)
+
+        query += """
+            ORDER BY Gesamtpunktzahl DESC, Name ASC, Vorname ASC
+            LIMIT ?
+        """
+        self.cursor.execute(query, params)
+
+        results = []
+        for index, row in enumerate(self.cursor.fetchall(), start=1):
+            results.append(
+                {
+                    "rank": index,
+                    "schueler_id": row[0],
+                    "name": row[1],
+                    "vorname": row[2],
+                    "klasse": f"{row[3]}{row[4]}",
+                    "geschlecht": row[5],
+                    "gesamtpunktzahl": row[6],
+                    "urkunde": row[7],
+                }
+            )
+        return results
+
     # ============================================
     # Disziplin-CRUD Methoden
     # ============================================

@@ -3,494 +3,491 @@
     <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>Disziplin-Verwaltung</title>
+        <title>Disziplinen</title>
+        <link
+            rel="stylesheet"
+            href="{{ url_for('static', filename='ui.css') }}"
+        />
         <style>
-            :root {
-                --primary: #2563eb;
-                --success: #15803d;
-                --danger: #b91c1c;
-                --warning: #d97706;
-                --gray-100: #f3f4f6;
-                --gray-200: #e5e7eb;
-                --gray-600: #4b5563;
-                --gray-800: #1f2937;
-            }
-            * {
-                box-sizing: border-box;
-            }
-            body {
-                font-family:
-                    system-ui,
-                    -apple-system,
-                    sans-serif;
-                margin: 0;
-                background: #f7f7f8;
-                color: var(--gray-800);
-            }
-            header {
-                background: #111827;
-                color: #fff;
-                padding: 12px 16px;
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-            }
-            header a {
-                color: #fff;
-                text-decoration: none;
-                margin-left: 16px;
-            }
-            header a:hover {
-                text-decoration: underline;
-            }
-            main {
-                padding: 16px;
-                max-width: 1200px;
-                margin: 0 auto;
-            }
-            h1 {
-                margin: 0 0 16px;
-            }
-            h2 {
-                margin: 24px 0 12px;
-                font-size: 1.25rem;
-            }
-            .grid {
+            .hero,
+            .hero-meta,
+            .card-grid,
+            .formula-grid,
+            .table-grid {
                 display: grid;
-                grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-                gap: 16px;
+                gap: 18px;
             }
-            .card {
-                background: #fff;
-                border: 1px solid var(--gray-200);
-                border-radius: 10px;
-                padding: 16px;
+
+            .hero {
+                grid-template-columns: minmax(0, 1.6fr) minmax(280px, 0.9fr);
+                margin-bottom: 22px;
             }
-            .card h3 {
-                margin: 0 0 12px;
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-            }
-            .card p {
-                margin: 4px 0;
-                color: var(--gray-600);
-                font-size: 0.9rem;
-            }
-            .badge {
-                display: inline-block;
-                padding: 2px 8px;
-                border-radius: 999px;
-                font-size: 0.75rem;
-                font-weight: 700;
-                color: #fff;
-            }
-            .badge.time {
-                background: var(--primary);
-            }
-            .badge.distance {
-                background: var(--success);
-            }
-            .actions {
-                display: flex;
-                gap: 8px;
-                margin-top: 12px;
-            }
-            button {
-                border: none;
-                border-radius: 6px;
-                padding: 8px 12px;
-                font-weight: 600;
-                cursor: pointer;
-                font-size: 0.9rem;
-            }
-            .btn-primary {
-                background: var(--primary);
-                color: #fff;
-            }
-            .btn-secondary {
-                background: var(--gray-200);
-                color: var(--gray-800);
-            }
-            .btn-danger {
-                background: var(--danger);
-                color: #fff;
-            }
-            /* Modal */
-            .modal-overlay {
-                display: none;
-                position: fixed;
-                top: 0;
-                left: 0;
-                right: 0;
-                bottom: 0;
-                background: rgba(0, 0, 0, 0.5);
-                z-index: 100;
-                align-items: center;
-                justify-content: center;
-            }
-            .modal-overlay.active {
-                display: flex;
-            }
-            .modal {
-                background: #fff;
-                border-radius: 12px;
+
+            .hero-card {
                 padding: 24px;
-                width: 90%;
-                max-width: 400px;
-                max-height: 90vh;
-                overflow-y: auto;
+                background:
+                    radial-gradient(circle at top right, rgba(199, 214, 88, 0.22), transparent 28%),
+                    linear-gradient(135deg, rgba(244, 247, 235, 0.96), rgba(235, 239, 224, 0.96));
             }
-            .modal h2 {
-                margin: 0 0 16px;
+
+            .hero-card h1 {
+                margin-bottom: 10px;
             }
-            .form-group {
-                margin-bottom: 12px;
+
+            .hero-card p:last-child,
+            .metric p:last-child {
+                margin-bottom: 0;
             }
-            .form-group label {
-                display: block;
-                font-weight: 600;
-                margin-bottom: 4px;
-                font-size: 0.9rem;
-            }
-            .form-group input,
-            .form-group select {
-                width: 100%;
-                padding: 10px 12px;
-                border: 1px solid var(--gray-200);
-                border-radius: 6px;
-                font-size: 1rem;
-            }
-            .form-row {
-                display: grid;
+
+            .hero-meta {
                 grid-template-columns: 1fr 1fr;
-                gap: 12px;
             }
-            .form-actions {
+
+            .metric {
+                padding: 18px;
+                background: var(--panel-muted);
+            }
+
+            .metric-value {
+                display: block;
+                margin-bottom: 6px;
+                font-size: 28px;
+                font-weight: 700;
+                line-height: 1;
+            }
+
+            .card-grid {
+                grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+                margin-bottom: 24px;
+            }
+
+            .discipline-card {
+                padding: 18px;
+                background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(244, 247, 235, 0.94));
+            }
+
+            .discipline-card h3,
+            .formula-card h3 {
+                margin-bottom: 8px;
+            }
+
+            .chip-row {
                 display: flex;
                 gap: 8px;
-                justify-content: flex-end;
-                margin-top: 16px;
-            }
-            /* Toast */
-            .toast {
-                position: fixed;
-                bottom: 20px;
-                right: 20px;
-                padding: 12px 20px;
-                border-radius: 8px;
-                color: #fff;
-                font-weight: 600;
-                z-index: 200;
-                transform: translateY(100px);
-                opacity: 0;
-                transition: all 0.3s ease;
-            }
-            .toast.show {
-                transform: translateY(0);
-                opacity: 1;
-            }
-            .toast.success {
-                background: var(--success);
-            }
-            .toast.error {
-                background: var(--danger);
-            }
-            .toolbar {
-                display: flex;
-                gap: 8px;
-                margin-bottom: 16px;
                 flex-wrap: wrap;
+                margin: 12px 0;
             }
-            .empty-state {
-                text-align: center;
-                padding: 40px;
-                color: var(--gray-600);
+
+            .chip {
+                display: inline-flex;
+                align-items: center;
+                border: 1px solid var(--border);
+                border-radius: 999px;
+                padding: 5px 10px;
+                background: rgba(255, 255, 255, 0.88);
+                color: var(--muted);
+                font-size: 13px;
             }
-            .empty-state svg {
-                width: 64px;
-                height: 64px;
-                margin-bottom: 16px;
-                opacity: 0.5;
+
+            .formula-grid {
+                grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+                margin-bottom: 24px;
+            }
+
+            .formula-card {
+                padding: 20px;
+            }
+
+            .formula {
+                margin: 10px 0 14px;
+                padding: 12px 14px;
+                border-radius: 14px;
+                background: #252922;
+                color: #f5f7ef;
+                font-family: "Cascadia Code", "Fira Code", monospace;
+                font-size: 14px;
+                overflow-x: auto;
+            }
+
+            .table-grid {
+                grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            }
+
+            .table-card {
+                padding: 18px;
+            }
+
+            .table-wrap {
+                overflow: auto;
+                border: 1px solid var(--border);
+                border-radius: 16px;
+            }
+
+            table {
+                width: 100%;
+                border-collapse: collapse;
+            }
+
+            th,
+            td {
+                padding: 10px 12px;
+                border-bottom: 1px solid var(--border);
+                text-align: left;
+                vertical-align: top;
+            }
+
+            tr:last-child td {
+                border-bottom: none;
+            }
+
+            .muted-small {
+                color: var(--muted);
+                font-size: 13px;
+            }
+
+            @media (max-width: 980px) {
+                .hero,
+                .hero-meta {
+                    grid-template-columns: 1fr;
+                }
             }
         </style>
     </head>
     <body>
-        <header>
-            <div><strong>Admin</strong></div>
-            <nav>
-                <a href="/admin">Dashboard</a>
-                <a href="/admin/riegeneinteilung">Riegeneinteilung</a>
-                <a href="/admin/disziplinen">Disziplinen</a>
-                <a href="/logout">Logout</a>
-            </nav>
+        <header class="app-header">
+            <div class="app-header__inner">
+                <div class="app-header__title">Admin</div>
+                <nav class="app-nav">
+                    <a href="/admin">Dashboard</a>
+                    <a href="/admin/riegeneinteilung">Riegeneinteilung</a>
+                    <a href="/admin/disziplinen">Disziplinen</a>
+                    <form action="/logout" method="POST" style="display: inline">
+                        <input
+                            type="hidden"
+                            name="csrf_token"
+                            value="{{ csrf_token() }}"
+                        />
+                        <button type="submit">Logout</button>
+                    </form>
+                </nav>
+            </div>
         </header>
 
-        <main>
-            <div class="toolbar">
-                <button class="btn-primary" onclick="openCreateModal()">
-                    + Neue Disziplin
-                </button>
-            </div>
+        <main class="page">
+            <section class="hero">
+                <div class="card hero-card">
+                    <p class="eyebrow">Read only</p>
+                    <h1>Disziplinen und Auswertungslogik</h1>
+                    <p class="page-note">
+                        Diese Seite zeigt nur noch fest hinterlegte Disziplinen,
+                        Konstanten und Formeln. Die Werte kommen aus dem
+                        Auswertungsstand und werden hier nicht mehr im Browser
+                        bearbeitet.
+                    </p>
+                </div>
 
-            <h2>Alle Disziplinen</h2>
-
-            {% if disziplinen %}
-            <div class="grid" id="disziplinen-grid">
-                {% for d in disziplinen %}
-                <div class="card" data-id="{{ d.id }}">
-                    <h3>
-                        <span>{{ d.name }}</span>
-                    </h3>
-                    <p><strong>Runden:</strong> {{ d.num_rounds }}</p>
-                    <p><strong>Format:</strong> {{ 'Zeit' if d.format == 'time' else 'Distanz' }}</p>
-                    <div class="actions">
-                        <button
-                            class="btn-secondary"
-                            onclick="openEditModal({{ d.id }})"
-                        >
-                            Bearbeiten
-                        </button>
-                        <button
-                            class="btn-danger"
-                            onclick="deleteDisziplin({{ d.id }}, '{{ d.name }}')"
-                        >
-                            Löschen
-                        </button>
+                <div class="hero-meta">
+                    <div class="card metric">
+                        <span class="metric-value">{{ disziplinen_tab_konstanten|length }}</span>
+                        <p>Fachliche Disziplinen auf der Seite</p>
+                    </div>
+                    <div class="card metric">
+                        <span class="metric-value">{{ disziplinen|length }}</span>
+                        <p>Technische Laufzeit-Keys in der App</p>
                     </div>
                 </div>
-                {% endfor %}
-            </div>
-            {% else %}
-            <div class="empty-state">
-                <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                >
-                    <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        stroke-width="2"
-                        d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
-                    />
-                </svg>
-                <h3>Keine Disziplinen vorhanden</h3>
-                <p>Erstelle deine erste Disziplin.</p>
-                <button class="btn-primary" onclick="openCreateModal()">
-                    + Neue Disziplin erstellen
-                </button>
-            </div>
-            {% endif %}
+            </section>
+
+            <section>
+                <div class="section-head">
+                    <h2>Disziplin-Konstanten</h2>
+                    <p class="page-note">
+                        Fachliche Sicht fuer den Tab. Die Auswertung arbeitet
+                        intern weiterhin mit den stabilen technischen Keys.
+                    </p>
+                </div>
+
+                <div class="card-grid">
+                    {% for disziplin in disziplinen_tab_konstanten %}
+                    <article class="card discipline-card">
+                        <h3>{{ disziplin.titel }}</h3>
+                        <div class="chip-row">
+                            <span class="chip">Key: {{ disziplin.technik_key }}</span>
+                            <span class="chip">Format: {{ disziplin.format }}</span>
+                            <span class="chip">{{ disziplin.runden }} Runden</span>
+                        </div>
+                        <p class="page-note">{{ disziplin.hinweis }}</p>
+                    </article>
+                    {% endfor %}
+                </div>
+            </section>
+
+            <section>
+                <div class="section-head">
+                    <h2>Formeln</h2>
+                    <p class="page-note">
+                        Die Konstanten unten sind direkt aus dem Auswertungsstand
+                        uebernommen.
+                    </p>
+                </div>
+
+                <div class="formula-grid">
+                    <article class="card formula-card">
+                        <h3>Sprinten</h3>
+                        <!-- Von Enno -->
+                        <div class="formula">((Distanz / (Zeit + {{ auswertung_config.formula_config.sprint.offset }})) - Base) / Divisor</div>
+                        <div class="table-wrap">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Distanz</th>
+                                        <th>Jungen Base</th>
+                                        <th>Jungen Divisor</th>
+                                        <th>Maedchen Base</th>
+                                        <th>Maedchen Divisor</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for distanz in ["50", "75", "100"] %}
+                                    <tr>
+                                        <td>{{ distanz }} m</td>
+                                        <td>{{ auswertung_config.formula_config.sprint.male[distanz].base }}</td>
+                                        <td>{{ auswertung_config.formula_config.sprint.male[distanz].divisor }}</td>
+                                        <td>{{ auswertung_config.formula_config.sprint.female[distanz].base }}</td>
+                                        <td>{{ auswertung_config.formula_config.sprint.female[distanz].divisor }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </article>
+
+                    <article class="card formula-card">
+                        <h3>Laufen</h3>
+                        <!-- Von Enno -->
+                        <div class="formula">((Distanz / Zeit) - Base) / Divisor</div>
+                        <div class="table-wrap">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Geschlecht</th>
+                                        <th>Distanz</th>
+                                        <th>Base</th>
+                                        <th>Divisor</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>Jungen</td>
+                                        <td>{{ auswertung_config.formula_config.lauf.male.distance }} m</td>
+                                        <td>{{ auswertung_config.formula_config.lauf.male.base }}</td>
+                                        <td>{{ auswertung_config.formula_config.lauf.male.divisor }}</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Maedchen</td>
+                                        <td>{{ auswertung_config.formula_config.lauf.female.distance }} m</td>
+                                        <td>{{ auswertung_config.formula_config.lauf.female.base }}</td>
+                                        <td>{{ auswertung_config.formula_config.lauf.female.divisor }}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </article>
+
+                    <article class="card formula-card">
+                        <h3>Weitsprung</h3>
+                        <!-- Von Enno -->
+                        <div class="formula">(sqrt(Wert) - Base) / Divisor</div>
+                        <div class="table-wrap">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Geschlecht</th>
+                                        <th>Base</th>
+                                        <th>Divisor</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>Jungen</td>
+                                        <td>{{ auswertung_config.formula_config.sprung.weit.male.base }}</td>
+                                        <td>{{ auswertung_config.formula_config.sprung.weit.male.divisor }}</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Maedchen</td>
+                                        <td>{{ auswertung_config.formula_config.sprung.weit.female.base }}</td>
+                                        <td>{{ auswertung_config.formula_config.sprung.weit.female.divisor }}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </article>
+
+                    <article class="card formula-card">
+                        <h3>Stossen</h3>
+                        <!-- Von Enno -->
+                        <div class="formula">(sqrt(Wert) - Base) / Divisor</div>
+                        <div class="table-wrap">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Geschlecht</th>
+                                        <th>Base</th>
+                                        <th>Divisor</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>Jungen</td>
+                                        <td>{{ auswertung_config.formula_config.wurf.stoss.male.base }}</td>
+                                        <td>{{ auswertung_config.formula_config.wurf.stoss.male.divisor }}</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Maedchen</td>
+                                        <td>{{ auswertung_config.formula_config.wurf.stoss.female.base }}</td>
+                                        <td>{{ auswertung_config.formula_config.wurf.stoss.female.divisor }}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </article>
+
+                    <article class="card formula-card">
+                        <h3>Weitwurf</h3>
+                        <!-- Von Enno -->
+                        <div class="formula">(sqrt(Wert) - Base) / Divisor</div>
+                        <div class="table-wrap">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Variante</th>
+                                        <th>Geschlecht</th>
+                                        <th>Base</th>
+                                        <th>Divisor</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>80 g Ball</td>
+                                        <td>Jungen</td>
+                                        <td>{{ auswertung_config.formula_config.wurf.wurf_80g.male.base }}</td>
+                                        <td>{{ auswertung_config.formula_config.wurf.wurf_80g.male.divisor }}</td>
+                                    </tr>
+                                    <tr>
+                                        <td>80 g Ball</td>
+                                        <td>Maedchen</td>
+                                        <td>{{ auswertung_config.formula_config.wurf.wurf_80g.female.base }}</td>
+                                        <td>{{ auswertung_config.formula_config.wurf.wurf_80g.female.divisor }}</td>
+                                    </tr>
+                                    <tr>
+                                        <td>200 g Ball</td>
+                                        <td>Jungen</td>
+                                        <td>{{ auswertung_config.formula_config.wurf.wurf_ball.male.base }}</td>
+                                        <td>{{ auswertung_config.formula_config.wurf.wurf_ball.male.divisor }}</td>
+                                    </tr>
+                                    <tr>
+                                        <td>200 g Ball</td>
+                                        <td>Maedchen</td>
+                                        <td>{{ auswertung_config.formula_config.wurf.wurf_ball.female.base }}</td>
+                                        <td>{{ auswertung_config.formula_config.wurf.wurf_ball.female.divisor }}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </article>
+                </div>
+            </section>
+
+            <section class="table-grid">
+                <article class="card table-card">
+                    <h2>Altersprofile Jungen</h2>
+                    <p class="page-note">
+                        Sprintdistanz und Wurfgeraet nach Alter.
+                    </p>
+                    <div class="table-wrap">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Alter</th>
+                                    <th>Sprint</th>
+                                    <th>Wurf</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for alter, werte in auswertung_config.age_config.male.items() %}
+                                <tr>
+                                    <td>{{ alter }}</td>
+                                    <td>{{ werte.sprint_distance }} m</td>
+                                    <td>{{ werte.wurf_weight }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </article>
+
+                <article class="card table-card">
+                    <h2>Altersprofile Maedchen</h2>
+                    <p class="page-note">
+                        Sprintdistanz und Wurfgeraet nach Alter.
+                    </p>
+                    <div class="table-wrap">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Alter</th>
+                                    <th>Sprint</th>
+                                    <th>Wurf</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for alter, werte in auswertung_config.age_config.female.items() %}
+                                <tr>
+                                    <td>{{ alter }}</td>
+                                    <td>{{ werte.sprint_distance }} m</td>
+                                    <td>{{ werte.wurf_weight }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </article>
+
+                <article class="card table-card">
+                    <h2>Urkundengrenzen</h2>
+                    <p class="page-note">
+                        Sieger- und Ehrenurkunde je Alter.
+                    </p>
+                    <div class="table-wrap">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Alter</th>
+                                    <th>Jungen Sieger</th>
+                                    <th>Jungen Ehre</th>
+                                    <th>Maedchen Sieger</th>
+                                    <th>Maedchen Ehre</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for alter, werte in auswertung_config.urkunde_config.items() %}
+                                <tr>
+                                    <td>{{ alter }}</td>
+                                    <td>{{ werte.M[0] }}</td>
+                                    <td>{{ werte.M[1] }}</td>
+                                    <td>{{ werte.W[0] }}</td>
+                                    <td>{{ werte.W[1] }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    <p class="muted-small">
+                        Die Tabellen sind absichtlich nur lesbar. Aenderungen laufen
+                        ueber den Code, nicht mehr ueber die Admin-Oberflaeche.
+                    </p>
+                </article>
+            </section>
         </main>
-
-        <!-- Modal -->
-        <div
-            class="modal-overlay"
-            id="modal-overlay"
-            onclick="closeModal(event)"
-        >
-            <div class="modal" onclick="event.stopPropagation()">
-                <h2 id="modal-title">Disziplin erstellen</h2>
-                <form id="disziplin-form" onsubmit="saveDisziplin(event)">
-                    <input type="hidden" id="disziplin-id" />
-
-                    <div class="form-group">
-                        <label for="name">Name</label>
-                        <input
-                            type="text"
-                            id="name"
-                            name="name"
-                            required
-                            placeholder="z.B. Sprint 50m"
-                        />
-                    </div>
-
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label for="format">Format</label>
-                            <select id="format" name="format">
-                                <option value="distance">Distanz</option>
-                                <option value="time">Zeit</option>
-                            </select>
-                        </div>
-
-                        <div class="form-group">
-                            <label for="num_rounds">Runden</label>
-                            <select id="num_rounds" name="num_rounds">
-                                <option value="1">1</option>
-                                <option value="2">2</option>
-                                <option value="3" selected>3</option>
-                                <option value="4">4</option>
-                                <option value="5">5</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div class="form-actions">
-                        <button
-                            type="button"
-                            class="btn-secondary"
-                            onclick="closeModal()"
-                        >
-                            Abbrechen
-                        </button>
-                        <button
-                            type="submit"
-                            class="btn-primary"
-                            id="submit-btn"
-                        >
-                            Speichern
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
-
-        <!-- Toast -->
-        <div class="toast" id="toast"></div>
-
-        <script>
-            const csrfToken = "{{ csrf_token() }}";
-
-            function showToast(message, type = "success") {
-                const toast = document.getElementById("toast");
-                toast.textContent = message;
-                toast.className = `toast ${type} show`;
-                setTimeout(() => {
-                    toast.classList.remove("show");
-                }, 3000);
-            }
-
-            async function fetchAPI(url, method = "GET", data = null) {
-                const options = {
-                    method,
-                    headers: {
-                        "X-CSRFToken": csrfToken,
-                    },
-                };
-
-                if (data) {
-                    options.headers["Content-Type"] = "application/json";
-                    options.body = JSON.stringify(data);
-                }
-
-                const res = await fetch(url, options);
-                const json = await res.json();
-
-                if (!res.ok) {
-                    throw new Error(json.error || "Fehler");
-                }
-
-                return json;
-            }
-
-            function openCreateModal() {
-                document.getElementById("modal-title").textContent =
-                    "Disziplin erstellen";
-                document.getElementById("disziplin-id").value = "";
-                document.getElementById("disziplin-form").reset();
-                document
-                    .getElementById("modal-overlay")
-                    .classList.add("active");
-            }
-
-            async function openEditModal(id) {
-                try {
-                    const data = await fetchAPI(`/admin/disziplinen/${id}`);
-
-                    document.getElementById("modal-title").textContent =
-                        "Disziplin bearbeiten";
-                    document.getElementById("disziplin-id").value = id;
-                    document.getElementById("name").value = data.name || "";
-                    document.getElementById("format").value =
-                        data.format || "distance";
-                    document.getElementById("num_rounds").value =
-                        data.num_rounds || 3;
-
-                    document
-                        .getElementById("modal-overlay")
-                        .classList.add("active");
-                } catch (err) {
-                    showToast(err.message, "error");
-                }
-            }
-
-            function closeModal(event) {
-                if (!event || event.target === event.currentTarget) {
-                    document
-                        .getElementById("modal-overlay")
-                        .classList.remove("active");
-                }
-            }
-
-            async function saveDisziplin(event) {
-                event.preventDefault();
-
-                const id = document.getElementById("disziplin-id").value;
-                const data = {
-                    name: document.getElementById("name").value,
-                    format: document.getElementById("format").value,
-                    num_rounds: parseInt(
-                        document.getElementById("num_rounds").value,
-                    ),
-                };
-
-                try {
-                    const submitBtn = document.getElementById("submit-btn");
-                    submitBtn.disabled = true;
-                    submitBtn.textContent = "Speichern...";
-
-                    if (id) {
-                        await fetchAPI(`/admin/disziplinen/${id}`, "PUT", data);
-                        showToast("Disziplin aktualisiert");
-                    } else {
-                        await fetchAPI(
-                            "/admin/disziplinen/create",
-                            "POST",
-                            data,
-                        );
-                        showToast("Disziplin erstellt");
-                    }
-
-                    closeModal();
-                    setTimeout(() => window.location.reload(), 500);
-                } catch (err) {
-                    showToast(err.message, "error");
-                } finally {
-                    const submitBtn = document.getElementById("submit-btn");
-                    submitBtn.disabled = false;
-                    submitBtn.textContent = "Speichern";
-                }
-            }
-
-            async function deleteDisziplin(id, name) {
-                if (!confirm(`Disziplin "${name}" wirklich löschen?`)) {
-                    return;
-                }
-
-                try {
-                    await fetchAPI(`/admin/disziplinen/${id}`, "DELETE");
-                    showToast("Disziplin gelöscht");
-
-                    const card = document.querySelector(
-                        `.card[data-id="${id}"]`,
-                    );
-                    if (card) {
-                        card.remove();
-                    }
-                } catch (err) {
-                    showToast(err.message, "error");
-                }
-            }
-
-            // ESC zum Schließen
-            document.addEventListener("keydown", (e) => {
-                if (e.key === "Escape") {
-                    closeModal();
-                }
-            });
-        </script>
     </body>
 </html>

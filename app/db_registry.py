@@ -9,6 +9,11 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Optional
 
+from .auswertung_config import (
+    get_default_auswertung_config,
+)
+from .disziplinen_config import get_hardcoded_disziplinen
+
 
 @dataclass(frozen=True)
 class RegisteredDb:
@@ -45,7 +50,12 @@ class DbRegistry:
         """Oeffnet eine SQLite-Verbindung zur Meta-Datenbank."""
         verbindung = sqlite3.connect(str(self.meta_db_path), timeout=5.0)
         verbindung.execute("PRAGMA foreign_keys = ON;")
-        verbindung.execute("PRAGMA journal_mode = WAL;")
+        try:
+            verbindung.execute("PRAGMA journal_mode = WAL;")
+        except sqlite3.OperationalError:
+            # Manche Laufwerke/Syncthing-Verzeichnisse unterstuetzen WAL nicht
+            # stabil. In dem Fall auf das Standard-Journal zurueckfallen.
+            verbindung.execute("PRAGMA journal_mode = DELETE;")
         verbindung.execute("PRAGMA synchronous = NORMAL;")
         verbindung.execute("PRAGMA busy_timeout = 5000;")
         return verbindung
@@ -142,6 +152,37 @@ class DbRegistry:
                 "INSERT OR REPLACE INTO App_Config (key, value) VALUES (?, ?)",
                 ("active_db_path", json.dumps(datenbankpfad)),
             )
+
+    def get_app_config(self, key: str, default: Any = None) -> Any:
+        """Liest einen JSON-codierten App-Konfigurationswert aus der Meta-DB."""
+        with self._connect() as verbindung:
+            zeile = verbindung.execute(
+                "SELECT value FROM App_Config WHERE key = ?",
+                (key,),
+            ).fetchone()
+        if not zeile:
+            return default
+        raw = zeile[0]
+        try:
+            return json.loads(raw)
+        except Exception:
+            return raw
+
+    def set_app_config(self, key: str, value: Any) -> None:
+        """Speichert einen JSON-codierten App-Konfigurationswert in der Meta-DB."""
+        with self._connect() as verbindung:
+            verbindung.execute(
+                "INSERT OR REPLACE INTO App_Config (key, value) VALUES (?, ?)",
+                (key, json.dumps(value)),
+            )
+
+    def get_auswertung_config(self) -> dict[str, Any]:
+        """Liefert die fest im Code hinterlegte Auswertungskonfiguration."""
+        return get_default_auswertung_config()
+
+    def set_auswertung_config(self, config: dict[str, Any]) -> dict[str, Any]:
+        """Blockiert Laufzeit-Aenderungen an der Auswertungskonfiguration."""
+        raise ValueError("Die Auswertungskonfiguration ist fest im Code hinterlegt.")
 
     def register_db(
         self,
@@ -251,64 +292,28 @@ class DbRegistry:
         return True
 
     def get_disziplinen(self) -> list[Disziplin]:
-        """Liefert alle globalen Disziplinen alphabetisch sortiert."""
-        with self._connect() as verbindung:
-            zeilen = verbindung.execute(
-                """
-                SELECT id, name, format, num_rounds
-                FROM Disziplinen
-                ORDER BY name
-                """
-            ).fetchall()
-
+        """Liefert alle globalen Disziplinen aus der statischen Konfiguration."""
         return [
-            Disziplin(id=zeile[0], name=zeile[1], format=zeile[2], num_rounds=zeile[3])
-            for zeile in zeilen
+            Disziplin(
+                id=definition.id,
+                name=definition.name,
+                format=definition.format,
+                num_rounds=definition.num_rounds,
+            )
+            for definition in get_hardcoded_disziplinen()
         ]
 
     def get_disziplin(self, disziplin_id: int) -> Optional[Disziplin]:
-        """Laedt eine Disziplin anhand ihrer ID."""
-        with self._connect() as verbindung:
-            zeile = verbindung.execute(
-                """
-                SELECT id, name, format, num_rounds
-                FROM Disziplinen WHERE id = ?
-                """,
-                (disziplin_id,),
-            ).fetchone()
-
-        if not zeile:
-            return None
-
-        return Disziplin(id=zeile[0], name=zeile[1], format=zeile[2], num_rounds=zeile[3])
+        """Laedt eine statische Disziplin anhand ihrer ID."""
+        return next((d for d in self.get_disziplinen() if d.id == disziplin_id), None)
 
     def get_disziplin_by_name(self, name: str) -> Optional[Disziplin]:
-        """Laedt eine Disziplin anhand ihres eindeutigen Namens."""
-        with self._connect() as verbindung:
-            zeile = verbindung.execute(
-                """
-                SELECT id, name, format, num_rounds
-                FROM Disziplinen WHERE name = ?
-                """,
-                (name,),
-            ).fetchone()
-
-        if not zeile:
-            return None
-
-        return Disziplin(id=zeile[0], name=zeile[1], format=zeile[2], num_rounds=zeile[3])
+        """Laedt eine statische Disziplin anhand ihres technischen Namens."""
+        return next((d for d in self.get_disziplinen() if d.name == name), None)
 
     def create_disziplin(self, name: str, format: str = "distance", num_rounds: int = 3) -> int:
-        """Legt eine neue Disziplin in der Meta-Datenbank an."""
-        with self._connect() as verbindung:
-            cursor = verbindung.execute(
-                """
-                INSERT INTO Disziplinen (name, format, num_rounds)
-                VALUES (?, ?, ?)
-                """,
-                (name, format, num_rounds),
-            )
-            return cursor.lastrowid or 0
+        """Disziplinen sind statisch und koennen nicht angelegt werden."""
+        raise ValueError("Disziplinen sind fest im Code hinterlegt.")
 
     def update_disziplin(
         self,
@@ -317,39 +322,12 @@ class DbRegistry:
         format: Optional[str] = None,
         num_rounds: Optional[int] = None,
     ) -> bool:
-        """Aktualisiert einzelne Felder einer vorhandenen Disziplin."""
-        aktualisierungen: list[str] = []
-        parameter: list[object] = []
-
-        if name is not None:
-            aktualisierungen.append("name = ?")
-            parameter.append(name)
-        if format is not None:
-            aktualisierungen.append("format = ?")
-            parameter.append(format)
-        if num_rounds is not None:
-            aktualisierungen.append("num_rounds = ?")
-            parameter.append(num_rounds)
-
-        if not aktualisierungen:
-            return True
-
-        parameter.append(disziplin_id)
-        with self._connect() as verbindung:
-            cursor = verbindung.execute(
-                f"UPDATE Disziplinen SET {', '.join(aktualisierungen)} WHERE id = ?",
-                parameter,
-            )
-            return cursor.rowcount > 0
+        """Disziplinen sind statisch und koennen nicht aktualisiert werden."""
+        raise ValueError("Disziplinen sind fest im Code hinterlegt.")
 
     def delete_disziplin(self, disziplin_id: int) -> bool:
-        """Loescht eine Disziplin anhand ihrer ID."""
-        with self._connect() as verbindung:
-            cursor = verbindung.execute(
-                "DELETE FROM Disziplinen WHERE id = ?",
-                (disziplin_id,),
-            )
-            return cursor.rowcount > 0
+        """Disziplinen sind statisch und koennen nicht geloescht werden."""
+        raise ValueError("Disziplinen sind fest im Code hinterlegt.")
 
 
 def default_meta_db_path(project_root: str | Path) -> Path:

@@ -1,26 +1,11 @@
 :root {
-    --bg: #f7f7f8;
-    --panel: #ffffff;
-    --panel-border: #e5e7eb;
-    --text: #111827;
-    --muted: #6b7280;
-    --accent: #3b82f6;
-    --accent-strong: #2563eb;
-    --danger: #b91c1c;
-    --success: #15803d;
-    --shadow: 0 10px 30px rgba(17, 24, 39, 0.08);
-    --radius: 12px;
     --gap: 18px;
-    font-family: "Inter", system-ui, -apple-system, sans-serif;
 }
 
 *, *::before, *::after { box-sizing: border-box; }
 
 body {
-    margin: 0;
     min-height: 100vh;
-    background: var(--bg);
-    color: var(--text);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -28,68 +13,38 @@ body {
 }
 
 .shell {
-    position: relative;
     width: min(520px, 96vw);
-    background: var(--panel);
-    border: 1px solid var(--panel-border);
-    border-radius: var(--radius);
-    box-shadow: var(--shadow);
     padding: 26px 28px 32px;
 }
 
 header {
-    text-align: center;
     margin-bottom: var(--gap);
 }
 
 header h1 {
     margin: 0 0 8px;
-    font-size: 26px;
-    letter-spacing: 0.4px;
-    color: var(--text);
+    font-size: 24px;
 }
 
 header p {
     margin: 0;
-    color: var(--muted);
     font-size: 15px;
 }
 
 .layout { display: flex; flex-direction: column; gap: var(--gap); }
 
 .card {
-    background: #f9fafb;
-    border: 1px solid var(--panel-border);
-    border-radius: var(--radius);
     padding: 20px;
 }
 
 .card.hidden { display: none; }
 
-.card h2 { margin: 0 0 12px; font-size: 18px; color: var(--text); }
+.card h2 { margin: 0 0 12px; font-size: 18px; }
 
-label {
-    display: block;
-    font-weight: 600;
-    margin: 10px 0 6px;
-    color: var(--text);
-}
+label { margin-top: 10px; }
 
 select, input {
-    width: 100%;
-    padding: 10px 12px;
-    border-radius: 10px;
-    border: 1px solid #d1d5db;
-    background: #fff;
-    color: var(--text);
     font-size: 15px;
-    transition: border 0.15s ease, box-shadow 0.15s ease;
-}
-
-select:focus, input:focus {
-    outline: none;
-    border-color: var(--accent);
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
 }
 
 .disziplin-info { margin: 10px 0 4px; color: var(--muted); font-size: 14px; }
@@ -98,69 +53,37 @@ button { font: inherit; }
 
 .btn {
     width: 100%;
-    padding: 11px 12px;
-    border: 1px solid transparent;
-    border-radius: 10px;
-    cursor: pointer;
-    transition: transform 0.08s ease, box-shadow 0.12s ease, background 0.2s ease;
 }
 
 #station-submit { margin-top: 12px; }
 #admin-submit, #event-submit { margin-top: 12px; }
 
 .btn-primary {
-    background: linear-gradient(120deg, var(--accent), var(--accent-strong));
-    color: #fff;
-    border: 1px solid var(--accent-strong);
-    box-shadow: 0 10px 25px rgba(37, 99, 235, 0.25);
+    width: 100%;
 }
-
-.btn-primary:hover { transform: translateY(-1px); }
-.btn-primary:active { transform: translateY(0); box-shadow: 0 6px 16px rgba(37, 99, 235, 0.25); }
 
 .meta { margin-top: 8px; color: var(--muted); font-size: 13px; }
 
-.flash { padding: 10px 12px; border-radius: 10px; font-size: 14px; margin-bottom: 10px; }
-.flash.success { background: #e8f5e9; color: #1b5e20; border: 1px solid #c8e6c9; }
-.flash.error { background: #ffebee; color: #b71c1c; border: 1px solid #ffcdd2; }
-.flash.info { background: #e3f2fd; color: #0d47a1; border: 1px solid #bbdefb; }
+.flash { font-size: 14px; }
 
 .admin-toggle {
     position: fixed;
-    bottom: 22px;
-    right: 22px;
+    bottom: 18px;
+    right: 18px;
     display: flex;
     gap: 8px;
     z-index: 10;
 }
 
 .pill {
-    padding: 8px 12px;
     min-width: 72px;
-    border-radius: 999px;
-    border: 1px solid var(--panel-border);
-    background: var(--panel);
-    color: var(--text);
-    cursor: pointer;
-    font-size: 13px;
-    box-shadow: var(--shadow);
-    transition: background 0.15s ease, transform 0.08s ease;
+    justify-content: center;
 }
 
-.pill:hover { background: #f3f4f6; transform: translateY(-1px); }
-.pill:active { transform: translateY(0); }
-
 .toast {
-    position: fixed;
-    bottom: 90px;
-    right: 22px;
+    bottom: 72px;
+    right: 18px;
     min-width: 220px;
-    background: #111827;
-    border: 1px solid var(--panel-border);
-    color: #fff;
-    padding: 12px 14px;
-    border-radius: 10px;
-    box-shadow: var(--shadow);
     display: none;
 }
 

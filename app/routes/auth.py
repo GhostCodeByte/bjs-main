@@ -5,6 +5,7 @@ import json
 import logging
 import re
 import secrets
+import sqlite3
 import shutil
 import tempfile
 import time
@@ -29,6 +30,11 @@ from werkzeug.utils import secure_filename
 
 from app import get_db
 from app.db_registry import DbRegistry, Disziplin, default_meta_db_path
+from app.disziplinen_config import (
+    get_disziplinen_tab_konstanten,
+    get_hardcoded_disziplinen,
+)
+from app.services_auswertung import AuswertungService
 from app.services_csv_import import import_students_csv_to_new_db
 from app.services_riegen import (
     auto_create_riegen_and_assign,
@@ -78,11 +84,16 @@ def _require_event():
 
 def _disziplin_to_dict(d) -> dict:
     """Wandelt eine Disziplin in ein Dictionary fuer JSON und Templates um."""
+    meta_by_name = {definition.name: definition for definition in get_hardcoded_disziplinen()}
+    meta = meta_by_name.get(d.name)
     return {
         "id": d.id,
         "name": d.name,
         "format": d.format,
         "num_rounds": d.num_rounds,
+        "label": meta.label if meta else d.name,
+        "display_name": meta.label if meta else d.name,
+        "hinweis": meta.hinweis if meta else "",
     }
 
 
@@ -149,7 +160,14 @@ def _seed_default_pin():
 @auth_bp.before_app_request
 def _before_request_seed_pin():
     """Fuehrt vor jeder Anfrage die Initialisierung des Standard-PIN aus."""
-    _seed_default_pin()
+    if request.endpoint == "auth.logout":
+        return
+    try:
+        _seed_default_pin()
+    except sqlite3.Error as exc:
+        current_app.logger.warning(
+            "Default-PIN-Initialisierung uebersprungen: %s", exc
+        )
 
 
 @auth_bp.route("/login", methods=["GET", "POST"])
@@ -389,6 +407,7 @@ def admin_list_stations():
         {
             "id": d.id,
             "name": d.name,
+            "display_name": _disziplin_to_dict(d)["display_name"],
             "format": d.format,
             "num_rounds": d.num_rounds,
             "active": True,
@@ -1062,14 +1081,20 @@ def admin_delete_riege():
 
 @auth_bp.route("/admin/disziplinen", methods=["GET"])
 def admin_disziplinen():
-    """Zeigt die Administrationsseite fuer globale Disziplinen an."""
+    """Zeigt die statischen Disziplinen und Auswertungskonstanten an."""
     if not _require_admin():
         return redirect(url_for("auth.login"))
 
     registry = _get_registry()
     disziplinen = [_disziplin_to_dict(d) for d in registry.get_disziplinen()]
+    auswertung_config = registry.get_auswertung_config()
 
-    return render_template("admin_disziplinen.html", disziplinen=disziplinen)
+    return render_template(
+        "admin_disziplinen.html",
+        disziplinen=disziplinen,
+        disziplinen_tab_konstanten=get_disziplinen_tab_konstanten(),
+        auswertung_config=auswertung_config,
+    )
 
 
 @auth_bp.route("/admin/disziplinen/list", methods=["GET"])
@@ -1085,32 +1110,10 @@ def admin_disziplinen_list():
 
 @auth_bp.route("/admin/disziplinen/create", methods=["POST"])
 def admin_disziplinen_create():
-    """Legt eine neue globale Disziplin an."""
+    """Disziplinen sind statisch und koennen nicht angelegt werden."""
     if not _require_admin():
         return jsonify({"error": "Unauthorized"}), 401
-
-    payload = request.get_json(silent=True) or {}
-    name = (payload.get("name") or "").strip()
-    if not name:
-        return jsonify({"error": "Name erforderlich"}), 400
-
-    registry = _get_registry()
-
-    existing = registry.get_disziplin_by_name(name)
-    if existing:
-        return jsonify({"error": f"Disziplin '{name}' existiert bereits"}), 400
-
-    try:
-        disziplin_id = registry.create_disziplin(
-            name=name,
-            format=payload.get("format", "distance"),
-            num_rounds=int(payload.get("num_rounds", 3)),
-        )
-        return jsonify({"id": disziplin_id, "message": "Disziplin erstellt"})
-    except ValueError as e:
-        return jsonify({"error": str(e)}), 400
-    except Exception as e:
-        return jsonify({"error": f"Fehler: {e}"}), 500
+    return jsonify({"error": "Disziplinen sind fest im Code hinterlegt."}), 410
 
 
 @auth_bp.route("/admin/disziplinen/<int:disziplin_id>", methods=["GET"])
@@ -1128,40 +1131,36 @@ def admin_disziplinen_get(disziplin_id: int):
 
 @auth_bp.route("/admin/disziplinen/<int:disziplin_id>", methods=["PUT"])
 def admin_disziplinen_update(disziplin_id: int):
-    """Aktualisiert eine vorhandene globale Disziplin."""
+    """Disziplinen sind statisch und koennen nicht bearbeitet werden."""
     if not _require_admin():
         return jsonify({"error": "Unauthorized"}), 401
-
-    payload = request.get_json(silent=True) or {}
-    registry = _get_registry()
-
-    try:
-        ok = registry.update_disziplin(
-            disziplin_id,
-            name=payload.get("name"),
-            format=payload.get("format"),
-            num_rounds=int(payload["num_rounds"]) if "num_rounds" in payload else None,
-        )
-        if not ok:
-            return jsonify({"error": "Nicht gefunden"}), 404
-        return jsonify({"message": "Aktualisiert"})
-    except ValueError as e:
-        return jsonify({"error": str(e)}), 400
-    except Exception as e:
-        return jsonify({"error": f"Fehler: {e}"}), 500
+    return jsonify({"error": "Disziplinen sind fest im Code hinterlegt."}), 410
 
 
 @auth_bp.route("/admin/disziplinen/<int:disziplin_id>", methods=["DELETE"])
 def admin_disziplinen_delete(disziplin_id: int):
-    """Loescht eine globale Disziplin."""
+    """Disziplinen sind statisch und koennen nicht geloescht werden."""
+    if not _require_admin():
+        return jsonify({"error": "Unauthorized"}), 401
+    return jsonify({"error": "Disziplinen sind fest im Code hinterlegt."}), 410
+
+
+@auth_bp.route("/admin/disziplinen/auswertung-config", methods=["GET"])
+def admin_disziplinen_auswertung_config_get():
+    """Liefert die bearbeitbare Auswertungskonfiguration."""
     if not _require_admin():
         return jsonify({"error": "Unauthorized"}), 401
 
     registry = _get_registry()
-    ok = registry.delete_disziplin(disziplin_id)
-    if not ok:
-        return jsonify({"error": "nicht gefunden"}), 404
-    return jsonify({"deleted": True})
+    return jsonify({"config": registry.get_auswertung_config()})
+
+
+@auth_bp.route("/admin/disziplinen/auswertung-config", methods=["PUT"])
+def admin_disziplinen_auswertung_config_put():
+    """Auswertungskonfiguration ist statisch und nicht editierbar."""
+    if not _require_admin():
+        return jsonify({"error": "Unauthorized"}), 401
+    return jsonify({"error": "Die Auswertungskonfiguration ist fest im Code hinterlegt."}), 410
 
 
 # ============================================
@@ -1284,6 +1283,15 @@ def stats_page():
             geschlecht=geschlecht_filter,
             result_format_override=selected_meta["format"] if selected_meta else None,
         )
+    auswertung_summary = db.get_auswertung_summary() if db else {}
+    gesamt_bestenliste = (
+        db.get_gesamt_bestenliste(
+            limit=20,
+            geschlecht=request.args.get("geschlecht"),
+        )
+        if db
+        else []
+    )
 
     return render_template(
         "stats.html",
@@ -1291,6 +1299,8 @@ def stats_page():
         stats=stats,
         bestenliste=bestenliste,
         selected_disziplin=selected_disziplin,
+        auswertung_summary=auswertung_summary,
+        gesamt_bestenliste=gesamt_bestenliste,
     )
 
 
@@ -1317,3 +1327,29 @@ def stats_bestenliste():
         result_format_override=selected_meta.format if selected_meta else None,
     )
     return jsonify({"bestenliste": bestenliste, "disziplin": disziplin})
+
+
+@auth_bp.route("/stats/auswertung/run", methods=["POST"])
+def stats_run_auswertung():
+    """Berechnet Gesamtpunktzahlen und Urkunden fuer die aktive Event-Datenbank."""
+    if not _require_dashboard_access():
+        return jsonify({"error": "Unauthorized"}), 401
+
+    db = get_db()
+    if db is None:
+        return jsonify({"error": "Keine Datenbank vorhanden"}), 503
+
+    registry = _get_registry()
+    service = AuswertungService.from_registry(registry)
+    result = service.evaluate_database(db)
+    summary = db.get_auswertung_summary()
+
+    return jsonify(
+        {
+            "status": "ok",
+            "evaluated_students": result.evaluated_students,
+            "skipped_students": result.skipped_students,
+            "total_students": result.total_students,
+            "summary": summary,
+        }
+    )
