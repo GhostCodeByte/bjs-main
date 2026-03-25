@@ -211,6 +211,7 @@ class ReplaceNamesResult:
 
     replaced: int
     total_riegen: int
+    unused_names: int
 
 
 def parse_leader_names_csv(
@@ -259,7 +260,7 @@ def replace_placeholder_names(
 ) -> ReplaceNamesResult:
     """Ersetzt Platzhalter wie `Riegenfuehrer 1` durch echte Namen aus einer Liste."""
     if not leader_names:
-        return ReplaceNamesResult(replaced=0, total_riegen=0)
+        return ReplaceNamesResult(replaced=0, total_riegen=0, unused_names=0)
 
     alle_riegen = db.get_all_riegen_with_progress()
     anzahl_riegen = len(alle_riegen)
@@ -286,7 +287,7 @@ def replace_placeholder_names(
             continue
 
         db.cursor.execute(
-            "UPDATE Riegenfuehrer SET Name = ? WHERE RiegenfuehrerID = ?",
+            "UPDATE Riegenfuehrer SET Name = ? WHERE ID = ?",
             (neuer_name, riegen_id),
         )
         ersetzte_namen += 1
@@ -295,4 +296,5 @@ def replace_placeholder_names(
     return ReplaceNamesResult(
         replaced=ersetzte_namen,
         total_riegen=anzahl_riegen,
+        unused_names=max(0, len(leader_names) - len(platzhalter_riegen)),
     )

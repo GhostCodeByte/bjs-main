@@ -90,6 +90,9 @@
         <main class="page">
             <div class="topbar">
                 <h1>Riegeneinteilung</h1>
+                <a class="btn btn-secondary" href="{{ url_for('auth.admin_download_riegeneinteilung_csv') }}">
+                    CSV herunterladen
+                </a>
             </div>
 
             {% with messages = get_flashed_messages(with_categories=true) %}
@@ -132,7 +135,7 @@
 
                 <section class="card">
                     <h2>Schüler CSV Import</h2>
-                    <form method="post" enctype="multipart/form-data" action="{{ url_for('auth.admin_import_csv_to_new_db') }}">
+                    <form method="post" enctype="multipart/form-data" action="{{ url_for('auth.admin_import_csv_to_new_db') }}" onsubmit="return confirmNewStudentImport()">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
                         <div class="row">
                             <div>
@@ -244,5 +247,17 @@
                 </section>
             </div>
         </main>
+
+        <script>
+            const hasCurrentYearDb = {{ "true" if has_current_year_db else "false" }};
+            const currentYearDbName = {{ current_year_db_name|tojson }};
+
+            function confirmNewStudentImport() {
+                if (!hasCurrentYearDb) return true;
+                return confirm(
+                    `Für das aktuelle Jahr existiert bereits eine Datenbank${currentYearDbName ? ` (${currentYearDbName})` : ""}. Trotzdem eine neue erstellen?`,
+                );
+            }
+        </script>
     </body>
 </html>

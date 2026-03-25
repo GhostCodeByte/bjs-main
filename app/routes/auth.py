@@ -1,6 +1,7 @@
 """Routen fuer Login, Administration, Dashboard und Event-Ansichten."""
 
 from collections import defaultdict
+import csv
 import io
 import json
 import logging
@@ -11,6 +12,7 @@ import shutil
 import tempfile
 import time
 import uuid
+from datetime import datetime
 from pathlib import Path
 from typing import Any, Optional
 
@@ -96,6 +98,80 @@ def _disziplin_to_dict(d) -> dict:
         "display_name": meta.label if meta else d.name,
         "hinweis": meta.hinweis if meta else "",
     }
+
+
+def _wants_json_response() -> bool:
+    """Erkennt Fetch/AJAX-Aufrufe, die JSON statt Redirect erwarten."""
+    accept = (request.headers.get("Accept") or "").lower()
+    return request.is_json or "application/json" in accept
+
+
+def _build_empty_riegen_page_data() -> dict[str, Any]:
+    """Liefert Default-Werte fuer Riegenseiten ohne aktive Datenbank."""
+    return {
+        "riegen": [],
+        "stats": {
+            "students_total": 0,
+            "students_assigned": 0,
+            "students_unassigned": 0,
+            "riegen_total": 0,
+            "profil_total": 0,
+            "profil_assigned": 0,
+        },
+        "classes": [],
+        "leader_name_stats": {
+            "with_extra_leader": 0,
+            "missing_extra_leader": 0,
+        },
+    }
+
+
+def _build_riegen_page_data(db) -> dict[str, Any]:
+    """Aggregiert Kennzahlen fuer Riegenverwaltung und Workflow-Modals."""
+    if db is None:
+        return _build_empty_riegen_page_data()
+
+    try:
+        riegen = db.get_all_riegen_with_progress()
+    except Exception:
+        riegen = []
+
+    try:
+        stats = db.get_riegen_stats()
+        classes = db.get_present_classes()
+    except Exception:
+        empty = _build_empty_riegen_page_data()
+        stats = empty["stats"]
+        classes = empty["classes"]
+
+    leader_name_stats = {
+        "with_extra_leader": sum(
+            1
+            for riege in riegen
+            if not _PLACEHOLDER_RIEGENFUEHRER_RE.match(
+                str(riege.get("name", "") or "").strip()
+            )
+        ),
+        "missing_extra_leader": sum(
+            1
+            for riege in riegen
+            if _PLACEHOLDER_RIEGENFUEHRER_RE.match(
+                str(riege.get("name", "") or "").strip()
+            )
+        ),
+    }
+
+    return {
+        "riegen": riegen,
+        "stats": stats,
+        "classes": classes,
+        "leader_name_stats": leader_name_stats,
+    }
+
+
+def _get_current_year_db(registry: DbRegistry):
+    """Liefert die neueste registrierte Datenbank fuer das aktuelle Kalenderjahr."""
+    return registry.find_latest_db_for_year(datetime.now().year)
 
 
 def _build_event_progress_cards(
@@ -498,10 +574,10 @@ def admin_dashboard():
 
     # Die Datenbankauswahl wird aus der globalen Registry geladen.
     registry = _get_registry()
+    db = get_db()
     active_db = registry.get_active_db_path()
     dbs = registry.list_dbs()
-
-    db = get_db()
+    current_year_db = _get_current_year_db(registry)
 
     # Ohne aktive Datenbank zeigt das Dashboard nur Verwaltungsfunktionen ohne Laufzeitdaten.
     pins = []
@@ -534,6 +610,8 @@ def admin_dashboard():
         "dbs": dbs,
         "active_db_path": active_db,
         "no_database": db is None,
+        "current_year_db_name": current_year_db.name if current_year_db else None,
+        "has_current_year_db": current_year_db is not None,
     }
 
     return render_template("admin_dashboard.html", **data)
@@ -852,74 +930,72 @@ def admin_riegeneinteilung():
         return redirect(url_for("auth.login"))
 
     registry = _get_registry()
+    db = get_db()
     active_db = registry.get_active_db_path()
     dbs = registry.list_dbs()
-
-    db = get_db()
-
-    # Ohne aktive Datenbank bleibt die Seite bedienbar, zeigt aber leere Kennzahlen.
-    if db is None:
-        riegen = []
-        stats = {
-            "students_total": 0,
-            "students_assigned": 0,
-            "students_unassigned": 0,
-            "riegen_total": 0,
-            "profil_total": 0,
-            "profil_assigned": 0,
-        }
-        classes = []
-        leader_name_stats = {
-            "with_extra_leader": 0,
-            "missing_extra_leader": 0,
-        }
-    else:
-        try:
-            riegen = db.get_all_riegen_with_progress()
-        except Exception:
-            riegen = []
-
-        try:
-            stats = db.get_riegen_stats()
-            classes = db.get_present_classes()
-        except Exception:
-            stats = {
-                "students_total": 0,
-                "students_assigned": 0,
-                "students_unassigned": 0,
-                "riegen_total": 0,
-                "profil_total": 0,
-                "profil_assigned": 0,
-            }
-            classes = []
-
-        leader_name_stats = {
-            "with_extra_leader": sum(
-                1
-                for riege in riegen
-                if not _PLACEHOLDER_RIEGENFUEHRER_RE.match(
-                    str(riege.get("name", "") or "").strip()
-                )
-            ),
-            "missing_extra_leader": sum(
-                1
-                for riege in riegen
-                if _PLACEHOLDER_RIEGENFUEHRER_RE.match(
-                    str(riege.get("name", "") or "").strip()
-                )
-            ),
-        }
+    current_year_db = _get_current_year_db(registry)
+    riegen_data = _build_riegen_page_data(db)
 
     return render_template(
         "admin_riegeneinteilung.html",
         dbs=dbs,
         active_db_path=active_db,
-        riegen=riegen,
-        stats=stats,
-        classes=classes,
-        leader_name_stats=leader_name_stats,
+        riegen=riegen_data["riegen"],
+        stats=riegen_data["stats"],
+        classes=riegen_data["classes"],
+        leader_name_stats=riegen_data["leader_name_stats"],
         no_database=db is None,
+        has_current_year_db=current_year_db is not None,
+        current_year_db_name=current_year_db.name if current_year_db else None,
     )
+
+
+@auth_bp.route("/admin/riegeneinteilung/download_csv", methods=["GET"])
+def admin_download_riegeneinteilung_csv():
+    """Laedt die aktuelle Riegeneinteilung als CSV herunter."""
+    if not _require_admin():
+        return redirect(url_for("auth.login"))
+
+    db = get_db()
+    if db is None:
+        flash("Keine Datenbank vorhanden. Bitte zuerst CSV importieren.", "error")
+        return redirect(url_for("auth.admin_riegeneinteilung"))
+
+    riegen = db.get_all_riegen_with_progress()
+    def sort_key(riege: dict[str, Any]) -> tuple[int, str, int, str]:
+        stufe = int(riege.get("stufe") or 0)
+        klassen = str(riege.get("klassenendungen") or "").strip().lower()
+        geschlecht = str(riege.get("geschlecht") or "").strip().lower()
+        profil = bool(riege.get("profil"))
+        if profil:
+            gruppenrang = 2
+        elif geschlecht == "m":
+            gruppenrang = 0
+        elif geschlecht == "w":
+            gruppenrang = 1
+        else:
+            gruppenrang = 2
+        return (stufe, klassen, gruppenrang, str(riege.get("name") or "").lower())
+
+    riegen = sorted(riegen, key=sort_key)
+    csv_buffer = io.StringIO()
+    writer = csv.writer(csv_buffer, delimiter=";")
+    writer.writerow(["Riegenführer", "Klasse", "Geschlecht", "Profil"])
+    for riege in riegen:
+        writer.writerow(
+            [
+                riege.get("name", ""),
+                f"{riege.get('stufe', '')}{riege.get('klassenendungen', '')}",
+                riege.get("geschlecht", ""),
+                "Ja" if bool(riege.get("profil")) else "Nein",
+            ]
+        )
+
+    filename = f"riegeneinteilung_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
+    response = make_response(csv_buffer.getvalue())
+    response.headers["Content-Type"] = "text/csv; charset=utf-8"
+    response.headers["Content-Disposition"] = f'attachment; filename="{filename}"'
+    return response
 
 
 @auth_bp.route("/admin/select_db", methods=["POST"])
@@ -1002,12 +1078,18 @@ def admin_import_csv_to_new_db():
 
     file = request.files.get("csv_file")
     if not file or not (file.filename or "").strip():
-        flash("Keine CSV-Datei ausgewählt.", "error")
+        message = "Keine CSV-Datei ausgewählt."
+        if _wants_json_response():
+            return jsonify({"error": message}), 400
+        flash(message, "error")
         return redirect(url_for("auth.admin_riegeneinteilung"))
 
     filename = secure_filename(file.filename or "")
     if not filename.lower().endswith(".csv"):
-        flash("Nur .csv Dateien erlaubt.", "error")
+        message = "Nur .csv Dateien erlaubt."
+        if _wants_json_response():
+            return jsonify({"error": message}), 400
+        flash(message, "error")
         return redirect(url_for("auth.admin_riegeneinteilung"))
 
     target_dir = Path(current_app.root_path).parent / "database"
@@ -1022,11 +1104,19 @@ def admin_import_csv_to_new_db():
         )
     except Exception as exc:
         logger.exception("CSV-Import fehlgeschlagen: %s", exc)
-        flash(f"CSV Import fehlgeschlagen: {exc}", "error")
+        message = f"CSV Import fehlgeschlagen: {exc}"
+        if _wants_json_response():
+            return jsonify({"error": message}), 400
+        flash(message, "error")
         return redirect(url_for("auth.admin_riegeneinteilung"))
 
     registry = _get_registry()
-    registry.register_db(path=result.db_path, name=result.db_name, label="")
+    registry.register_db(
+        path=result.db_path,
+        name=result.db_name,
+        label="",
+        year=datetime.now().year,
+    )
 
     # Nach dem Import wird die neue Event-Datenbank sofort aktiv gesetzt.
     registry.set_active_db_path(result.db_path)
@@ -1044,19 +1134,33 @@ def admin_import_csv_to_new_db():
             keep_existing_riegen=False,
         )
     except Exception as exc:
-        flash(f"Import OK, aber Riegen-Einteilung fehlgeschlagen: {exc}", "error")
+        message = f"Import OK, aber Riegen-Einteilung fehlgeschlagen: {exc}"
+        if _wants_json_response():
+            return jsonify({"error": message}), 500
+        flash(message, "error")
         return redirect(url_for("auth.admin_riegeneinteilung"))
 
-    flash(
-        f"{result.imported} Schüler importiert, {riegen_result.created_riegen} Riegen erstellt.",
-        "success" if result.errors == 0 else "info",
+    success_message = (
+        f"{result.imported} Schüler importiert, {riegen_result.created_riegen} Riegen erstellt."
     )
+    flash(success_message, "success" if result.errors == 0 else "info")
     logger.info(
         "CSV importiert: db=%s imported=%s errors=%s",
         result.db_name,
         result.imported,
         result.errors,
     )
+    if _wants_json_response():
+        return jsonify(
+            {
+                "message": success_message,
+                "db_name": result.db_name,
+                "imported_students": result.imported,
+                "import_errors": result.errors,
+                "created_riegen": riegen_result.created_riegen,
+                "assigned_students": riegen_result.assigned_students,
+            }
+        )
     return redirect(url_for("auth.admin_riegeneinteilung"))
 
 
@@ -1097,7 +1201,10 @@ def admin_replace_leader_names():
 
     leader_file = request.files.get("leaders_file")
     if not leader_file or not (leader_file.filename or "").strip():
-        flash("Keine CSV-Datei ausgewählt.", "error")
+        message = "Keine CSV-Datei ausgewählt."
+        if _wants_json_response():
+            return jsonify({"error": message}), 400
+        flash(message, "error")
         return redirect(url_for("auth.admin_riegeneinteilung"))
 
     try:
@@ -1105,27 +1212,71 @@ def admin_replace_leader_names():
         leader_names = parse_leader_names_csv(csv_text=raw)
     except Exception as exc:
         logger.exception("Leiter-CSV konnte nicht gelesen werden: %s", exc)
-        flash(f"Leiter-CSV konnte nicht gelesen werden: {exc}", "error")
+        message = f"Leiter-CSV konnte nicht gelesen werden: {exc}"
+        if _wants_json_response():
+            return jsonify({"error": message}), 400
+        flash(message, "error")
         return redirect(url_for("auth.admin_riegeneinteilung"))
 
     if not leader_names:
-        flash("Keine Namen in der CSV gefunden.", "error")
+        message = "Keine Namen in der CSV gefunden."
+        if _wants_json_response():
+            return jsonify({"error": message}), 400
+        flash(message, "error")
         return redirect(url_for("auth.admin_riegeneinteilung"))
 
     db = get_db()
     if db is None:
-        flash("Keine Datenbank vorhanden. Bitte zuerst CSV importieren.", "error")
+        message = "Keine Datenbank vorhanden. Bitte zuerst CSV importieren."
+        if _wants_json_response():
+            return jsonify({"error": message}), 400
+        flash(message, "error")
         return redirect(url_for("auth.admin_riegeneinteilung"))
     try:
         result = replace_placeholder_names(db=db, leader_names=leader_names)
     except Exception as exc:
-        flash(f"Namen ersetzen fehlgeschlagen: {exc}", "error")
+        message = f"Namen ersetzen fehlgeschlagen: {exc}"
+        if _wants_json_response():
+            return jsonify({"error": message}), 400
+        flash(message, "error")
         return redirect(url_for("auth.admin_riegeneinteilung"))
 
-    flash(
-        f"Namen ersetzt: {result.replaced} von {result.total_riegen} Riegen aktualisiert.",
-        "success",
+    riegen_data = _build_riegen_page_data(db)
+    leader_message = (
+        "Alle Riegen haben einen Riegenführer zugeteilt bekommen"
+        if riegen_data["leader_name_stats"]["missing_extra_leader"] == 0
+        else (
+            f"Es fehlen noch {riegen_data['leader_name_stats']['missing_extra_leader']} "
+            "Riegenführer."
+        )
     )
+    success_message = (
+        f"Namen ersetzt: {result.replaced} von {result.total_riegen} Riegen aktualisiert."
+    )
+    flash(success_message, "success")
+    extra_names_message = None
+    if result.unused_names > 0:
+        extra_names_message = (
+            "Die hochgeladene CSV hatte zu viele Riegenführer nicht alle wurden zugeteilt"
+        )
+        flash(extra_names_message, "info")
+    if _wants_json_response():
+        return jsonify(
+            {
+                "message": success_message,
+                "replaced": result.replaced,
+                "total_riegen": result.total_riegen,
+                "unused_names": result.unused_names,
+                "extra_names_message": extra_names_message,
+                "with_extra_leader": riegen_data["leader_name_stats"][
+                    "with_extra_leader"
+                ],
+                "missing_extra_leader": riegen_data["leader_name_stats"][
+                    "missing_extra_leader"
+                ],
+                "leader_message": leader_message,
+            }
+        )
     return redirect(url_for("auth.admin_riegeneinteilung"))
 
 

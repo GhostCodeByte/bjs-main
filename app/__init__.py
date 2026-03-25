@@ -3,6 +3,7 @@
 import logging
 from http import HTTPStatus
 from pathlib import Path
+from datetime import datetime
 
 from dotenv import load_dotenv
 from flask import Flask, current_app, g, jsonify, request
@@ -106,12 +107,23 @@ def create_app():
         if datenbank is not None:
             datenbank.close()
 
+    def _resolve_active_db_path() -> str | None:
+        """Liefert die aktive DB oder waehlte automatisch die neueste fuer das aktuelle Jahr."""
+        registry = DbRegistry(default_meta_db_path(Path(app.root_path).parent))
+        aktive_datenbank = registry.get_active_db_path()
+        if aktive_datenbank and Path(aktive_datenbank).exists():
+            return aktive_datenbank
+
+        aktuelle_jahres_db = registry.find_latest_db_for_year(datetime.now().year)
+        if aktuelle_jahres_db:
+            registry.set_active_db_path(aktuelle_jahres_db.path)
+            return aktuelle_jahres_db.path
+        return None
+
     def get_db():
         """Laedt die aktuell aktive Event-Datenbank aus der Registry."""
         if "db" not in g:
-            registry = DbRegistry(default_meta_db_path(Path(app.root_path).parent))
-            aktive_datenbank = registry.get_active_db_path()
-            datenbankpfad = aktive_datenbank
+            datenbankpfad = _resolve_active_db_path()
             g.db = Database(path=datenbankpfad) if datenbankpfad else None
             if datenbankpfad is None:
                 app.logger.info("Keine aktive Event-Datenbank gesetzt.")
@@ -144,6 +156,11 @@ def get_db():
         registry = DbRegistry(default_meta_db_path(Path(current_app.root_path).parent))
         aktive_datenbank = registry.get_active_db_path()
         datenbankpfad = aktive_datenbank
+        if (not datenbankpfad or not Path(datenbankpfad).exists()):
+            aktuelle_jahres_db = registry.find_latest_db_for_year(datetime.now().year)
+            if aktuelle_jahres_db:
+                registry.set_active_db_path(aktuelle_jahres_db.path)
+                datenbankpfad = aktuelle_jahres_db.path
         g.db = Database(path=datenbankpfad) if datenbankpfad else None
         if datenbankpfad is None:
             current_app.logger.info("Keine aktive Event-Datenbank gesetzt.")

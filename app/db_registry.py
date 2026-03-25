@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 import json
 import sqlite3
 from dataclasses import dataclass
@@ -238,6 +239,27 @@ class DbRegistry:
             )
             for zeile in zeilen
         ]
+
+    @staticmethod
+    def _infer_year_from_name(name: str) -> Optional[int]:
+        """Leitet das Event-Jahr aus dem Dateinamen ab, falls kein Registry-Jahr gesetzt ist."""
+        treffer = re.match(r"^BJS_(\d{4})_\d+\.db$", str(name or ""), re.IGNORECASE)
+        if not treffer:
+            return None
+        try:
+            return int(treffer.group(1))
+        except Exception:
+            return None
+
+    def find_latest_db_for_year(self, year: int) -> Optional[RegisteredDb]:
+        """Liefert die neueste registrierte Datenbank fuer ein bestimmtes Jahr."""
+        kandidaten = [
+            db
+            for db in self.list_dbs()
+            if (db.year if db.year is not None else self._infer_year_from_name(db.name))
+            == int(year)
+        ]
+        return kandidaten[0] if kandidaten else None
 
     def get_by_name(self, name: str) -> Optional[RegisteredDb]:
         """Laedt genau einen Registry-Eintrag ueber seinen Dateinamen."""
