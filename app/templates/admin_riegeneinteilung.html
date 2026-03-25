@@ -31,6 +31,21 @@
                 gap: 12px;
             }
 
+            .import-card {
+                align-content: start;
+                min-height: 100%;
+            }
+
+            .import-card form {
+                display: grid;
+                gap: 14px;
+                align-content: start;
+            }
+
+            .import-card .muted {
+                margin: 0;
+            }
+
             .row {
                 display: grid;
                 grid-template-columns: 1fr;
@@ -42,6 +57,111 @@
                 gap: 8px;
                 align-items: center;
                 flex-wrap: wrap;
+            }
+
+            .workflow-launch {
+                display: flex;
+                justify-content: space-between;
+                align-items: flex-start;
+                gap: 16px;
+                flex-wrap: wrap;
+                margin-bottom: 20px;
+                padding: 16px;
+                border: 1px solid var(--border);
+                border-radius: var(--radius);
+                background: var(--panel);
+            }
+
+            .workflow-launch p {
+                margin: 4px 0 0;
+                color: var(--muted);
+            }
+
+            .modal-backdrop {
+                position: fixed;
+                inset: 0;
+                z-index: 300;
+                display: none;
+                align-items: center;
+                justify-content: center;
+                padding: 16px;
+                background: rgba(8, 7, 8, 0.48);
+            }
+
+            .modal-backdrop.open {
+                display: flex;
+            }
+
+            .modal {
+                width: min(560px, 100%);
+                background: #fff;
+                border: 1px solid var(--border);
+                border-radius: var(--radius);
+                box-shadow: 0 8px 24px var(--shadow);
+                padding: 20px;
+            }
+
+            .modal-head {
+                display: flex;
+                align-items: flex-start;
+                justify-content: space-between;
+                gap: 12px;
+                margin-bottom: 16px;
+            }
+
+            .modal-head p,
+            .modal-copy {
+                margin: 6px 0 0;
+                color: var(--muted);
+            }
+
+            .modal-close {
+                background: transparent;
+                color: var(--text);
+                border: 1px solid var(--border);
+            }
+
+            .modal-close:hover {
+                background: var(--panel-muted);
+            }
+
+            .summary-grid {
+                display: grid;
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                gap: 12px;
+                margin: 16px 0;
+            }
+
+            .summary-item {
+                padding: 12px;
+                border: 1px solid var(--border);
+                border-radius: var(--radius-sm);
+                background: var(--panel);
+            }
+
+            .summary-item strong,
+            .summary-item span {
+                display: block;
+            }
+
+            .summary-item span {
+                color: var(--muted);
+                font-size: 0.9rem;
+                margin-bottom: 4px;
+            }
+
+            .modal-actions {
+                display: flex;
+                justify-content: flex-end;
+                gap: 10px;
+                flex-wrap: wrap;
+                margin-top: 16px;
+            }
+
+            .modal-status {
+                min-height: 22px;
+                margin-top: 12px;
+                color: var(--muted);
             }
 
             .tight {
@@ -63,6 +183,22 @@
 
                 .span2 {
                     grid-column: 1 / -1;
+                }
+            }
+
+            @media (max-width: 700px) {
+                .summary-grid {
+                    grid-template-columns: 1fr;
+                }
+
+                .workflow-launch,
+                .modal-actions {
+                    align-items: stretch;
+                }
+
+                .workflow-launch > *:last-child,
+                .modal-actions > * {
+                    width: 100%;
                 }
             }
         </style>
@@ -90,9 +226,11 @@
         <main class="page">
             <div class="topbar">
                 <h1>Riegeneinteilung</h1>
+                {% if not no_database %}
                 <a class="btn btn-secondary" href="{{ url_for('auth.admin_download_riegeneinteilung_csv') }}">
-                    CSV herunterladen
+                    Riegeneinteilung herunterladen
                 </a>
+                {% endif %}
             </div>
 
             {% with messages = get_flashed_messages(with_categories=true) %}
@@ -103,13 +241,19 @@
             {% endif %}
             {% endwith %}
 
-            {% if no_database %}
-            <div class="flash info">
-                <strong>Keine Datenbank vorhanden.</strong><br />
-                Importiere eine CSV-Datei mit Schülerdaten, um eine neue Datenbank zu erstellen.
-            </div>
+            {% if not has_current_year_db %}
+            <section class="workflow-launch">
+                <div>
+                    <h2>Neue Datenbank</h2>
+                    <p>Startet den automatischen Ablauf mit Schüler-CSV, Riegenerstellung und Riegenführer-Zuordnung.</p>
+                </div>
+                <button class="primary" type="button" onclick="openWorkflowModal('students-modal')">
+                    Neue Datenbank erstellen
+                </button>
+            </section>
             {% endif %}
 
+            {% if not no_database %}
             <div class="grid">
                 <section class="card span2">
                     <h2>Status</h2>
@@ -133,10 +277,11 @@
                     </div>
                 </section>
 
-                <section class="card">
+                <section class="card import-card">
                     <h2>Schüler CSV Import</h2>
-                    <form method="post" enctype="multipart/form-data" action="{{ url_for('auth.admin_import_csv_to_new_db') }}" onsubmit="return confirmNewStudentImport()">
+                    <form id="students-import-page-form" method="post" enctype="multipart/form-data" action="{{ url_for('auth.admin_import_csv_to_new_db') }}" onsubmit="return confirmNewStudentImport()">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                        <input type="hidden" name="import_mode" value="new_db" />
                         <div class="row">
                             <div>
                                 <label for="csv_file">Schüler CSV</label>
@@ -149,7 +294,7 @@
                     </form>
                 </section>
 
-                <section class="card">
+                <section class="card import-card">
                     <h2>Riegenführer CSV Import</h2>
                     <form method="post" enctype="multipart/form-data" action="{{ url_for('auth.admin_replace_leader_names') }}">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
@@ -246,18 +391,305 @@
                     </div>
                 </section>
             </div>
+            {% endif %}
         </main>
+
+        <div class="modal-backdrop" id="students-modal" aria-hidden="true">
+            <div class="modal" role="dialog" aria-modal="true" aria-labelledby="students-modal-title">
+                <div class="modal-head">
+                    <div>
+                        <h2 id="students-modal-title">Schüler CSV hochladen</h2>
+                        <p>Die hochgeladene Datei erzeugt direkt eine neue Datenbank und startet die automatische Riegenerstellung.</p>
+                    </div>
+                    <button class="modal-close" type="button" onclick="closeWorkflowModal('students-modal')">Schließen</button>
+                </div>
+                <form id="students-import-form">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                    <input type="hidden" name="import_mode" value="new_db" />
+                    <label for="workflow_students_file">Schüler CSV</label>
+                    <input id="workflow_students_file" name="csv_file" type="file" accept=".csv,text/csv" required />
+                    <div class="modal-status" id="students-import-status"></div>
+                    <div class="modal-actions">
+                        <button class="btn-secondary" type="button" onclick="closeWorkflowModal('students-modal')">Abbrechen</button>
+                        <button class="primary" type="submit">Import starten</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="modal-backdrop" id="riegen-modal" aria-hidden="true">
+            <div class="modal" role="dialog" aria-modal="true" aria-labelledby="riegen-modal-title">
+                <div class="modal-head">
+                    <div>
+                        <h2 id="riegen-modal-title">Riegen erstellt</h2>
+                        <p>Die Datenbank wurde angelegt und die automatische Einteilung ist abgeschlossen.</p>
+                    </div>
+                    <button class="modal-close" type="button" onclick="closeWorkflowModal('riegen-modal')">Schließen</button>
+                </div>
+                <div class="summary-grid">
+                    <div class="summary-item">
+                        <span>Schüler</span>
+                        <strong id="workflow-students-count">0</strong>
+                    </div>
+                    <div class="summary-item">
+                        <span>Riegen</span>
+                        <strong id="workflow-riegen-count">0</strong>
+                    </div>
+                </div>
+                <p class="modal-copy" id="workflow-db-name"></p>
+                <form id="leaders-import-form">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                    <label for="workflow_leaders_file">Riegenführer CSV</label>
+                    <input id="workflow_leaders_file" name="leaders_file" type="file" accept=".csv,text/csv" required />
+                    <div class="modal-status" id="leaders-import-status"></div>
+                    <div class="modal-actions">
+                        <button class="btn-secondary" type="button" onclick="closeWorkflowModal('riegen-modal')">Später</button>
+                        <button class="primary" type="submit">CSV hochladen</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="modal-backdrop" id="leader-result-modal" aria-hidden="true">
+            <div class="modal" role="dialog" aria-modal="true" aria-labelledby="leader-result-title">
+                <div class="modal-head">
+                    <div>
+                        <h2 id="leader-result-title">Riegenführer Status</h2>
+                    </div>
+                </div>
+                <div class="flash info" id="leader-result-message" style="margin-bottom: 0;"></div>
+                <div class="modal-actions">
+                    <button class="primary" type="button" onclick="closeWorkflowModal('leader-result-modal'); window.location.reload();">
+                        Fertig
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="modal-backdrop" id="student-import-choice-modal" aria-hidden="true">
+            <div class="modal" role="dialog" aria-modal="true" aria-labelledby="student-import-choice-title">
+                <div class="modal-head">
+                    <div>
+                        <h2 id="student-import-choice-title">Schüler-Import</h2>
+                        <p>Es sind bereits Schüler in der aktiven Datenbank vorhanden. Wie soll der Import ausgeführt werden?</p>
+                    </div>
+                    <button class="modal-close" type="button" onclick="closeWorkflowModal('student-import-choice-modal')">Schließen</button>
+                </div>
+                <div class="modal-actions">
+                    <button class="btn-secondary" type="button" onclick="selectStudentImportMode('replace_existing')">
+                        Schüler ersetzen
+                    </button>
+                    <button class="btn-secondary" type="button" onclick="selectStudentImportMode('append_existing')">
+                        Schüler ergänzen
+                    </button>
+                    <button class="primary" type="button" onclick="selectStudentImportMode('new_db')">
+                        Als neue Datenbank importieren
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="toast" id="toast"></div>
 
         <script>
             const hasCurrentYearDb = {{ "true" if has_current_year_db else "false" }};
             const currentYearDbName = {{ current_year_db_name|tojson }};
+            const workflowState = {
+                importedStudents: 0,
+                createdRiegen: 0,
+                dbName: "",
+            };
+            const currentStudentCount = {{ stats.students_total if stats else 0 }};
+            const pendingStudentImport = {
+                kind: null,
+                form: null,
+            };
+
+            function showToast(message, type = "success") {
+                const toast = document.getElementById("toast");
+                toast.textContent = message;
+                toast.className = `toast ${type} show`;
+                setTimeout(() => toast.classList.remove("show"), 2500);
+            }
+
+            function openWorkflowModal(id) {
+                document.getElementById(id)?.classList.add("open");
+            }
+
+            function closeWorkflowModal(id) {
+                document.getElementById(id)?.classList.remove("open");
+            }
 
             function confirmNewStudentImport() {
+                if (requiresStudentImportChoice()) return true;
                 if (!hasCurrentYearDb) return true;
                 return confirm(
                     `Für das aktuelle Jahr existiert bereits eine Datenbank${currentYearDbName ? ` (${currentYearDbName})` : ""}. Trotzdem eine neue erstellen?`,
                 );
             }
+            function requiresStudentImportChoice() {
+                return currentStudentCount > 0;
+            }
+
+            function openStudentImportChoice(kind, form) {
+                pendingStudentImport.kind = kind;
+                pendingStudentImport.form = form;
+                openWorkflowModal("student-import-choice-modal");
+            }
+
+            function selectStudentImportMode(mode) {
+                const form = pendingStudentImport.form;
+                const kind = pendingStudentImport.kind;
+                closeWorkflowModal("student-import-choice-modal");
+                if (!form || !kind) return;
+
+                form.querySelector('input[name="import_mode"]').value = mode;
+
+                if (mode === "new_db" && !confirmNewStudentImport()) {
+                    pendingStudentImport.kind = null;
+                    pendingStudentImport.form = null;
+                    return;
+                }
+
+                if (kind === "page") {
+                    form.submit();
+                } else if (kind === "workflow") {
+                    submitWorkflowStudentsImport();
+                }
+
+                pendingStudentImport.kind = null;
+                pendingStudentImport.form = null;
+            }
+
+            async function formFetch(url, formData) {
+                const res = await fetch(url, {
+                    method: "POST",
+                    headers: {
+                        Accept: "application/json",
+                        "X-CSRFToken": "{{ csrf_token() }}",
+                    },
+                    body: formData,
+                });
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok) throw new Error(data.error || "Fehler");
+                return data;
+            }
+
+            const studentsImportPageForm = document.getElementById("students-import-page-form");
+            const studentsImportForm = document.getElementById("students-import-form");
+            const studentsImportStatus = document.getElementById("students-import-status");
+            const leadersImportForm = document.getElementById("leaders-import-form");
+            const leadersImportStatus = document.getElementById("leaders-import-status");
+
+            studentsImportPageForm?.addEventListener("submit", (event) => {
+                const form = event.currentTarget;
+                if (!requiresStudentImportChoice()) {
+                    form.querySelector('input[name="import_mode"]').value = "new_db";
+                    return;
+                }
+                event.preventDefault();
+                openStudentImportChoice("page", form);
+            });
+
+            async function submitWorkflowStudentsImport() {
+                const formData = new FormData(studentsImportForm);
+                studentsImportStatus.textContent = "Import läuft...";
+                try {
+                    const data = await formFetch(
+                        "{{ url_for('auth.admin_import_csv_to_new_db') }}",
+                        formData,
+                    );
+                    workflowState.importedStudents = data.imported_students || 0;
+                    workflowState.createdRiegen = data.created_riegen || 0;
+                    workflowState.dbName = data.db_name || "";
+                    document.getElementById("workflow-students-count").textContent =
+                        workflowState.importedStudents;
+                    document.getElementById("workflow-riegen-count").textContent =
+                        workflowState.createdRiegen;
+                    document.getElementById("workflow-db-name").textContent =
+                        workflowState.dbName
+                            ? `Neue Datenbank: ${workflowState.dbName}`
+                            : "";
+                    studentsImportStatus.textContent = "";
+                    studentsImportForm.reset();
+                    closeWorkflowModal("students-modal");
+                    openWorkflowModal("riegen-modal");
+                    showToast(data.message || "Import abgeschlossen");
+                } catch (error) {
+                    studentsImportStatus.textContent = error.message;
+                    showToast(error.message, "error");
+                }
+            }
+
+            studentsImportForm?.addEventListener("submit", async (event) => {
+                event.preventDefault();
+                if (requiresStudentImportChoice()) {
+                    openStudentImportChoice("workflow", studentsImportForm);
+                    return;
+                }
+                if (!confirmNewStudentImport()) return;
+                studentsImportForm.querySelector('input[name="import_mode"]').value =
+                    "new_db";
+                const formData = new FormData(studentsImportForm);
+                studentsImportStatus.textContent = "Import läuft...";
+                try {
+                    const data = await formFetch(
+                        "{{ url_for('auth.admin_import_csv_to_new_db') }}",
+                        formData,
+                    );
+                    workflowState.importedStudents = data.imported_students || 0;
+                    workflowState.createdRiegen = data.created_riegen || 0;
+                    workflowState.dbName = data.db_name || "";
+                    document.getElementById("workflow-students-count").textContent =
+                        workflowState.importedStudents;
+                    document.getElementById("workflow-riegen-count").textContent =
+                        workflowState.createdRiegen;
+                    document.getElementById("workflow-db-name").textContent =
+                        workflowState.dbName
+                            ? `Neue Datenbank: ${workflowState.dbName}`
+                            : "";
+                    studentsImportStatus.textContent = "";
+                    studentsImportForm.reset();
+                    closeWorkflowModal("students-modal");
+                    openWorkflowModal("riegen-modal");
+                    showToast(data.message || "Import abgeschlossen");
+                } catch (error) {
+                    studentsImportStatus.textContent = error.message;
+                    showToast(error.message, "error");
+                }
+            });
+
+            leadersImportForm?.addEventListener("submit", async (event) => {
+                event.preventDefault();
+                const formData = new FormData(leadersImportForm);
+                leadersImportStatus.textContent = "CSV wird verarbeitet...";
+                try {
+                    const data = await formFetch(
+                        "{{ url_for('auth.admin_replace_leader_names') }}",
+                        formData,
+                    );
+                    const leaderResultMessage = document.getElementById("leader-result-message");
+                    leaderResultMessage.textContent =
+                        data.extra_names_message ||
+                        data.leader_message ||
+                        "Alle Riegen haben einen Riegenführer zugeteilt bekommen";
+                    leaderResultMessage.className =
+                        `flash ${
+                            (data.missing_extra_leader || 0) === 0 &&
+                            !data.extra_names_message
+                                ? "success"
+                                : "info"
+                        }`;
+                    leadersImportStatus.textContent = "";
+                    leadersImportForm.reset();
+                    closeWorkflowModal("riegen-modal");
+                    openWorkflowModal("leader-result-modal");
+                    showToast(data.message || "Riegenführer aktualisiert");
+                } catch (error) {
+                    leadersImportStatus.textContent = error.message;
+                    showToast(error.message, "error");
+                }
+            });
         </script>
     </body>
 </html>

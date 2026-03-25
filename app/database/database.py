@@ -464,6 +464,12 @@ class Database:
         cur = self._execute_tx("DELETE FROM Riegenfuehrer")
         return int(cur.rowcount)
 
+    def clear_all_students_and_results(self) -> None:
+        """Entfernt alle Schüler und deren Ergebnisdaten vollständig."""
+        self.clear_all_riegen()
+        self._execute_tx("DELETE FROM Schueler_Disziplin_Ergebnis")
+        self._execute_tx("DELETE FROM Schueler")
+
     def get_riegen_stats(self) -> Dict[str, int]:
         """Einfache Kennzahlen für die Riegeneinteilung-Seite."""
         self.cursor.execute("SELECT COUNT(*) FROM Schueler")

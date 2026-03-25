@@ -38,7 +38,10 @@ from app.disziplinen_config import (
     get_hardcoded_disziplinen,
 )
 from app.services_auswertung import AuswertungService
-from app.services_csv_import import import_students_csv_to_new_db
+from app.services_csv_import import (
+    import_students_csv_into_db,
+    import_students_csv_to_new_db,
+)
 from app.services_riegen import (
     auto_create_riegen_and_assign,
     parse_leader_names_csv,
@@ -172,6 +175,18 @@ def _build_riegen_page_data(db) -> dict[str, Any]:
 def _get_current_year_db(registry: DbRegistry):
     """Liefert die neueste registrierte Datenbank fuer das aktuelle Kalenderjahr."""
     return registry.find_latest_db_for_year(datetime.now().year)
+
+
+def _get_existing_custom_leader_names(db) -> list[str]:
+    """Liest bestehende nicht-Platzhalter-Riegenführer in stabiler Reihenfolge aus."""
+    riegen = db.get_all_riegen_with_progress()
+    custom_names = [
+        str(riege.get("name", "")).strip()
+        for riege in sorted(riegen, key=lambda eintrag: eintrag.get("id", 0))
+        if str(riege.get("name", "")).strip()
+        and not _PLACEHOLDER_RIEGENFUEHRER_RE.match(str(riege.get("name", "")).strip())
+    ]
+    return custom_names
 
 
 def _format_export_result(value: Any, *, result_format: str) -> str:
@@ -456,55 +471,14 @@ def _get_event_password():
 
 
 def _seed_default_pin():
-    """Stellt sicher, dass beim Start ein Standard-PIN fuer eine Station existiert."""
-    seeded_flag = "_DEFAULT_PIN_SEEDED"
-    if current_app.config.get(seeded_flag):
-        return
-    db = get_db()
-    if db is None:
-        # Ohne aktive Datenbank kann noch kein Standard-PIN erzeugt werden.
-        return
-    station_name = current_app.config.get("STATION_DEFAULT_NAME", "Station")
-    desired_pin = current_app.config.get("STATION_DEFAULT_PIN")
-    max_logins = current_app.config.get("STATION_DEFAULT_MAX_LOGINS", 1)
-    length = current_app.config.get("STATION_DEFAULT_PIN_LENGTH", 6)
-
-    if desired_pin:
-        row = db.cursor.execute(
-            "SELECT pin FROM Station_Pin WHERE pin = ? AND active = 1", (desired_pin,)
-        ).fetchone()
-        if not row:
-            try:
-                db._execute_tx(
-                    """
-                    INSERT OR IGNORE INTO Station_Pin (station, discipline, pin, max_logins, active)
-                    VALUES (?, ?, ?, ?, 1)
-                    """,
-                    (station_name, station_name, desired_pin, max_logins),
-                )
-            except Exception:
-                pass
-    else:
-        db.ensure_default_station_pin(
-            station=station_name,
-            max_logins=max_logins,
-            length=length,
-            discipline=station_name,
-        )
-    current_app.config[seeded_flag] = True
+    """Automatische Default-PIN-Erzeugung ist deaktiviert."""
+    return
 
 
 @auth_bp.before_app_request
 def _before_request_seed_pin():
-    """Fuehrt vor jeder Anfrage die Initialisierung des Standard-PIN aus."""
-    if request.endpoint == "auth.logout":
-        return
-    try:
-        _seed_default_pin()
-    except sqlite3.Error as exc:
-        current_app.logger.warning(
-            "Default-PIN-Initialisierung uebersprungen: %s", exc
-        )
+    """Default-PINs werden nicht mehr automatisch erstellt."""
+    return
 
 
 @auth_bp.route("/login", methods=["GET", "POST"])
@@ -722,6 +696,7 @@ def admin_dashboard():
         "event_pin": event_pin,
         "dbs": dbs,
         "active_db_path": active_db,
+        "active_db_name": Path(active_db).name if active_db else None,
         "no_database": db is None,
         "current_year_db_name": current_year_db.name if current_year_db else None,
         "has_current_year_db": current_year_db is not None,
@@ -1185,7 +1160,7 @@ def admin_delete_db():
 
 @auth_bp.route("/admin/riegeneinteilung/import_csv", methods=["POST"])
 def admin_import_csv_to_new_db():
-    """Importiert eine Schueler-CSV in eine neue Event-Datenbank."""
+    """Importiert eine Schueler-CSV in eine neue oder bestehende Event-Datenbank."""
     if not _require_admin():
         return redirect(url_for("auth.login"))
 
@@ -1205,16 +1180,15 @@ def admin_import_csv_to_new_db():
         flash(message, "error")
         return redirect(url_for("auth.admin_riegeneinteilung"))
 
+    import_mode = (request.form.get("import_mode") or "new_db").strip().lower()
+    if import_mode not in {"new_db", "replace_existing", "append_existing"}:
+        import_mode = "new_db"
+
     target_dir = Path(current_app.root_path).parent / "database"
 
     # Upload wird als Text gelesen; das Projekt erwartet hier immer Semikolon-Trennung.
     try:
         text = file.stream.read().decode("utf-8-sig", errors="replace")
-        result = import_students_csv_to_new_db(
-            csv_text=io.StringIO(text),
-            target_dir=target_dir,
-            delimiter=";",
-        )
     except Exception as exc:
         logger.exception("CSV-Import fehlgeschlagen: %s", exc)
         message = f"CSV Import fehlgeschlagen: {exc}"
@@ -1224,26 +1198,46 @@ def admin_import_csv_to_new_db():
         return redirect(url_for("auth.admin_riegeneinteilung"))
 
     registry = _get_registry()
-    registry.register_db(
-        path=result.db_path,
-        name=result.db_name,
-        label="",
-        year=datetime.now().year,
-    )
-
-    # Nach dem Import wird die neue Event-Datenbank sofort aktiv gesetzt.
-    registry.set_active_db_path(result.db_path)
-
-    # So wird im selben Request keine veraltete Verbindung weiterverwendet.
-    g.pop("db", None)
-
-    # Direkt nach dem Import werden Platzhalter-Riegen erzeugt, damit die App startklar ist.
     riegen_result = None
+    imported_students = 0
+    import_errors = 0
+    db_name = ""
     try:
-        db = get_db()
+        if import_mode == "new_db":
+            result = import_students_csv_to_new_db(
+                csv_text=io.StringIO(text),
+                target_dir=target_dir,
+                delimiter=";",
+            )
+            registry.register_db(
+                path=result.db_path,
+                name=result.db_name,
+                label="",
+                year=datetime.now().year,
+            )
+            registry.set_active_db_path(result.db_path)
+            g.pop("db", None)
+            db = get_db()
+            imported_students = result.imported
+            import_errors = result.errors
+            db_name = result.db_name
+            leader_names = []
+        else:
+            db = get_db()
+            if db is None:
+                raise ValueError("Keine aktive Datenbank vorhanden.")
+            leader_names = _get_existing_custom_leader_names(db)
+            imported_students, import_errors = import_students_csv_into_db(
+                db=db,
+                csv_text=io.StringIO(text),
+                delimiter=";",
+                replace_existing=import_mode == "replace_existing",
+            )
+            db_name = Path(getattr(db, "db_path", "event.db")).name
+
         riegen_result = auto_create_riegen_and_assign(
             db=db,
-            leader_names=[],  # Leere Liste erzwingt Platzhalternamen.
+            leader_names=leader_names,
             keep_existing_riegen=False,
         )
     except Exception as exc:
@@ -1254,24 +1248,26 @@ def admin_import_csv_to_new_db():
         return redirect(url_for("auth.admin_riegeneinteilung"))
 
     success_message = (
-        f"{result.imported} Schüler importiert, {riegen_result.created_riegen} Riegen erstellt."
+        f"{imported_students} Schüler importiert, {riegen_result.created_riegen} Riegen erstellt."
     )
-    flash(success_message, "success" if result.errors == 0 else "info")
+    flash(success_message, "success" if import_errors == 0 else "info")
     logger.info(
-        "CSV importiert: db=%s imported=%s errors=%s",
-        result.db_name,
-        result.imported,
-        result.errors,
+        "CSV importiert: db=%s imported=%s errors=%s mode=%s",
+        db_name,
+        imported_students,
+        import_errors,
+        import_mode,
     )
     if _wants_json_response():
         return jsonify(
             {
                 "message": success_message,
-                "db_name": result.db_name,
-                "imported_students": result.imported,
-                "import_errors": result.errors,
+                "db_name": db_name,
+                "imported_students": imported_students,
+                "import_errors": import_errors,
                 "created_riegen": riegen_result.created_riegen,
                 "assigned_students": riegen_result.assigned_students,
+                "import_mode": import_mode,
             }
         )
     return redirect(url_for("auth.admin_riegeneinteilung"))

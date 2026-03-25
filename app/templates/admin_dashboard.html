@@ -1,828 +1,930 @@
 <!doctype html>
 <html lang="de">
-    <head>
-        <meta charset="UTF-8" />
-        <meta
-            name="viewport"
-            content="width=device-width, initial-scale=1.0, viewport-fit=cover"
-        />
-        <title>Admin Dashboard</title>
-        <link
-            rel="stylesheet"
-            href="{{ url_for('static', filename='ui.css') }}"
-        />
-        <style>
-            :root { {{ ui_theme_css_vars }}; }
-        </style>
-        <style>
-            .section {
-                margin-top: 24px;
-            }
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+    />
+    <title>Admin Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='ui.css') }}" />
+    <style>
+      :root { {{ ui_theme_css_vars }}; }
+    </style>
+    <style>
+      .section {
+        margin-top: 24px;
+      }
 
-            .stack {
-                display: grid;
-                gap: 12px;
-            }
+      .stack {
+        display: grid;
+        gap: 12px;
+      }
 
-            .card h3 {
-                margin-bottom: 6px;
-            }
+      .card h3 {
+        margin-bottom: 6px;
+      }
 
-            .btnrow {
-                display: flex;
-                gap: 10px;
-                align-items: center;
-                flex-wrap: wrap;
-            }
+      .btnrow {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        flex-wrap: wrap;
+      }
 
-            .event-pin-box {
-                display: flex;
-                align-items: center;
-                justify-content: space-between;
-                gap: 12px;
-                padding: 12px 14px;
-                border: 1px solid var(--border);
-                border-radius: var(--radius);
-                background: var(--panel-muted);
-            }
+      .event-pin-box {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 12px 14px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        background: var(--panel-muted);
+      }
 
-            .event-pin-label {
-                font-weight: 600;
-            }
+      .event-pin-label {
+        font-weight: 600;
+      }
 
-            .event-pin-value {
-                min-width: 92px;
-                text-align: center;
-                font-weight: 700;
-                background: var(--panel);
-            }
+      .event-pin-value {
+        min-width: 92px;
+        text-align: center;
+        font-weight: 700;
+        background: var(--panel);
+      }
 
-            .pin-row .row-actions {
-                display: flex;
-                gap: 8px;
-                align-items: center;
-                justify-content: flex-end;
-            }
+      .pin-row .row-actions {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        justify-content: flex-end;
+      }
 
-            .mini-btn {
-                padding: 8px 10px;
-                font-size: 0.85rem;
-            }
+      .mini-btn {
+        padding: 8px 10px;
+        font-size: 0.85rem;
+      }
 
-            .switch {
-                position: relative;
-                display: inline-block;
-                width: 40px;
-                height: 24px;
-            }
+      .switch {
+        position: relative;
+        display: inline-block;
+        width: 40px;
+        height: 24px;
+      }
 
-            .switch input {
-                opacity: 0;
-                width: 0;
-                height: 0;
-            }
+      .switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+      }
 
-            .slider {
-                position: absolute;
-                inset: 0;
-                cursor: pointer;
-                background-color: var(--border-strong);
-                border-radius: 999px;
-                transition: 0.14s;
-            }
+      .slider {
+        position: absolute;
+        inset: 0;
+        cursor: pointer;
+        background-color: var(--border-strong);
+        border-radius: 999px;
+        transition: 0.14s;
+      }
 
-            .slider:before {
-                position: absolute;
-                content: "";
-                width: 18px;
-                height: 18px;
-                left: 3px;
-                top: 3px;
-                background-color: var(--panel);
-                border-radius: 999px;
-                transition: 0.14s;
-                box-shadow: var(--shadow-sm);
-            }
+      .slider:before {
+        position: absolute;
+        content: "";
+        width: 18px;
+        height: 18px;
+        left: 3px;
+        top: 3px;
+        background-color: var(--panel);
+        border-radius: 999px;
+        transition: 0.14s;
+        box-shadow: var(--shadow-sm);
+      }
 
-            .switch input:checked + .slider {
-                background-color: var(--success);
-            }
+      .switch input:checked + .slider {
+        background-color: var(--success);
+      }
 
-            .switch input:checked + .slider:before {
-                transform: translateX(16px);
-            }
+      .switch input:checked + .slider:before {
+        transform: translateX(16px);
+      }
 
-            .workflow-launch {
-                display: flex;
-                justify-content: space-between;
-                align-items: flex-start;
-                gap: 16px;
-                flex-wrap: wrap;
-                margin-bottom: 20px;
-                padding: 16px;
-                border: 1px solid var(--border);
-                border-radius: var(--radius);
-                background: var(--panel);
-            }
+      .workflow-launch {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 16px;
+        flex-wrap: wrap;
+        margin-bottom: 20px;
+        padding: 16px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        background: var(--panel);
+      }
 
-            .workflow-launch p {
-                margin: 4px 0 0;
-                color: var(--muted);
-            }
+      .workflow-launch p {
+        margin: 4px 0 0;
+        color: var(--muted);
+      }
 
-            .modal-backdrop {
-                position: fixed;
-                inset: 0;
-                z-index: 300;
-                display: none;
-                align-items: center;
-                justify-content: center;
-                padding: 16px;
-                background: rgba(8, 7, 8, 0.48);
-            }
+      .modal-backdrop {
+        position: fixed;
+        inset: 0;
+        z-index: 300;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        padding: 16px;
+        background: rgba(8, 7, 8, 0.48);
+      }
 
-            .modal-backdrop.open {
-                display: flex;
-            }
+      .modal-backdrop.open {
+        display: flex;
+      }
 
-            .modal {
-                width: min(560px, 100%);
-                background: #fff;
-                border: 1px solid var(--border);
-                border-radius: var(--radius);
-                box-shadow: 0 8px 24px var(--shadow);
-                padding: 20px;
-            }
+      .modal {
+        width: min(560px, 100%);
+        background: #fff;
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        box-shadow: 0 8px 24px var(--shadow);
+        padding: 20px;
+      }
 
-            .modal-head {
-                display: flex;
-                align-items: flex-start;
-                justify-content: space-between;
-                gap: 12px;
-                margin-bottom: 16px;
-            }
+      .modal-head {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 16px;
+      }
 
-            .modal-head p,
-            .modal-copy {
-                margin: 6px 0 0;
-                color: var(--muted);
-            }
+      .modal-head p,
+      .modal-copy {
+        margin: 6px 0 0;
+        color: var(--muted);
+      }
 
-            .modal-close {
-                background: transparent;
-                color: var(--text);
-                border: 1px solid var(--border);
-            }
+      .modal-close {
+        background: transparent;
+        color: var(--text);
+        border: 1px solid var(--border);
+      }
 
-            .modal-close:hover {
-                background: var(--panel-muted);
-            }
+      .modal-close:hover {
+        background: var(--panel-muted);
+      }
 
-            .summary-grid {
-                display: grid;
-                grid-template-columns: repeat(2, minmax(0, 1fr));
-                gap: 12px;
-                margin: 16px 0;
-            }
+      .summary-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+        margin: 16px 0;
+      }
 
-            .summary-item {
-                padding: 12px;
-                border: 1px solid var(--border);
-                border-radius: var(--radius-sm);
-                background: var(--panel);
-            }
+      .summary-item {
+        padding: 12px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        background: var(--panel);
+      }
 
-            .summary-item strong,
-            .summary-item span {
-                display: block;
-            }
+      .summary-item strong,
+      .summary-item span {
+        display: block;
+      }
 
-            .summary-item span {
-                color: var(--muted);
-                font-size: 0.9rem;
-                margin-bottom: 4px;
-            }
+      .summary-item span {
+        color: var(--muted);
+        font-size: 0.9rem;
+        margin-bottom: 4px;
+      }
 
-            .modal-actions {
-                display: flex;
-                justify-content: flex-end;
-                gap: 10px;
-                flex-wrap: wrap;
-                margin-top: 16px;
-            }
+      .modal-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin-top: 16px;
+      }
 
-            .modal-status {
-                min-height: 22px;
-                margin-top: 12px;
-                color: var(--muted);
-            }
+      .confirm-copy {
+        margin: 0;
+        color: var(--text);
+      }
 
-            @media (max-width: 700px) {
-                .summary-grid {
-                    grid-template-columns: 1fr;
-                }
+      .confirm-copy + .confirm-copy {
+        margin-top: 10px;
+      }
 
-                .workflow-launch,
-                .modal-actions {
-                    align-items: stretch;
-                }
+      .modal-status {
+        min-height: 22px;
+        margin-top: 12px;
+        color: var(--muted);
+      }
 
-                .workflow-launch > *:last-child,
-                .modal-actions > * {
-                    width: 100%;
-                }
-            }
-        </style>
-    </head>
-    <body>
-        <header class="app-header">
-            <div class="app-header__inner">
-                <div class="app-header__title">Admin</div>
-                <nav class="app-nav">
-                    <a href="/admin">Dashboard</a>
-                    <a href="/admin/riegeneinteilung">Riegeneinteilung</a>
-                    <a href="/admin/disziplinen">Auswertung</a>
-                    <form action="/logout" method="POST" style="display: inline">
-                        <input
-                            type="hidden"
-                            name="csrf_token"
-                            value="{{ csrf_token() }}"
-                        />
-                        <button type="submit">Logout</button>
-                    </form>
-                </nav>
+      @media (max-width: 700px) {
+        .summary-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .workflow-launch,
+        .modal-actions {
+          align-items: stretch;
+        }
+
+        .workflow-launch > *:last-child,
+        .modal-actions > * {
+          width: 100%;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header class="app-header">
+      <div class="app-header__inner">
+        <div class="app-header__title">Admin</div>
+        <nav class="app-nav">
+          <a href="/admin">Dashboard</a>
+          <a href="/admin/riegeneinteilung">Riegeneinteilung</a>
+          <a href="/admin/disziplinen">Auswertung</a>
+          <form action="/logout" method="POST" style="display: inline">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+            <button type="submit">Logout</button>
+          </form>
+        </nav>
+      </div>
+    </header>
+
+    <main class="page">
+      {% with messages = get_flashed_messages(with_categories=True) %} {% if
+      messages %} {% for category, message in messages %}
+      <div class="flash {{ category }}">{{ message }}</div>
+      {% endfor %} {% endif %} {% endwith %}
+
+      <div class="page-head">
+        <div>
+          <h1>Dashboard</h1>
+          <div class="page-note">
+            Datenbank, Event-PIN und Stations-PINs werden hier verwaltet.
+          </div>
+        </div>
+      </div>
+
+      {% if not has_current_year_db %}
+      <section class="workflow-launch">
+        <div>
+          <h2>Neue Datenbank</h2>
+          <p>
+            Erstelle eine neue Datenbank und lade Schüler liste und Riegenführer
+            liste hoch.
+          </p>
+        </div>
+        <button
+          class="primary"
+          type="button"
+          onclick="openWorkflowModal('students-modal')"
+        >
+          Neue Datenbank erstellen
+        </button>
+      </section>
+      {% endif %} {% if not no_database %}
+      <section class="section">
+        <h2>PINs</h2>
+        <div class="stack">
+          <div class="card" id="event-pin-card">
+            <h3>Event</h3>
+
+            <div class="event-pin-box">
+              <div class="event-pin-label">Aktuelle Event-PIN</div>
+              <div class="event-pin-value" id="current-event-pin">
+                {% if event_pin %}{{ event_pin }}{% else %}-{% endif %}
+              </div>
             </div>
-        </header>
 
-        <main class="page">
-            {% with messages = get_flashed_messages(with_categories=True) %} {%
-            if messages %} {% for category, message in messages %}
-            <div class="flash {{ category }}">{{ message }}</div>
-            {% endfor %} {% endif %} {% endwith %}
-
-            <div class="page-head">
-                <div>
-                    <h1>Admin Dashboard</h1>
-                    <div class="page-note">
-                        Datenbank, Event-PIN und Stations-PINs werden hier verwaltet.
-                    </div>
-                </div>
+            <div class="btnrow" style="margin-top: 10px">
+              <button
+                class="primary"
+                type="button"
+                onclick="generateEventPin()"
+              >
+                Neuen Event-PIN generieren
+              </button>
+              <div class="muted" id="event-pin-result"></div>
             </div>
+          </div>
 
-            {% if not has_current_year_db %}
-            <section class="workflow-launch">
-                <div>
-                    <h2>Neue Datenbank</h2>
-                    <p>Startet den automatischen Ablauf mit Schüler-CSV, Riegenerstellung und Riegenführer-Zuordnung.</p>
-                </div>
-                <button class="primary" type="button" onclick="openWorkflowModal('students-modal')">
-                    Neue Datenbank erstellen
+          <div class="card" id="station-pin-card">
+            <h3>Stations-PIN</h3>
+            <form id="generate-pin-form">
+              <input
+                type="hidden"
+                name="csrf_token"
+                value="{{ csrf_token() }}"
+              />
+
+              <select id="station_id" name="station_id" required>
+                <option value="" selected disabled>Station auswählen</option>
+              </select>
+
+              <div class="btnrow" style="margin-top: 10px">
+                <button class="primary" type="submit">
+                  Stations-PIN generieren
                 </button>
-            </section>
-            {% endif %}
-
-            {% if no_database %}
-            <div class="flash info">
-                <strong>Keine Datenbank vorhanden.</strong><br />
-                Bitte importiere zuerst eine CSV-Datei unter
-                <a href="{{ url_for('auth.admin_riegeneinteilung') }}">Riegeneinteilung</a>,
-                um eine neue Datenbank zu erstellen.
-            </div>
-            {% endif %}
-
-            {% if not no_database %}
-            <section class="section">
-                <h2>PINs</h2>
-                <div class="stack">
-                    <div class="card" id="event-pin-card">
-                        <h3>Event</h3>
-
-                        <div class="event-pin-box">
-                            <div class="event-pin-label">Aktuelle Event-PIN</div>
-                            <div class="event-pin-value" id="current-event-pin">
-                                {% if event_pin %}{{ event_pin }}{% else %}-{% endif %}
-                            </div>
-                        </div>
-
-                        <div class="muted">
-                            Beim Neugenerieren wird die bisherige Event-PIN ersetzt.
-                        </div>
-
-                        <div class="btnrow">
-                            <button
-                                class="primary"
-                                type="button"
-                                onclick="generateEventPin()"
-                            >
-                                Neue Event-PIN generieren
-                            </button>
-                            <div class="muted" id="event-pin-result"></div>
-                        </div>
-                    </div>
-
-                    <div class="card" id="station-pin-card">
-                        <h3>Stations-PIN</h3>
-                        <div class="muted">
-                            Wähle eine Disziplin und erzeuge einen 6-stelligen PIN.
-                        </div>
-
-                        <form id="generate-pin-form">
-                            <input
-                                type="hidden"
-                                name="csrf_token"
-                                value="{{ csrf_token() }}"
-                            />
-
-                            <label for="station_id">Disziplin / Station</label>
-                            <select id="station_id" name="station_id" required>
-                                <option value="" selected disabled>
-                                    Station auswählen
-                                </option>
-                            </select>
-
-                            <div class="btnrow" style="margin-top: 10px">
-                                <button class="primary" type="submit">
-                                    Stations-PIN generieren
-                                </button>
-                                <div class="muted" id="generate-pin-result"></div>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            </section>
-
-            <section class="section">
-                <h2>Aktive Stations-PINs</h2>
-                <div class="table-shell">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th style="width: 70px">ID</th>
-                                <th>Station</th>
-                                <th>PIN</th>
-                                <th>Status</th>
-                                <th style="width: 210px">Aktionen</th>
-                                <th style="width: 220px">Erstellt</th>
-                            </tr>
-                        </thead>
-
-                        <tbody>
-                            {% if pins %} {% for pin in pins %}
-                            <tr class="pin-row" data-pin="{{ pin.pin }}">
-                                <td>{{ pin.id }}</td>
-                                <td>{{ pin.station }}</td>
-                                <td><code>{{ pin.pin }}</code></td>
-                                <td>
-                                    {% if pin.active %}
-                                    <span class="status ok">aktiv</span>
-                                    {% else %}
-                                    <span class="status bad">inaktiv</span>
-                                    {% endif %}
-                                </td>
-                                <td>
-                                    <div class="row-actions">
-                                        <label class="switch" title="Aktiv / Inaktiv">
-                                            <input
-                                                type="checkbox"
-                                                {% if pin.active %}checked{% endif %}
-                                                onchange="togglePinActive('{{ pin.pin }}', this.checked)"
-                                            />
-                                            <span class="slider"></span>
-                                        </label>
-
-                                        <button
-                                            class="mini-btn btn-danger"
-                                            type="button"
-                                            onclick="deletePin('{{ pin.pin }}')"
-                                            title="PIN löschen"
-                                        >
-                                            Löschen
-                                        </button>
-                                    </div>
-                                </td>
-                                <td>{{ pin.created_at }}</td>
-                            </tr>
-                            {% endfor %} {% else %}
-                            <tr>
-                                <td colspan="6" class="muted">Keine PINs vorhanden.</td>
-                            </tr>
-                            {% endif %}
-                        </tbody>
-                    </table>
-                </div>
-            </section>
-            {% endif %}
-
-            <section class="section">
-                <h2>Datenbank</h2>
-                <div class="stack">
-                    <div class="card">
-                        <h3>Datenbank wechseln</h3>
-                        <div class="muted">
-                            Aktuelle DB:
-                            <code>{{ active_db_path or 'Keine ausgewählt' }}</code>
-                        </div>
-
-                        {% if dbs %}
-                        <form
-                            method="post"
-                            action="{{ url_for('auth.admin_select_db') }}"
-                        >
-                            <input
-                                type="hidden"
-                                name="csrf_token"
-                                value="{{ csrf_token() }}"
-                            />
-                            <label for="db_name">Datenbank auswählen</label>
-                            <select id="db_name" name="db_name" required>
-                                <option value="" disabled selected>
-                                    Bitte auswählen
-                                </option>
-                                {% for item in dbs %}
-                                <option value="{{ item.name }}">
-                                    {{ item.name }}{% if item.label %} - {{ item.label }}{% endif %}
-                                </option>
-                                {% endfor %}
-                            </select>
-
-                            <div class="btnrow" style="margin-top: 10px">
-                                <button class="primary" type="submit">
-                                    Aktiv setzen
-                                </button>
-                            </div>
-                        </form>
-                        {% else %}
-                        <div class="muted" style="margin-top: 10px">
-                            Keine Datenbanken vorhanden. Importiere eine CSV-Datei
-                            unter
-                            <a href="{{ url_for('auth.admin_riegeneinteilung') }}">Riegeneinteilung</a>.
-                        </div>
-                        {% endif %}
-                    </div>
-
-                    {% if dbs %}
-                    <div class="card">
-                        <h3>Datenbank löschen</h3>
-                        <div class="muted">
-                            Gelöschte Datenbanken können nicht wiederhergestellt werden.
-                        </div>
-
-                        <form
-                            method="post"
-                            action="{{ url_for('auth.admin_delete_db') }}"
-                            onsubmit="return confirmDeleteDb(this);"
-                        >
-                            <input
-                                type="hidden"
-                                name="csrf_token"
-                                value="{{ csrf_token() }}"
-                            />
-                            <input type="hidden" name="delete_file" value="true" />
-                            <label for="delete_db_name">Datenbank wählen</label>
-                            <select id="delete_db_name" name="db_name" required>
-                                <option value="" disabled selected>
-                                    Bitte auswählen
-                                </option>
-                                {% for item in dbs %}
-                                <option value="{{ item.name }}">
-                                    {{ item.name }}{% if item.label %} - {{ item.label }}{% endif %}
-                                </option>
-                                {% endfor %}
-                            </select>
-
-                            <div class="btnrow" style="margin-top: 10px">
-                                <button class="danger" type="submit">
-                                    Datenbank löschen
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                    {% endif %}
-                </div>
-            </section>
-        </main>
-
-        <div class="modal-backdrop" id="students-modal" aria-hidden="true">
-            <div class="modal" role="dialog" aria-modal="true" aria-labelledby="students-modal-title">
-                <div class="modal-head">
-                    <div>
-                        <h2 id="students-modal-title">Schüler CSV hochladen</h2>
-                        <p>Die hochgeladene Datei erzeugt direkt eine neue Datenbank und startet die automatische Riegenerstellung.</p>
-                    </div>
-                    <button class="modal-close" type="button" onclick="closeWorkflowModal('students-modal')">Schließen</button>
-                </div>
-                <form id="students-import-form">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
-                    <label for="workflow_students_file">Schüler CSV</label>
-                    <input id="workflow_students_file" name="csv_file" type="file" accept=".csv,text/csv" required />
-                    <div class="modal-status" id="students-import-status"></div>
-                    <div class="modal-actions">
-                        <button class="btn-secondary" type="button" onclick="closeWorkflowModal('students-modal')">Abbrechen</button>
-                        <button class="primary" type="submit">Import starten</button>
-                    </div>
-                </form>
-            </div>
+                <div class="muted" id="generate-pin-result"></div>
+              </div>
+            </form>
+          </div>
         </div>
+      </section>
 
-        <div class="modal-backdrop" id="riegen-modal" aria-hidden="true">
-            <div class="modal" role="dialog" aria-modal="true" aria-labelledby="riegen-modal-title">
-                <div class="modal-head">
-                    <div>
-                        <h2 id="riegen-modal-title">Riegen erstellt</h2>
-                        <p>Die Datenbank wurde angelegt und die automatische Einteilung ist abgeschlossen.</p>
-                    </div>
-                    <button class="modal-close" type="button" onclick="closeWorkflowModal('riegen-modal')">Schließen</button>
-                </div>
-                <div class="summary-grid">
-                    <div class="summary-item">
-                        <span>Schüler</span>
-                        <strong id="workflow-students-count">0</strong>
-                    </div>
-                    <div class="summary-item">
-                        <span>Riegen</span>
-                        <strong id="workflow-riegen-count">0</strong>
-                    </div>
-                </div>
-                <p class="modal-copy" id="workflow-db-name"></p>
-                <form id="leaders-import-form">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
-                    <label for="workflow_leaders_file">Riegenführer CSV</label>
-                    <input id="workflow_leaders_file" name="leaders_file" type="file" accept=".csv,text/csv" required />
-                    <div class="modal-status" id="leaders-import-status"></div>
-                    <div class="modal-actions">
-                        <button class="btn-secondary" type="button" onclick="closeWorkflowModal('riegen-modal')">Später</button>
-                        <button class="primary" type="submit">CSV hochladen</button>
-                    </div>
-                </form>
-            </div>
-        </div>
+      <section class="section">
+        <h2>Aktive Stations-PINs</h2>
+        <div class="table-shell">
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 70px">ID</th>
+                <th>Station</th>
+                <th>PIN</th>
+                <th>Status</th>
+                <th style="width: 210px">Aktionen</th>
+                <th style="width: 220px">Erstellt</th>
+              </tr>
+            </thead>
 
-        <div class="modal-backdrop" id="leader-result-modal" aria-hidden="true">
-            <div class="modal" role="dialog" aria-modal="true" aria-labelledby="leader-result-title">
-                <div class="modal-head">
-                    <div>
-                        <h2 id="leader-result-title">Riegenführer Status</h2>
-                    </div>
-                </div>
-                <div class="flash info" id="leader-result-message" style="margin-bottom: 0;"></div>
-                <div class="modal-actions">
-                    <button class="primary" type="button" onclick="closeWorkflowModal('leader-result-modal'); window.location.reload();">
-                        Fertig
+            <tbody>
+              {% if pins %} {% for pin in pins %}
+              <tr class="pin-row" data-pin="{{ pin.pin }}">
+                <td>{{ pin.id }}</td>
+                <td>{{ pin.station }}</td>
+                <td><code>{{ pin.pin }}</code></td>
+                <td>
+                  {% if pin.active %}
+                  <span class="status ok">aktiv</span>
+                  {% else %}
+                  <span class="status bad">inaktiv</span>
+                  {% endif %}
+                </td>
+                <td>
+                  <div class="row-actions">
+                    <label class="switch" title="Aktiv / Inaktiv">
+                      <input
+                        type="checkbox"
+                        {%
+                        if
+                        pin.active
+                        %}checked{%
+                        endif
+                        %}
+                        onchange="togglePinActive('{{ pin.pin }}', this.checked)"
+                      />
+                      <span class="slider"></span>
+                    </label>
+
+                    <button
+                      class="mini-btn btn-danger"
+                      type="button"
+                      onclick="deletePin('{{ pin.pin }}')"
+                      title="PIN löschen"
+                    >
+                      Löschen
                     </button>
-                </div>
-            </div>
+                  </div>
+                </td>
+                <td>{{ pin.created_at }}</td>
+              </tr>
+              {% endfor %} {% else %}
+              <tr>
+                <td colspan="6" class="muted">Keine PINs vorhanden.</td>
+              </tr>
+              {% endif %}
+            </tbody>
+          </table>
         </div>
+      </section>
+      {% endif %} {% if dbs %}
+      <section class="section">
+        <h2>Datenbank</h2>
+        <div class="stack">
+          <div class="card">
+            <h3>Datenbank wechseln</h3>
+            <div class="muted">
+              Aktuelle DB:
+              <code>{{ active_db_name or 'Keine ausgewählt' }}</code>
+            </div>
 
-        <div class="toast" id="toast"></div>
+            <form method="post" action="{{ url_for('auth.admin_select_db') }}">
+              <input
+                type="hidden"
+                name="csrf_token"
+                value="{{ csrf_token() }}"
+              />
+              <label for="db_name">Datenbank ändern</label>
+              <select id="db_name" name="db_name" required>
+                <option value="" disabled selected>Bitte auswählen</option>
+                {% for item in dbs %}
+                <option value="{{ item.name }}">
+                  {{ item.name }}{% if item.label %} - {{ item.label }}{% endif
+                  %}
+                </option>
+                {% endfor %}
+              </select>
 
-        <script>
-            const csrfToken = "{{ csrf_token() }}";
-            const hasCurrentYearDb = {{ "true" if has_current_year_db else "false" }};
-            const currentYearDbName = {{ current_year_db_name|tojson }};
-            const workflowState = {
-                importedStudents: 0,
-                createdRiegen: 0,
-                dbName: "",
-            };
+              <div class="btnrow" style="margin-top: 10px">
+                <button class="primary" type="submit">Aktiv setzen</button>
+              </div>
+            </form>
+          </div>
 
-            function showToast(message, type = "success") {
-                const toast = document.getElementById("toast");
-                toast.textContent = message;
-                toast.className = `toast ${type} show`;
-                setTimeout(() => toast.classList.remove("show"), 2500);
-            }
+          <div class="card">
+            <h3>Datenbank löschen</h3>
+            <div class="muted">
+              Gelöschte Datenbanken können nicht wiederhergestellt werden.
+            </div>
 
-            function openWorkflowModal(id) {
-                document.getElementById(id)?.classList.add("open");
-            }
+            <form
+              method="post"
+              action="{{ url_for('auth.admin_delete_db') }}"
+              onsubmit="return confirmDeleteDb(this);"
+            >
+              <input
+                type="hidden"
+                name="csrf_token"
+                value="{{ csrf_token() }}"
+              />
+              <input type="hidden" name="delete_file" value="true" />
+              <select id="delete_db_name" name="db_name" required>
+                <option value="" disabled selected>
+                  Datenbank auswählen zum löschen
+                </option>
+                {% for item in dbs %}
+                <option value="{{ item.name }}">
+                  {{ item.name }}{% if item.label %} - {{ item.label }}{% endif
+                  %}
+                </option>
+                {% endfor %}
+              </select>
 
-            function closeWorkflowModal(id) {
-                document.getElementById(id)?.classList.remove("open");
-            }
+              <div class="btnrow" style="margin-top: 10px">
+                <button class="danger" type="submit">Datenbank löschen</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </section>
+      {% endif %}
+    </main>
 
-            async function jsonFetch(url, method = "GET", payload = undefined) {
-                const res = await fetch(url, {
-                    method,
-                    headers: {
-                        "Content-Type": "application/json",
-                        "X-CSRFToken": csrfToken,
-                    },
-                    body: payload ? JSON.stringify(payload) : undefined,
-                });
-                const data = await res.json().catch(() => ({}));
-                if (!res.ok) throw new Error(data.error || "Fehler");
-                return data;
-            }
+    <div class="modal-backdrop" id="students-modal" aria-hidden="true">
+      <div
+        class="modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="students-modal-title"
+      >
+        <div class="modal-head">
+          <div>
+            <h2 id="students-modal-title">Schüler CSV hochladen</h2>
+            <p>
+              Die hochgeladene Datei erzeugt direkt eine neue Datenbank und
+              macht automatisch die Riegeneinteilung.
+            </p>
+          </div>
+          <button
+            class="modal-close"
+            type="button"
+            onclick="closeWorkflowModal('students-modal')"
+          >
+            Schließen
+          </button>
+        </div>
+        <form id="students-import-form">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+          <label for="workflow_students_file">Schüler CSV</label>
+          <input
+            id="workflow_students_file"
+            name="csv_file"
+            type="file"
+            accept=".csv,text/csv"
+            required
+          />
+          <div class="modal-status" id="students-import-status"></div>
+          <div class="modal-actions">
+            <button
+              class="btn-secondary"
+              type="button"
+              onclick="closeWorkflowModal('students-modal')"
+            >
+              Abbrechen
+            </button>
+            <button class="primary" type="submit">Import starten</button>
+          </div>
+        </form>
+      </div>
+    </div>
 
-            async function refreshStationsDropdown() {
-                const sel = document.getElementById("station_id");
-                if (!sel) return;
+    <div class="modal-backdrop" id="riegen-modal" aria-hidden="true">
+      <div
+        class="modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="riegen-modal-title"
+      >
+        <div class="modal-head">
+          <div>
+            <h2 id="riegen-modal-title">Riegen erstellt</h2>
+            <p>
+              Die Datenbank wurde angelegt und die automatische Einteilung ist
+              abgeschlossen.
+            </p>
+          </div>
+          <button
+            class="modal-close"
+            type="button"
+            onclick="closeWorkflowModal('riegen-modal')"
+          >
+            Schließen
+          </button>
+        </div>
+        <div class="summary-grid">
+          <div class="summary-item">
+            <span>Schüler</span>
+            <strong id="workflow-students-count">0</strong>
+          </div>
+          <div class="summary-item">
+            <span>Riegen</span>
+            <strong id="workflow-riegen-count">0</strong>
+          </div>
+        </div>
+        <p class="modal-copy" id="workflow-db-name"></p>
+        <form id="leaders-import-form">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+          <label for="workflow_leaders_file">Riegenführer CSV</label>
+          <input
+            id="workflow_leaders_file"
+            name="leaders_file"
+            type="file"
+            accept=".csv,text/csv"
+            required
+          />
+          <div class="modal-status" id="leaders-import-status"></div>
+          <div class="modal-actions">
+            <button
+              class="btn-secondary"
+              type="button"
+              onclick="closeWorkflowModal('riegen-modal')"
+            >
+              Später
+            </button>
+            <button class="primary" type="submit">CSV hochladen</button>
+          </div>
+        </form>
+      </div>
+    </div>
 
-                sel.innerHTML = "";
-                const placeholder = document.createElement("option");
-                placeholder.value = "";
-                placeholder.disabled = true;
-                placeholder.selected = true;
-                placeholder.textContent = "Station auswählen";
-                sel.appendChild(placeholder);
+    <div class="modal-backdrop" id="leader-result-modal" aria-hidden="true">
+      <div
+        class="modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="leader-result-title"
+      >
+        <div class="modal-head">
+          <div>
+            <h2 id="leader-result-title">Riegenführer Status</h2>
+          </div>
+        </div>
+        <div
+          class="flash info"
+          id="leader-result-message"
+          style="margin-bottom: 0"
+        ></div>
+        <div class="modal-actions">
+          <button
+            class="primary"
+            type="button"
+            onclick="
+              closeWorkflowModal('leader-result-modal');
+              window.location.reload();
+            "
+          >
+            Fertig
+          </button>
+        </div>
+      </div>
+    </div>
 
-                const data = await fetch("/admin/stations", {
-                    headers: { "X-CSRFToken": csrfToken },
-                })
-                    .then((r) => r.json())
-                    .catch(() => ({ stations: [] }));
+    <div class="modal-backdrop" id="delete-db-modal" aria-hidden="true">
+      <div
+        class="modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="delete-db-title"
+      >
+        <div class="modal-head">
+          <div>
+            <h2 id="delete-db-title">Datenbank löschen</h2>
+          </div>
+          <button
+            class="modal-close"
+            type="button"
+            onclick="closeDeleteDbModal(false)"
+          >
+            Schließen
+          </button>
+        </div>
+        <p class="confirm-copy" id="delete-db-message"></p>
+        <p class="confirm-copy">Die Datenbankdatei wird permanent gelöscht!</p>
+        <div class="modal-actions">
+          <button
+            class="btn-secondary"
+            type="button"
+            onclick="closeDeleteDbModal(false)"
+          >
+            Abbrechen
+          </button>
+          <button
+            class="danger"
+            type="button"
+            onclick="closeDeleteDbModal(true)"
+          >
+            OK
+          </button>
+        </div>
+      </div>
+    </div>
 
-                const stations = data.stations || [];
-                for (const s of stations) {
-                    if (!s.active) continue;
-                    const opt = document.createElement("option");
-                    opt.value = String(s.id);
-                    opt.textContent = s.display_name
-                        ? `${s.display_name} (${s.name})`
-                        : s.name;
-                    sel.appendChild(opt);
-                }
-            }
+    <div class="toast" id="toast"></div>
 
-            async function formFetch(url, formData) {
-                const res = await fetch(url, {
-                    method: "POST",
-                    headers: {
-                        Accept: "application/json",
-                        "X-CSRFToken": csrfToken,
-                    },
-                    body: formData,
-                });
-                const data = await res.json().catch(() => ({}));
-                if (!res.ok) throw new Error(data.error || "Fehler");
-                return data;
-            }
+    <script>
+      const csrfToken = "{{ csrf_token() }}";
+      const hasCurrentYearDb = {{ "true" if has_current_year_db else "false" }};
+      const currentYearDbName = {{ current_year_db_name|tojson }};
+      const workflowState = {
+        importedStudents: 0,
+        createdRiegen: 0,
+        dbName: "",
+      };
+      let pendingDeleteDbResolver = null;
 
-            async function generateEventPin() {
-                const el = document.getElementById("event-pin-result");
-                const current = document.getElementById("current-event-pin");
-                el.textContent = "Generiere...";
-                try {
-                    const data = await jsonFetch(
-                        "/admin/event_pin/generate",
-                        "POST",
-                        {},
-                    );
-                    current.textContent = data.event_pin;
-                    el.innerHTML = `Neu gesetzt: <code>${data.event_pin}</code>`;
-                    showToast("Event-PIN aktualisiert", "info");
-                } catch (e) {
-                    el.textContent = e.message;
-                    showToast(e.message, "error");
-                }
-            }
+      function showToast(message, type = "success") {
+          const toast = document.getElementById("toast");
+          toast.textContent = message;
+          toast.className = `toast ${type} show`;
+          setTimeout(() => toast.classList.remove("show"), 2500);
+      }
 
-            const genForm = document.getElementById("generate-pin-form");
-            const genResult = document.getElementById("generate-pin-result");
-            genForm?.addEventListener("submit", async (e) => {
-                e.preventDefault();
-                genResult.textContent = "Generiere...";
-                try {
-                    const payload = {
-                        station_id: parseInt(genForm.station_id.value, 10),
-                    };
-                    const data = await jsonFetch(
-                        "/admin/generate_pin",
-                        "POST",
-                        payload,
-                    );
-                    genResult.innerHTML = `PIN: <code>${data.pin}</code>`;
-                    showToast("Stations-PIN erstellt");
-                    setTimeout(() => window.location.reload(), 600);
-                } catch (e) {
-                    genResult.textContent = e.message;
-                    showToast(e.message, "error");
-                }
-            });
+      function openWorkflowModal(id) {
+          document.getElementById(id)?.classList.add("open");
+      }
 
-            async function togglePinActive(pin, desiredActive) {
-                try {
-                    if (desiredActive) {
-                        throw new Error(
-                            "Aktivieren ist aktuell nicht implementiert. Bitte neuen PIN generieren.",
-                        );
-                    }
+      function closeWorkflowModal(id) {
+        document.getElementById(id)?.classList.remove("open");
+      }
 
-                    await jsonFetch("/admin/pins/deactivate", "POST", { pin });
-                    showToast("PIN deaktiviert", "info");
-                    setTimeout(() => window.location.reload(), 400);
-                } catch (e) {
-                    showToast(e.message, "error");
-                    const checkbox = document.querySelector(
-                        `.pin-row[data-pin="${pin}"] input[type="checkbox"]`,
-                    );
-                    if (checkbox) checkbox.checked = !desiredActive;
-                }
-            }
+      function openDeleteDbModal(dbName) {
+        document.getElementById("delete-db-message").textContent =
+          `Datenbank "${dbName}" wirklich unwiderruflich löschen?`;
+        document.getElementById("delete-db-modal")?.classList.add("open");
+        return new Promise((resolve) => {
+          pendingDeleteDbResolver = resolve;
+        });
+      }
 
-            function confirmDeleteDb(form) {
-                const select = form.querySelector('select[name="db_name"]');
-                const dbName = select.value;
-                if (!dbName) {
-                    showToast("Bitte eine Datenbank auswählen.", "error");
-                    return false;
-                }
-                return confirm(
-                    `Datenbank "${dbName}" wirklich unwiderruflich löschen?\n\nDie Datenbankdatei wird permanent gelöscht!`,
-                );
-            }
+      function closeDeleteDbModal(confirmed) {
+        document.getElementById("delete-db-modal")?.classList.remove("open");
+        if (pendingDeleteDbResolver) {
+          pendingDeleteDbResolver(Boolean(confirmed));
+          pendingDeleteDbResolver = null;
+        }
+      }
 
-            async function deletePin(pin) {
-                if (!confirm(`PIN wirklich löschen? (${pin})`)) return;
-                try {
-                    await jsonFetch("/admin/pins/delete", "POST", { pin });
-                    showToast("PIN gelöscht", "info");
-                    const tr = document.querySelector(
-                        `.pin-row[data-pin="${pin}"]`,
-                    );
-                    tr?.remove();
-                } catch (e) {
-                    showToast(e.message, "error");
-                }
-            }
+      async function jsonFetch(url, method = "GET", payload = undefined) {
+          const res = await fetch(url, {
+              method,
+              headers: {
+                  "Content-Type": "application/json",
+                  "X-CSRFToken": csrfToken,
+              },
+              body: payload ? JSON.stringify(payload) : undefined,
+          });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok) throw new Error(data.error || "Fehler");
+          return data;
+      }
 
-            const studentsImportForm = document.getElementById("students-import-form");
-            const studentsImportStatus = document.getElementById("students-import-status");
-            const leadersImportForm = document.getElementById("leaders-import-form");
-            const leadersImportStatus = document.getElementById("leaders-import-status");
+      async function refreshStationsDropdown() {
+          const sel = document.getElementById("station_id");
+          if (!sel) return;
 
-            studentsImportForm?.addEventListener("submit", async (event) => {
-                event.preventDefault();
-                if (
-                    hasCurrentYearDb &&
-                    !confirm(
-                        `Für das aktuelle Jahr existiert bereits eine Datenbank${currentYearDbName ? ` (${currentYearDbName})` : ""}. Trotzdem eine neue erstellen?`,
-                    )
-                ) {
-                    return;
-                }
-                const formData = new FormData(studentsImportForm);
-                studentsImportStatus.textContent = "Import läuft...";
-                try {
-                    const data = await formFetch(
-                        "{{ url_for('auth.admin_import_csv_to_new_db') }}",
-                        formData,
-                    );
-                    workflowState.importedStudents = data.imported_students || 0;
-                    workflowState.createdRiegen = data.created_riegen || 0;
-                    workflowState.dbName = data.db_name || "";
-                    document.getElementById("workflow-students-count").textContent =
-                        workflowState.importedStudents;
-                    document.getElementById("workflow-riegen-count").textContent =
-                        workflowState.createdRiegen;
-                    document.getElementById("workflow-db-name").textContent =
-                        workflowState.dbName
-                            ? `Neue Datenbank: ${workflowState.dbName}`
-                            : "";
-                    studentsImportStatus.textContent = "";
-                    studentsImportForm.reset();
-                    closeWorkflowModal("students-modal");
-                    openWorkflowModal("riegen-modal");
-                    showToast(data.message || "Import abgeschlossen");
-                } catch (error) {
-                    studentsImportStatus.textContent = error.message;
-                    showToast(error.message, "error");
-                }
-            });
+          sel.innerHTML = "";
+          const placeholder = document.createElement("option");
+          placeholder.value = "";
+          placeholder.disabled = true;
+          placeholder.selected = true;
+          placeholder.textContent = "Station auswählen";
+          sel.appendChild(placeholder);
 
-            leadersImportForm?.addEventListener("submit", async (event) => {
-                event.preventDefault();
-                const formData = new FormData(leadersImportForm);
-                leadersImportStatus.textContent = "CSV wird verarbeitet...";
-                try {
-                    const data = await formFetch(
-                        "{{ url_for('auth.admin_replace_leader_names') }}",
-                        formData,
-                    );
-                    const leaderResultMessage = document.getElementById("leader-result-message");
-                    leaderResultMessage.textContent =
-                        data.extra_names_message ||
-                        data.leader_message ||
-                        "Alle Riegen haben einen Riegenführer zugeteilt bekommen";
-                    leaderResultMessage.className =
-                        `flash ${
-                            (data.missing_extra_leader || 0) === 0 &&
-                            !data.extra_names_message
-                                ? "success"
-                                : "info"
-                        }`;
-                    leadersImportStatus.textContent = "";
-                    leadersImportForm.reset();
-                    closeWorkflowModal("riegen-modal");
-                    openWorkflowModal("leader-result-modal");
-                    showToast(data.message || "Riegenführer aktualisiert");
-                } catch (error) {
-                    leadersImportStatus.textContent = error.message;
-                    showToast(error.message, "error");
-                }
-            });
+          const data = await fetch("/admin/stations", {
+              headers: { "X-CSRFToken": csrfToken },
+          })
+              .then((r) => r.json())
+              .catch(() => ({ stations: [] }));
 
-            refreshStationsDropdown().catch(() => {});
-        </script>
-    </body>
+          const stations = data.stations || [];
+          for (const s of stations) {
+              if (!s.active) continue;
+              const opt = document.createElement("option");
+              opt.value = String(s.id);
+              opt.textContent = s.display_name
+                  ? `${s.display_name} (${s.name})`
+                  : s.name;
+              sel.appendChild(opt);
+          }
+      }
+
+      async function formFetch(url, formData) {
+          const res = await fetch(url, {
+              method: "POST",
+              headers: {
+                  Accept: "application/json",
+                  "X-CSRFToken": csrfToken,
+              },
+              body: formData,
+          });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok) throw new Error(data.error || "Fehler");
+          return data;
+      }
+
+      async function generateEventPin() {
+          const el = document.getElementById("event-pin-result");
+          const current = document.getElementById("current-event-pin");
+          el.textContent = "Generiere...";
+          try {
+              const data = await jsonFetch(
+                  "/admin/event_pin/generate",
+                  "POST",
+                  {},
+              );
+              current.textContent = data.event_pin;
+              el.innerHTML = `Neu gesetzt: <code>${data.event_pin}</code>`;
+              showToast("Event-PIN aktualisiert", "info");
+          } catch (e) {
+              el.textContent = e.message;
+              showToast(e.message, "error");
+          }
+      }
+
+      const genForm = document.getElementById("generate-pin-form");
+      const genResult = document.getElementById("generate-pin-result");
+      genForm?.addEventListener("submit", async (e) => {
+          e.preventDefault();
+          genResult.textContent = "Generiere...";
+          try {
+              const payload = {
+                  station_id: parseInt(genForm.station_id.value, 10),
+              };
+              const data = await jsonFetch(
+                  "/admin/generate_pin",
+                  "POST",
+                  payload,
+              );
+              genResult.innerHTML = `PIN: <code>${data.pin}</code>`;
+              showToast("Stations-PIN erstellt");
+              setTimeout(() => window.location.reload(), 600);
+          } catch (e) {
+              genResult.textContent = e.message;
+              showToast(e.message, "error");
+          }
+      });
+
+      async function togglePinActive(pin, desiredActive) {
+          try {
+              if (desiredActive) {
+                  throw new Error(
+                      "Aktivieren ist aktuell nicht implementiert. Bitte neuen PIN generieren.",
+                  );
+              }
+
+              await jsonFetch("/admin/pins/deactivate", "POST", { pin });
+              showToast("PIN deaktiviert", "info");
+              setTimeout(() => window.location.reload(), 400);
+          } catch (e) {
+              showToast(e.message, "error");
+              const checkbox = document.querySelector(
+                  `.pin-row[data-pin="${pin}"] input[type="checkbox"]`,
+              );
+              if (checkbox) checkbox.checked = !desiredActive;
+          }
+      }
+
+      async function confirmDeleteDb(form) {
+          const select = form.querySelector('select[name="db_name"]');
+          const dbName = select.value;
+          if (!dbName) {
+              showToast("Bitte eine Datenbank auswählen.", "error");
+              return false;
+          }
+          const confirmed = await openDeleteDbModal(dbName);
+          if (confirmed) {
+              form.submit();
+          }
+          return false;
+      }
+
+      async function deletePin(pin) {
+          if (!confirm(`PIN wirklich löschen? (${pin})`)) return;
+          try {
+              await jsonFetch("/admin/pins/delete", "POST", { pin });
+              showToast("PIN gelöscht", "info");
+              const tr = document.querySelector(
+                  `.pin-row[data-pin="${pin}"]`,
+              );
+              tr?.remove();
+          } catch (e) {
+              showToast(e.message, "error");
+          }
+      }
+
+      const studentsImportForm = document.getElementById("students-import-form");
+      const studentsImportStatus = document.getElementById("students-import-status");
+      const leadersImportForm = document.getElementById("leaders-import-form");
+      const leadersImportStatus = document.getElementById("leaders-import-status");
+
+      studentsImportForm?.addEventListener("submit", async (event) => {
+          event.preventDefault();
+          if (
+              hasCurrentYearDb &&
+              !confirm(
+                  `Für das aktuelle Jahr existiert bereits eine Datenbank${currentYearDbName ? ` (${currentYearDbName})` : ""}. Trotzdem eine neue erstellen?`,
+              )
+          ) {
+              return;
+          }
+          const formData = new FormData(studentsImportForm);
+          studentsImportStatus.textContent = "Import läuft...";
+          try {
+              const data = await formFetch(
+                  "{{ url_for('auth.admin_import_csv_to_new_db') }}",
+                  formData,
+              );
+              workflowState.importedStudents = data.imported_students || 0;
+              workflowState.createdRiegen = data.created_riegen || 0;
+              workflowState.dbName = data.db_name || "";
+              document.getElementById("workflow-students-count").textContent =
+                  workflowState.importedStudents;
+              document.getElementById("workflow-riegen-count").textContent =
+                  workflowState.createdRiegen;
+              document.getElementById("workflow-db-name").textContent =
+                  workflowState.dbName
+                      ? `Neue Datenbank: ${workflowState.dbName}`
+                      : "";
+              studentsImportStatus.textContent = "";
+              studentsImportForm.reset();
+              closeWorkflowModal("students-modal");
+              openWorkflowModal("riegen-modal");
+              showToast(data.message || "Import abgeschlossen");
+          } catch (error) {
+              studentsImportStatus.textContent = error.message;
+              showToast(error.message, "error");
+          }
+      });
+
+      leadersImportForm?.addEventListener("submit", async (event) => {
+          event.preventDefault();
+          const formData = new FormData(leadersImportForm);
+          leadersImportStatus.textContent = "CSV wird verarbeitet...";
+          try {
+              const data = await formFetch(
+                  "{{ url_for('auth.admin_replace_leader_names') }}",
+                  formData,
+              );
+              const leaderResultMessage = document.getElementById("leader-result-message");
+              leaderResultMessage.textContent =
+                  data.extra_names_message ||
+                  data.leader_message ||
+                  "Alle Riegen haben einen Riegenführer zugeteilt bekommen";
+              leaderResultMessage.className =
+                  `flash ${
+                      (data.missing_extra_leader || 0) === 0 &&
+                      !data.extra_names_message
+                          ? "success"
+                          : "info"
+                  }`;
+              leadersImportStatus.textContent = "";
+              leadersImportForm.reset();
+              closeWorkflowModal("riegen-modal");
+              openWorkflowModal("leader-result-modal");
+              showToast(data.message || "Riegenführer aktualisiert");
+          } catch (error) {
+              leadersImportStatus.textContent = error.message;
+              showToast(error.message, "error");
+          }
+      });
+
+      refreshStationsDropdown().catch(() => {});
+    </script>
+  </body>
 </html>
