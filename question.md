@@ -1,2 +1,6 @@
 - Kugelstoßen, Weitwurf differnzieren bei alter in einer Riege
+- eine pdf erstellen für jeden schüler eine seite mit allen ergebnissen drauf keine offizielle uhrkunde aber eine Gute Info für schüler und Lehrer
+- männlich weiblich getrent sport? -> jeweils eine auswertungs csv
+- wie viele sport profiel gibt es pro klasse
+- in der import liste wissen welche sport profil wer ist für die auswertung aufteilung
 -

@@ -155,12 +155,13 @@ class AuswertungService:
             skipped_students=uebersprungen,
         )
 
-    def _calculate_points_for_student(
+    def build_student_breakdown(
         self,
         schueler: dict,
         *,
         referenzjahr: int,
-    ) -> Optional[int]:
+    ) -> Optional[dict]:
+        """Berechnet Punkte je Disziplin sowie Gesamtpunktzahl fuer einen Schueler."""
         geschlecht = str(schueler["geschlecht"] or "").strip().lower()
         if geschlecht not in {"m", "w"}:
             return None
@@ -176,31 +177,120 @@ class AuswertungService:
         lauf = self._coerce_float(schueler.get("lauf"))
         sprung = self._coerce_float(schueler.get("sprung"))
 
-        if sum(1 for wert in (sprint, wurf, lauf, sprung) if wert and wert > 0) < 3:
-            return None
-
-        maennlich = geschlecht == "m"
-        wurf_stoss, wurf_80g = self._wurf_gewicht_zu_bools(alter_config["wurf_weight"])
         sprint_cfg = self._config["formula_config"]["sprint"]
-        sprint_gender_key = "male" if maennlich else "female"
         sprint_distanz = str(int(alter_config["sprint_distance"]))
-        sprint_base = float(sprint_cfg[sprint_gender_key][sprint_distanz]["base"])
-        sprint_divisor = float(sprint_cfg[sprint_gender_key][sprint_distanz]["divisor"])
-        sprint_offset = float(sprint_cfg["offset"])
-
-        lauf_cfg = self._config["formula_config"]["lauf"][sprint_gender_key]
-        sprung_cfg = self._config["formula_config"]["sprung"]["weit"][sprint_gender_key]
+        sprint_detail = sprint_cfg[geschlecht_key][sprint_distanz]
+        lauf_detail = self._config["formula_config"]["lauf"][geschlecht_key]
+        sprung_detail = self._config["formula_config"]["sprung"]["weit"][geschlecht_key]
         wurf_cfg_key = self._wurf_variant_key(int(alter_config["wurf_weight"]))
-        wurf_cfg = self._config["formula_config"]["wurf"][wurf_cfg_key][sprint_gender_key]
-        punkte = [
-            self._score_sprint(sprint, int(sprint_distanz), sprint_offset, sprint_base, sprint_divisor),
-            self._score_wurf(wurf, wurf_stoss, wurf_80g, float(wurf_cfg["base"]), float(wurf_cfg["divisor"])),
-            self._score_lauf(lauf, float(lauf_cfg["distance"]), float(lauf_cfg["base"]), float(lauf_cfg["divisor"])),
-            self._score_sprung(sprung, float(sprung_cfg["base"]), float(sprung_cfg["divisor"])),
-        ]
+        wurf_detail = self._config["formula_config"]["wurf"][wurf_cfg_key][geschlecht_key]
 
-        punkte.remove(min(punkte))
-        return int(round(sum(punkte)))
+        disziplinen = {
+            "sprint": {
+                "best_value": sprint if sprint > 0 else None,
+                "points": int(
+                    round(
+                        self._score_sprint(
+                            sprint,
+                            int(sprint_distanz),
+                            float(sprint_cfg["offset"]),
+                            float(sprint_detail["base"]),
+                            float(sprint_detail["divisor"]),
+                        )
+                    )
+                )
+                if sprint > 0
+                else None,
+            },
+            "lauf": {
+                "best_value": lauf if lauf > 0 else None,
+                "points": int(
+                    round(
+                        self._score_lauf(
+                            lauf,
+                            float(lauf_detail["distance"]),
+                            float(lauf_detail["base"]),
+                            float(lauf_detail["divisor"]),
+                        )
+                    )
+                )
+                if lauf > 0
+                else None,
+            },
+            "sprung": {
+                "best_value": sprung if sprung > 0 else None,
+                "points": int(
+                    round(
+                        self._score_sprung(
+                            sprung,
+                            float(sprung_detail["base"]),
+                            float(sprung_detail["divisor"]),
+                        )
+                    )
+                )
+                if sprung > 0
+                else None,
+            },
+            "wurf": {
+                "best_value": wurf if wurf > 0 else None,
+                "points": int(
+                    round(
+                        self._score_wurf(
+                            wurf,
+                            False,
+                            False,
+                            float(wurf_detail["base"]),
+                            float(wurf_detail["divisor"]),
+                        )
+                    )
+                )
+                if wurf > 0
+                else None,
+                "variant": wurf_cfg_key,
+                "weight": int(alter_config["wurf_weight"]),
+            },
+        }
+
+        vorhandene_punkte = [
+            wert["points"]
+            for wert in disziplinen.values()
+            if wert.get("points") is not None
+        ]
+        gesamtpunktzahl = None
+        if len(vorhandene_punkte) >= 3:
+            gesamtpunkte_liste = list(vorhandene_punkte)
+            gesamtpunkte_liste.remove(min(gesamtpunkte_liste))
+            gesamtpunktzahl = int(round(sum(gesamtpunkte_liste)))
+
+        urkunde = None
+        if gesamtpunktzahl is not None:
+            urkunde = self._punkte_zu_urkunde(
+                punkte=gesamtpunktzahl,
+                alter=alter,
+                geschlecht=geschlecht,
+            )
+
+        return {
+            "alter": alter,
+            "geschlecht_key": geschlecht_key,
+            "disziplinen": disziplinen,
+            "gesamtpunktzahl": gesamtpunktzahl,
+            "urkunde": urkunde,
+        }
+
+    def _calculate_points_for_student(
+        self,
+        schueler: dict,
+        *,
+        referenzjahr: int,
+    ) -> Optional[int]:
+        breakdown = self.build_student_breakdown(
+            schueler,
+            referenzjahr=referenzjahr,
+        )
+        if not breakdown:
+            return None
+        return breakdown["gesamtpunktzahl"]
 
     def _punkte_zu_urkunde(self, *, punkte: int, alter: int, geschlecht: str) -> Optional[str]:
         schwellen = self._config["urkunde_config"].get(str(alter))

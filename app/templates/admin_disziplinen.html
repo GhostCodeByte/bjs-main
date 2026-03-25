@@ -511,7 +511,7 @@
                         throw new Error(data.error || "Fehler bei der Auswertung");
                     }
                     showToast(
-                        `Auswertung fertig: ${data.evaluated_students} bewertet, ${data.skipped_students} übersprungen`,
+                        `Auswertung fertig: ${data.evaluated_students} bewertet, Export: ${data.export_dir || "-"}`,
                         "success",
                     );
                 } catch (error) {

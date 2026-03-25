@@ -174,6 +174,119 @@ def _get_current_year_db(registry: DbRegistry):
     return registry.find_latest_db_for_year(datetime.now().year)
 
 
+def _format_export_result(value: Any, *, result_format: str) -> str:
+    """Formatiert Ergebniswerte fuer den CSV-Export."""
+    if value in (None, ""):
+        return ""
+    number = float(value)
+    if result_format == "time":
+        return f"{number:.2f}".replace(".", ",")
+    return f"{number:.2f}".replace(".", ",")
+
+
+def _export_auswertung_by_class(*, db, registry: DbRegistry, service: AuswertungService) -> Path:
+    """Erzeugt einen Klassen-export der Auswertung als verschachtelte CSV-Ordnerstruktur."""
+    referenzjahr = datetime.now().year
+    projektwurzel = Path(current_app.root_path).parent
+    datenbank_name = Path(getattr(db, "db_path", "auswertung")).stem
+    zielordner = (
+        projektwurzel
+        / "auswertung_exports"
+        / f"{datenbank_name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+    )
+    zielordner.mkdir(parents=True, exist_ok=True)
+
+    kandidaten = db.get_auswertung_candidates()
+    klassen_map: dict[tuple[int, str], list[dict[str, Any]]] = defaultdict(list)
+
+    for schueler in kandidaten:
+        breakdown = service.build_student_breakdown(
+            schueler,
+            referenzjahr=referenzjahr,
+        )
+        klasse = int(schueler.get("klasse") or 0)
+        klassenbuchstabe = str(schueler.get("klassenbuchstabe") or "").strip().lower()
+        klassen_map[(klasse, klassenbuchstabe)].append(
+            {
+                "schueler": schueler,
+                "breakdown": breakdown or {},
+            }
+        )
+
+    for (klasse, klassenbuchstabe), eintraege in sorted(
+        klassen_map.items(),
+        key=lambda item: (item[0][0], item[0][1]),
+    ):
+        stufenordner = zielordner / str(klasse)
+        stufenordner.mkdir(parents=True, exist_ok=True)
+        klassenname = f"{klasse}{klassenbuchstabe}"
+        dateipfad = stufenordner / f"{klassenname}.csv"
+        with dateipfad.open("w", encoding="utf-8-sig", newline="") as csv_file:
+            writer = csv.writer(csv_file, delimiter=";")
+            writer.writerow(
+                [
+                    "Vorname",
+                    "Name",
+                    "Sprint Bestes Ergebnis",
+                    "Sprint Punkte",
+                    "Lauf Bestes Ergebnis",
+                    "Lauf Punkte",
+                    "Weitsprung Bestes Ergebnis",
+                    "Weitsprung Punkte",
+                    "Wurf/Stoss Bestes Ergebnis",
+                    "Wurf/Stoss Punkte",
+                    "Gesamtpunktzahl",
+                    "Urkunde",
+                ]
+            )
+
+            sortierte_eintraege = sorted(
+                eintraege,
+                key=lambda item: (
+                    str(item["schueler"].get("name") or "").lower(),
+                    str(item["schueler"].get("vorname") or "").lower(),
+                ),
+            )
+            for eintrag in sortierte_eintraege:
+                schueler = eintrag["schueler"]
+                breakdown = eintrag["breakdown"]
+                disziplinen = breakdown.get("disziplinen", {})
+                writer.writerow(
+                    [
+                        schueler.get("vorname", ""),
+                        schueler.get("name", ""),
+                        _format_export_result(
+                            disziplinen.get("sprint", {}).get("best_value"),
+                            result_format="time",
+                        ),
+                        disziplinen.get("sprint", {}).get("points", ""),
+                        _format_export_result(
+                            disziplinen.get("lauf", {}).get("best_value"),
+                            result_format="time",
+                        ),
+                        disziplinen.get("lauf", {}).get("points", ""),
+                        _format_export_result(
+                            disziplinen.get("sprung", {}).get("best_value"),
+                            result_format="distance",
+                        ),
+                        disziplinen.get("sprung", {}).get("points", ""),
+                        _format_export_result(
+                            disziplinen.get("wurf", {}).get("best_value"),
+                            result_format="distance",
+                        ),
+                        disziplinen.get("wurf", {}).get("points", ""),
+                        breakdown.get("gesamtpunktzahl", ""),
+                        breakdown.get("urkunde", "") or "",
+                    ]
+                )
+
+    latest_dir = projektwurzel / "auswertung_exports" / "latest"
+    if latest_dir.exists() or latest_dir.is_symlink():
+        shutil.rmtree(latest_dir, ignore_errors=True)
+    shutil.copytree(zielordner, latest_dir)
+    return zielordner
+
+
 def _build_event_progress_cards(
     db, disziplinen: list[dict[str, Any]]
 ) -> dict[str, Any]:
@@ -1621,6 +1734,11 @@ def stats_run_auswertung():
     service = AuswertungService.from_registry(registry)
     result = service.evaluate_database(db)
     summary = db.get_auswertung_summary()
+    export_dir = _export_auswertung_by_class(
+        db=db,
+        registry=registry,
+        service=service,
+    )
 
     return jsonify(
         {
@@ -1629,5 +1747,6 @@ def stats_run_auswertung():
             "skipped_students": result.skipped_students,
             "total_students": result.total_students,
             "summary": summary,
+            "export_dir": str(export_dir),
         }
     )
