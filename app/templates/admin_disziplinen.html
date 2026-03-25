@@ -9,6 +9,9 @@
             href="{{ url_for('static', filename='ui.css') }}"
         />
         <style>
+            :root { {{ ui_theme_css_vars }}; }
+        </style>
+        <style>
             .hero,
             .hero-meta,
             .card-grid,
@@ -26,8 +29,8 @@
             .hero-card {
                 padding: 24px;
                 background:
-                    radial-gradient(circle at top right, rgba(199, 214, 88, 0.22), transparent 28%),
-                    linear-gradient(135deg, rgba(244, 247, 235, 0.96), rgba(235, 239, 224, 0.96));
+                    radial-gradient(circle at top right, rgba(var(--warning-rgb), 0.28), transparent 28%),
+                    linear-gradient(135deg, rgba(var(--panel-rgb), 0.98), rgba(var(--bg-rgb), 0.96));
             }
 
             .hero-card h1 {
@@ -63,7 +66,7 @@
 
             .discipline-card {
                 padding: 18px;
-                background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(244, 247, 235, 0.94));
+                background: linear-gradient(180deg, rgba(var(--panel-rgb), 0.98), rgba(var(--bg-rgb), 0.92));
             }
 
             .discipline-card h3,
@@ -84,7 +87,7 @@
                 border: 1px solid var(--border);
                 border-radius: 999px;
                 padding: 5px 10px;
-                background: rgba(255, 255, 255, 0.88);
+                background: rgba(var(--panel-rgb), 0.88);
                 color: var(--muted);
                 font-size: 13px;
             }
@@ -102,8 +105,8 @@
                 margin: 10px 0 14px;
                 padding: 12px 14px;
                 border-radius: 14px;
-                background: #252922;
-                color: #f5f7ef;
+                background: var(--header-bg);
+                color: var(--header-text);
                 font-family: "Cascadia Code", "Fira Code", monospace;
                 font-size: 14px;
                 overflow-x: auto;
@@ -202,7 +205,7 @@
                 <div class="section-head">
                     <h2>Disziplin-Konstanten</h2>
                     <p class="page-note">
-                        Fachliche Sicht fuer den Tab. Die Auswertung arbeitet
+                        Fachliche Sicht für den Tab. Die Auswertung arbeitet
                         intern weiterhin mit den stabilen technischen Keys.
                     </p>
                 </div>
@@ -227,7 +230,7 @@
                     <h2>Formeln</h2>
                     <p class="page-note">
                         Die Konstanten unten sind direkt aus dem Auswertungsstand
-                        uebernommen.
+                        übernommen.
                     </p>
                 </div>
 
@@ -243,8 +246,8 @@
                                         <th>Distanz</th>
                                         <th>Jungen Base</th>
                                         <th>Jungen Divisor</th>
-                                        <th>Maedchen Base</th>
-                                        <th>Maedchen Divisor</th>
+                                        <th>Mädchen Base</th>
+                                        <th>Mädchen Divisor</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -284,7 +287,7 @@
                                         <td>{{ auswertung_config.formula_config.lauf.male.divisor }}</td>
                                     </tr>
                                     <tr>
-                                        <td>Maedchen</td>
+                                        <td>Mädchen</td>
                                         <td>{{ auswertung_config.formula_config.lauf.female.distance }} m</td>
                                         <td>{{ auswertung_config.formula_config.lauf.female.base }}</td>
                                         <td>{{ auswertung_config.formula_config.lauf.female.divisor }}</td>
@@ -314,7 +317,7 @@
                                         <td>{{ auswertung_config.formula_config.sprung.weit.male.divisor }}</td>
                                     </tr>
                                     <tr>
-                                        <td>Maedchen</td>
+                                        <td>Mädchen</td>
                                         <td>{{ auswertung_config.formula_config.sprung.weit.female.base }}</td>
                                         <td>{{ auswertung_config.formula_config.sprung.weit.female.divisor }}</td>
                                     </tr>
@@ -324,7 +327,7 @@
                     </article>
 
                     <article class="card formula-card">
-                        <h3>Stossen</h3>
+                        <h3>Stoßen</h3>
                         <!-- Von Enno -->
                         <div class="formula">(sqrt(Wert) - Base) / Divisor</div>
                         <div class="table-wrap">
@@ -343,7 +346,7 @@
                                         <td>{{ auswertung_config.formula_config.wurf.stoss.male.divisor }}</td>
                                     </tr>
                                     <tr>
-                                        <td>Maedchen</td>
+                                        <td>Mädchen</td>
                                         <td>{{ auswertung_config.formula_config.wurf.stoss.female.base }}</td>
                                         <td>{{ auswertung_config.formula_config.wurf.stoss.female.divisor }}</td>
                                     </tr>
@@ -375,7 +378,7 @@
                                     </tr>
                                     <tr>
                                         <td>80 g Ball</td>
-                                        <td>Maedchen</td>
+                                        <td>Mädchen</td>
                                         <td>{{ auswertung_config.formula_config.wurf.wurf_80g.female.base }}</td>
                                         <td>{{ auswertung_config.formula_config.wurf.wurf_80g.female.divisor }}</td>
                                     </tr>
@@ -387,7 +390,7 @@
                                     </tr>
                                     <tr>
                                         <td>200 g Ball</td>
-                                        <td>Maedchen</td>
+                                        <td>Mädchen</td>
                                         <td>{{ auswertung_config.formula_config.wurf.wurf_ball.female.base }}</td>
                                         <td>{{ auswertung_config.formula_config.wurf.wurf_ball.female.divisor }}</td>
                                     </tr>
@@ -402,7 +405,7 @@
                 <article class="card table-card">
                     <h2>Altersprofile Jungen</h2>
                     <p class="page-note">
-                        Sprintdistanz und Wurfgeraet nach Alter.
+                        Sprintdistanz und Wurfgerät nach Alter.
                     </p>
                     <div class="table-wrap">
                         <table>
@@ -427,9 +430,9 @@
                 </article>
 
                 <article class="card table-card">
-                    <h2>Altersprofile Maedchen</h2>
+                    <h2>Altersprofile Mädchen</h2>
                     <p class="page-note">
-                        Sprintdistanz und Wurfgeraet nach Alter.
+                        Sprintdistanz und Wurfgerät nach Alter.
                     </p>
                     <div class="table-wrap">
                         <table>
@@ -465,8 +468,8 @@
                                     <th>Alter</th>
                                     <th>Jungen Sieger</th>
                                     <th>Jungen Ehre</th>
-                                    <th>Maedchen Sieger</th>
-                                    <th>Maedchen Ehre</th>
+                                    <th>Mädchen Sieger</th>
+                                    <th>Mädchen Ehre</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -483,8 +486,8 @@
                         </table>
                     </div>
                     <p class="muted-small">
-                        Die Tabellen sind absichtlich nur lesbar. Aenderungen laufen
-                        ueber den Code, nicht mehr ueber die Admin-Oberflaeche.
+                        Die Tabellen sind absichtlich nur lesbar. Änderungen laufen
+                        über den Code, nicht mehr über die Admin-Oberfläche.
                     </p>
                 </article>
             </section>

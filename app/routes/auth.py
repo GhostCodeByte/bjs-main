@@ -1,5 +1,6 @@
 """Routen fuer Login, Administration, Dashboard und Event-Ansichten."""
 
+from collections import defaultdict
 import io
 import json
 import logging
@@ -11,7 +12,7 @@ import tempfile
 import time
 import uuid
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
 
 from flask import (
     Blueprint,
@@ -94,6 +95,153 @@ def _disziplin_to_dict(d) -> dict:
         "label": meta.label if meta else d.name,
         "display_name": meta.label if meta else d.name,
         "hinweis": meta.hinweis if meta else "",
+    }
+
+
+def _build_event_progress_cards(
+    db, disziplinen: list[dict[str, Any]]
+) -> dict[str, Any]:
+    """Aggregiert den Event-Fortschritt pro Disziplin ueber alle Riegen."""
+    if db is None or not disziplinen:
+        return {
+            "summary": {
+                "percent_complete": 0.0,
+                "completed_slots": 0,
+                "total_slots": 0,
+                "active_slots": 0,
+                "open_slots": 0,
+            },
+            "cards": [],
+            "total_riegen": 0,
+        }
+
+    riegen_rows = db.cursor.execute(
+        """
+        SELECT r.ID, r.Name, COUNT(s.SchuelerID) AS total_schueler
+        FROM Riegenfuehrer r
+        LEFT JOIN Schueler s ON s.RiegenfuehrerID = r.ID
+        GROUP BY r.ID, r.Name
+        ORDER BY r.Name
+        """
+    ).fetchall()
+
+    riegen = [
+        {
+            "id": row[0],
+            "name": row[1],
+            "total_schueler": row[2] or 0,
+        }
+        for row in riegen_rows
+        if (row[2] or 0) > 0
+    ]
+    if not riegen:
+        return {
+            "summary": {
+                "percent_complete": 0.0,
+                "completed_slots": 0,
+                "total_slots": 0,
+                "active_slots": 0,
+                "open_slots": 0,
+            },
+            "cards": [],
+            "total_riegen": 0,
+        }
+
+    latest_rows = db.cursor.execute(
+        """
+        SELECT latest.SchuelerID, latest.Disziplin, COUNT(*) AS recorded_rounds
+        FROM (
+            SELECT e.SchuelerID, e.Disziplin, e.ErgebnisNR, e.status
+            FROM Schueler_Disziplin_Ergebnis e
+            INNER JOIN (
+                SELECT SchuelerID, Disziplin, ErgebnisNR, MAX(ID) AS max_id
+                FROM Schueler_Disziplin_Ergebnis
+                GROUP BY SchuelerID, Disziplin, ErgebnisNR
+            ) newest ON newest.max_id = e.ID
+            WHERE e.status IN ('OK', 'ABWESEND')
+        ) latest
+        GROUP BY latest.SchuelerID, latest.Disziplin
+        """
+    ).fetchall()
+
+    rounds_by_student_and_disziplin: dict[str, dict[int, int]] = defaultdict(dict)
+    for schueler_id, disziplin_name, recorded_rounds in latest_rows:
+        rounds_by_student_and_disziplin[disziplin_name][schueler_id] = recorded_rounds or 0
+
+    schueler_rows = db.cursor.execute(
+        """
+        SELECT SchuelerID, RiegenfuehrerID
+        FROM Schueler
+        WHERE RiegenfuehrerID IS NOT NULL
+        """
+    ).fetchall()
+    schueler_to_riege = {row[0]: row[1] for row in schueler_rows}
+
+    riege_student_rounds: dict[str, dict[int, list[int]]] = {
+        disziplin["name"]: defaultdict(list) for disziplin in disziplinen
+    }
+    for disziplin_name, student_rounds in rounds_by_student_and_disziplin.items():
+        if disziplin_name not in riege_student_rounds:
+            continue
+        for schueler_id, recorded_rounds in student_rounds.items():
+            riege_id = schueler_to_riege.get(schueler_id)
+            if riege_id is None:
+                continue
+            riege_student_rounds[disziplin_name][riege_id].append(recorded_rounds)
+
+    cards = []
+    completed_slots = 0
+    active_slots = 0
+    open_slots = 0
+    total_slots = len(riegen) * len(disziplinen)
+
+    for disziplin in disziplinen:
+        offene_riegen = 0
+        aktive_riegen = 0
+        fertige_riegen = 0
+        num_rounds = max(int(disziplin.get("num_rounds") or 0), 1)
+        riege_progress = riege_student_rounds.get(disziplin["name"], {})
+
+        for riege in riegen:
+            student_rounds = riege_progress.get(riege["id"], [])
+            started_students = sum(1 for count in student_rounds if count > 0)
+            completed_students = sum(1 for count in student_rounds if count >= num_rounds)
+
+            if started_students == 0:
+                offene_riegen += 1
+            elif completed_students >= riege["total_schueler"]:
+                fertige_riegen += 1
+            else:
+                aktive_riegen += 1
+
+        percent_complete = round((fertige_riegen / len(riegen)) * 100, 1) if riegen else 0.0
+        completed_slots += fertige_riegen
+        active_slots += aktive_riegen
+        open_slots += offene_riegen
+
+        cards.append(
+            {
+                "name": disziplin["name"],
+                "label": disziplin.get("display_name") or disziplin.get("label") or disziplin["name"],
+                "num_rounds": num_rounds,
+                "total_riegen": len(riegen),
+                "offen": offene_riegen,
+                "aktiv": aktive_riegen,
+                "fertig": fertige_riegen,
+                "percent_complete": percent_complete,
+            }
+        )
+
+    return {
+        "summary": {
+            "percent_complete": round((completed_slots / total_slots) * 100, 1) if total_slots else 0.0,
+            "completed_slots": completed_slots,
+            "total_slots": total_slots,
+            "active_slots": active_slots,
+            "open_slots": open_slots,
+        },
+        "cards": cards,
+        "total_riegen": len(riegen),
     }
 
 
@@ -1217,42 +1365,21 @@ def dashboard_data():
 
 @auth_bp.route("/event/overview", methods=["GET"])
 def event_overview():
-    """Zeigt die Event-Uebersicht mit Bestenliste und Disziplinfilter."""
+    """Zeigt die Event-Uebersicht als kompakte Fortschrittsansicht je Disziplin."""
     if not _require_event_access():
         return redirect(url_for("auth.login"))
 
     db = get_db()
     registry = _get_registry()
-    disziplin_filter = request.args.get("disziplin")
-    geschlecht_filter = request.args.get("geschlecht")
     disziplinen = [_disziplin_to_dict(d) for d in registry.get_disziplinen()]
-    if not disziplin_filter and disziplinen:
-        disziplin_filter = disziplinen[0]["name"]
-
-    selected_meta = next(
-        (d for d in disziplinen if d["name"] == disziplin_filter), None
-    )
-    riegen = db.get_all_riegen_with_progress(disziplin=disziplin_filter) if db else []
     stats = db.get_stats() if db else {}
-    bestenliste = []
-    if disziplin_filter and db:
-        bestenliste = db.get_bestenliste(
-            disziplin_filter,
-            limit=20,
-            geschlecht=geschlecht_filter,
-            result_format_override=selected_meta["format"] if selected_meta else None,
-        )
+    progress_data = _build_event_progress_cards(db, disziplinen)
 
     return render_template(
-        "dashboard.html",
-        riegen=riegen,
+        "event_overview.html",
         disziplinen=disziplinen,
         stats=stats,
-        selected_disziplin=disziplin_filter,
-        selected_geschlecht=geschlecht_filter,
-        selected_disziplin_meta=selected_meta,
-        bestenliste=bestenliste,
-        is_event_overview=True,
+        event_progress=progress_data,
     )
 
 

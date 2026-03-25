@@ -12,6 +12,9 @@
             href="{{ url_for('static', filename='ui.css') }}"
         />
         <style>
+            :root { {{ ui_theme_css_vars }}; }
+        </style>
+        <style>
             .section {
                 margin-top: 24px;
             }
@@ -83,7 +86,7 @@
                 position: absolute;
                 inset: 0;
                 cursor: pointer;
-                background-color: #c4cabf;
+                background-color: var(--border-strong);
                 border-radius: 999px;
                 transition: 0.14s;
             }
@@ -95,7 +98,7 @@
                 height: 18px;
                 left: 3px;
                 top: 3px;
-                background-color: #fff;
+                background-color: var(--panel);
                 border-radius: 999px;
                 transition: 0.14s;
                 box-shadow: var(--shadow-sm);

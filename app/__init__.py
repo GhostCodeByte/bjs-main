@@ -19,6 +19,13 @@ csrf = CSRFProtect()
 load_dotenv()
 
 
+def _build_theme_css_vars(theme: dict[str, str] | None) -> str:
+    """Wandelt Theme-Werte aus der App-Konfiguration in CSS-Variablen um."""
+    if not theme:
+        return ""
+    return "; ".join(f"--{key}: {value}" for key, value in theme.items())
+
+
 def _configure_logging(app: Flask) -> None:
     """Initialisiert eine einfache Logging-Konfiguration fuer App und Gunicorn."""
     log_level_name = str(app.config.get("LOG_LEVEL", "INFO")).upper()
@@ -114,8 +121,13 @@ def create_app():
 
     @app.context_processor
     def inject_csrf_token():
-        """Stellt das CSRF-Token global fuer Jinja-Templates bereit."""
-        return {"csrf_token": generate_csrf}
+        """Stellt globale Template-Helfer fuer CSRF und UI-Theme bereit."""
+        theme = dict(app.config.get("UI_THEME_COLORS", {}))
+        return {
+            "csrf_token": generate_csrf,
+            "ui_theme_colors": theme,
+            "ui_theme_css_vars": _build_theme_css_vars(theme),
+        }
 
     from .routes.auth import auth_bp
     from .routes.input import input_bp

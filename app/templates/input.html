@@ -9,6 +9,9 @@
             rel="stylesheet"
             href="{{ url_for('static', filename='ui.css') }}"
         />
+        <style>
+            :root { {{ ui_theme_css_vars }}; }
+        </style>
 
         <!-- Externe CSS-Dateien für Styling -->
         <link
@@ -399,7 +402,15 @@
                         round: parseInt(selected_round_value),
                     }),
                 })
-                    .then((response) => response.json())
+                    .then(async (response) => {
+                        const data = await response.json();
+                        if (!response.ok) {
+                            throw new Error(
+                                data.error || "Anfrage konnte nicht verarbeitet werden.",
+                            );
+                        }
+                        return data;
+                    })
                     .then((data) => {
                         setButtonLoading(nextBtn, false);
 
@@ -498,7 +509,15 @@
                     },
                     body: JSON.stringify({ riegenfuehrer_id: riegenfuehrer }),
                 })
-                    .then((response) => response.json())
+                    .then(async (response) => {
+                        const data = await response.json();
+                        if (!response.ok) {
+                            throw new Error(
+                                data.error || "Riege konnte nicht geladen werden.",
+                            );
+                        }
+                        return data;
+                    })
                     .then((data) => {
                         const getBtn = document.querySelector(".btn-info");
                         setButtonLoading(getBtn, false);
@@ -528,20 +547,11 @@
                         updateProgressDisplay(data);
 
                         // Automatisch den ersten Runden-Button auswählen
+                        // Erst Runde aktivieren, dann den ersten SchÃ¼ler auswÃ¤hlen.
+                        // So lÃ¤uft loadCurrentResult nur einmal mit vollstÃ¤ndigem UI-Status.
                         selectFirstButton();
 
                         // Automatisch den ersten Schüler auswählen
-                        const schuelerDropdown =
-                            document.getElementById("schuelerDropdown");
-                        if (schuelerDropdown.options.length > 1) {
-                            schuelerDropdown.selectedIndex = 1;
-                            updateSelectedSchueler();
-                            const ergebnisInput =
-                                document.getElementById("ergebnis");
-                            if (ergebnisInput) {
-                                ergebnisInput.focus();
-                            }
-                        }
                     })
                     .catch((error) => {
                         console.error("Fehler:", error);
@@ -591,6 +601,29 @@
                     }
                     schuelerDropdown.appendChild(option);
                 });
+
+                selectFirstSchueler();
+            }
+
+            function selectFirstSchueler() {
+                const schuelerDropdown =
+                    document.getElementById("schuelerDropdown");
+                const firstStudentOption = Array.from(
+                    schuelerDropdown.options,
+                ).find((option) => option.value);
+
+                if (!firstStudentOption) {
+                    document.getElementById("selectedSchueler").innerText = "";
+                    return;
+                }
+
+                schuelerDropdown.value = firstStudentOption.value;
+                updateSelectedSchueler();
+
+                const ergebnisInput = document.getElementById("ergebnis");
+                if (ergebnisInput) {
+                    ergebnisInput.focus();
+                }
             }
 
             function selectButton(clickedButton) {
@@ -894,6 +927,80 @@
             }
 
             // Dynamische Eingabemodi für Ergebnisfeld je nach Disziplin
+            // Ueberschreibt die fruehere Variante mit robusterer Fehlerbehandlung
+            // und ohne doppelte UI-Initialisierung nach erfolgreichem Laden.
+            function getRiege() {
+                const riegenfuehrer =
+                    document.getElementById("riegenfuehrer").value;
+
+                if (!riegenfuehrer) {
+                    showToast(
+                        "Bitte wÃ¤hlen Sie einen RiegenfÃ¼hrer aus.",
+                        "warning",
+                    );
+                    return;
+                }
+
+                const getBtn = document.querySelector(".btn-info");
+                setButtonLoading(getBtn, true);
+
+                fetch("/get_riege", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "X-CSRFToken": csrfToken,
+                    },
+                    body: JSON.stringify({ riegenfuehrer_id: riegenfuehrer }),
+                })
+                    .then(async (response) => {
+                        const data = await response.json();
+                        if (!response.ok) {
+                            throw new Error(
+                                data.error || "Riege konnte nicht geladen werden.",
+                            );
+                        }
+                        return data;
+                    })
+                    .then((data) => {
+                        setButtonLoading(getBtn, false);
+
+                        if (data.error) {
+                            showToast(data.error, "error");
+                            return;
+                        }
+
+                        showToast(
+                            `Riege geladen: ${data.meta?.active_total || 0} SchÃ¼ler`,
+                            "info",
+                        );
+
+                        if (data.meta) {
+                            const klasseEl = document.getElementById("klasse");
+                            const geschlechtEl =
+                                document.getElementById("geschlecht");
+                            if (klasseEl) {
+                                klasseEl.innerText = data.meta.first_class || "";
+                            }
+                            if (geschlechtEl) {
+                                geschlechtEl.innerText =
+                                    data.meta.first_gender || "";
+                            }
+                        }
+
+                        selectFirstButton();
+                        updateSchuelerDropdown(data.status_list || []);
+                        updateProgressDisplay(data);
+                    })
+                    .catch((error) => {
+                        setButtonLoading(getBtn, false);
+                        console.error("Fehler:", error);
+                        showToast(
+                            error.message || "Ein Fehler ist aufgetreten.",
+                            "error",
+                        );
+                    });
+            }
+
             (function () {
                 function byId(id) {
                     return document.getElementById(id);

@@ -12,7 +12,7 @@ from app.auswertung_config import get_default_auswertung_config
 
 def _auswertung_sprint(ergebnis: float, maennlich: bool, strecke: int) -> float:
     # Von Enno
-    # Bewertungsformel fuer Sprint aus dem externen Auswertungs-Repo uebernommen.
+    # Bewertungsformel für Sprint aus dem externen Auswertungs-Repo übernommen.
     if ergebnis <= 0:
         return 0.0
 
@@ -34,12 +34,12 @@ def _auswertung_sprint(ergebnis: float, maennlich: bool, strecke: int) -> float:
             if maennlich
             else (50 / (ergebnis + 0.24) - 3.648) / 0.0066
         )
-    raise ValueError(f"Ungueltige Sprintstrecke: {strecke}")
+    raise ValueError(f"Ungültige Sprintstrecke: {strecke}")
 
 
 def _auswertung_sprung(ergebnis: float, maennlich: bool, weit: bool) -> float:
     # Von Enno
-    # Bewertungsformel fuer Sprung aus dem externen Auswertungs-Repo uebernommen.
+    # Bewertungsformel für Sprung aus dem externen Auswertungs-Repo übernommen.
     if ergebnis <= 0:
         return 0.0
 
@@ -64,7 +64,7 @@ def _auswertung_wurf(
     ist_80_gramm: bool,
 ) -> float:
     # Von Enno
-    # Bewertungsformel fuer Wurf/Stoss aus dem externen Auswertungs-Repo uebernommen.
+    # Bewertungsformel für Wurf/Stoß aus dem externen Auswertungs-Repo übernommen.
     if ergebnis <= 0:
         return 0.0
 
@@ -90,7 +90,7 @@ def _auswertung_wurf(
 
 def _auswertung_lauf(ergebnis: float, maennlich: bool) -> float:
     # Von Enno
-    # Bewertungsformel fuer Lauf aus dem externen Auswertungs-Repo uebernommen.
+    # Bewertungsformel für Lauf aus dem externen Auswertungs-Repo übernommen.
     if ergebnis <= 0:
         return 0.0
     return (
@@ -108,7 +108,7 @@ class AuswertungResult:
 
 
 class AuswertungService:
-    """Berechnet Gesamtpunktzahl und Urkunden fuer die aktive Event-Datenbank."""
+    """Berechnet Gesamtpunktzahl und Urkunden für die aktive Event-Datenbank."""
 
     def __init__(self, config: Optional[dict] = None):
         # Von Enno
@@ -221,14 +221,14 @@ class AuswertungService:
     @staticmethod
     def _wurf_gewicht_zu_bools(gewicht: int) -> tuple[bool, bool]:
         # Von Enno
-        # Abbildung der Wurfgeraete-/Gewichtsklassen aus dem externen Auswertungs-Repo.
+        # Abbildung der Wurfgeräte-/Gewichtsklassen aus dem externen Auswertungs-Repo.
         if gewicht in {3, 4, 5, 6}:
             return True, True
         if gewicht == 80:
             return False, True
         if gewicht == 200:
             return False, False
-        raise ValueError(f"Nicht unterstuetztes Wurfgewicht: {gewicht}")
+        raise ValueError(f"Nicht unterstütztes Wurfgewicht: {gewicht}")
 
     @staticmethod
     def _coerce_float(value: object) -> float:

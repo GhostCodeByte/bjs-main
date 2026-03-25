@@ -182,7 +182,7 @@ strong {
     border-color: var(--primary);
     background: var(--primary);
     color: #fff;
-    box-shadow: 0 0 0 3px rgba(95, 111, 82, 0.14);
+    box-shadow: 0 0 0 3px var(--focus-ring);
 }
 
 .toggle-btn.green {
@@ -204,17 +204,17 @@ strong {
 
 .bg-danger {
     background-color: var(--danger-soft);
-    color: #7e3024;
+    color: var(--danger-contrast);
 }
 
 .bg-success {
     background-color: var(--success-soft);
-    color: #244d2b;
+    color: var(--success-contrast);
 }
 
 .bg-warning {
     background-color: var(--warning-soft);
-    color: #735119;
+    color: var(--warning-contrast);
 }
 
 .toast-container {
@@ -258,7 +258,7 @@ strong {
 }
 
 .toast.info {
-    background: #5a6253;
+    background: var(--toast-info);
 }
 
 .toast.warning {
@@ -360,7 +360,7 @@ strong {
         background-color: inherit;
     }
     25% {
-        background-color: rgba(34, 197, 94, 0.2);
+        background-color: var(--success-soft);
     }
     100% {
         background-color: inherit;
@@ -471,13 +471,13 @@ strong {
 #current-result-display.has-value {
     background: var(--success-soft);
     color: var(--success);
-    border: 1px solid #bfd3c1;
+    border: 1px solid var(--success-border);
 }
 
 #current-result-display.absent {
     background: var(--danger-soft);
     color: var(--danger);
-    border: 1px solid #e3c1ba;
+    border: 1px solid var(--danger-border);
 }
 
 @media (max-width: 768px) {

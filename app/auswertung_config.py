@@ -1,4 +1,4 @@
-"""Standardkonfiguration und Validierung fuer die bearbeitbare BJS-Auswertung."""
+"""Standardkonfiguration und Validierung für die bearbeitbare BJS-Auswertung."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ from copy import deepcopy
 from typing import Any
 
 # Von Enno
-# Standardwerte fuer Formeln, Altersprofile und Urkundengrenzen stammen fachlich aus dem externen Auswertungs-Repo.
+# Standardwerte für Formeln, Altersprofile und Urkundengrenzen stammen fachlich aus dem externen Auswertungs-Repo.
 DEFAULT_AUSWERTUNG_CONFIG: dict[str, Any] = {
     "formula_config": {
         "sprint": {
@@ -136,20 +136,20 @@ def validate_auswertung_config(config: dict[str, Any]) -> dict[str, Any]:
             sprint_distance = int(values["sprint_distance"])
             wurf_weight = int(values["wurf_weight"])
             if sprint_distance not in {50, 75, 100}:
-                raise ValueError(f"Ungueltige Sprintdistanz fuer Alter {alter}")
+                raise ValueError(f"Ungültige Sprintdistanz für Alter {alter}")
             if wurf_weight not in {3, 4, 5, 6, 80, 200}:
-                raise ValueError(f"Ungueltiges Wurfgewicht fuer Alter {alter}")
+                raise ValueError(f"Ungültiges Wurfgewicht für Alter {alter}")
 
     for alter, values in merged["urkunde_config"].items():
         int(alter)
         for key in ("M", "W"):
             grenzen = values.get(key)
             if not isinstance(grenzen, list) or len(grenzen) != 2:
-                raise ValueError(f"Urkundengrenzen fuer Alter {alter} / {key} sind ungueltig")
+                raise ValueError(f"Urkundengrenzen für Alter {alter} / {key} sind ungültig")
             sieger = int(grenzen[0])
             ehre = int(grenzen[1])
             if sieger < 0 or ehre < 0 or sieger > ehre:
-                raise ValueError(f"Urkundengrenzen fuer Alter {alter} / {key} sind ungueltig")
+                raise ValueError(f"Urkundengrenzen für Alter {alter} / {key} sind ungültig")
 
     return merged
 

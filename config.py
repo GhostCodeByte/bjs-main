@@ -15,7 +15,9 @@ def _as_bool(value: str | None, default: bool = False) -> bool:
 class BaseConfig:
     ENV_NAME = "development"
     SECRET_KEY = os.getenv("SECRET_KEY", "change-me")
-    DB_PATH = os.getenv("DB_PATH")  # Bleibt leer, bis ein CSV-Import eine Datenbank erzeugt.
+    DB_PATH = os.getenv(
+        "DB_PATH"
+    )  # Bleibt leer, bis ein CSV-Import eine Datenbank erzeugt.
     ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "admin123")
     EVENT_PASSWORD = os.getenv("EVENT_PASSWORD")
     STATION_DEFAULT_PIN = os.getenv("STATION_DEFAULT_PIN")
@@ -26,6 +28,45 @@ class BaseConfig:
     PERMANENT_SESSION_LIFETIME = timedelta(hours=8)
     TRUST_PROXY = _as_bool(os.getenv("TRUST_PROXY"), default=False)
     LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
+    UI_THEME_COLORS = {
+        "bg": "#F5F3F5",
+        "panel": "#F5F3F5",
+        "panel-muted": "#F5F3F5",
+        "border": "#C9CECB",
+        "border-strong": "#A9B0AB",
+        "text": "#080708",
+        "muted": "#5B615D",
+        "primary": "#3772FF",
+        "primary-hover": "#275DE0",
+        "primary-soft": "rgba(55, 114, 255, 0.12)",
+        "success": "#3772FF",
+        "success-soft": "rgba(55, 114, 255, 0.12)",
+        "success-contrast": "#1F4DBA",
+        "success-border": "rgba(55, 114, 255, 0.28)",
+        "danger": "#DF2935",
+        "danger-hover": "#C61E2A",
+        "danger-soft": "rgba(223, 41, 53, 0.12)",
+        "danger-contrast": "#A51B24",
+        "danger-border": "rgba(223, 41, 53, 0.26)",
+        "warning": "#FDCA40",
+        "warning-soft": "rgba(253, 202, 64, 0.22)",
+        "warning-contrast": "#6F5600",
+        "warning-border": "rgba(253, 202, 64, 0.42)",
+        "header-bg": "#080708",
+        "header-text": "#F5F3F5",
+        "header-border": "#080708",
+        "toast-bg": "#080708",
+        "toast-info": "#3772FF",
+        "toast-info-border": "#275DE0",
+        "focus-ring": "rgba(55, 114, 255, 0.18)",
+        "shadow-sm": "rgba(8, 7, 8, 0.08)",
+        "shadow": "rgba(8, 7, 8, 0.14)",
+        "bg-rgb": "245, 243, 245",
+        "panel-rgb": "245, 243, 245",
+        "primary-rgb": "55, 114, 255",
+        "danger-rgb": "223, 41, 53",
+        "warning-rgb": "253, 202, 64",
+    }
 
     WTF_CSRF_ENABLED = True
     SESSION_COOKIE_SAMESITE = os.getenv("SESSION_COOKIE_SAMESITE", "Lax")

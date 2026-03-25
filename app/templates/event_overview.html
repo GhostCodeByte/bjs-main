@@ -1,0 +1,268 @@
+<!doctype html>
+<html lang="de">
+    <head>
+        <meta charset="UTF-8" />
+        <meta
+            name="viewport"
+            content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+        />
+        <meta name="csrf-token" content="{{ csrf_token() }}" />
+        <title>Event Übersicht</title>
+        <link
+            rel="stylesheet"
+            href="{{ url_for('static', filename='ui.css') }}"
+        />
+        <style>
+            :root { {{ ui_theme_css_vars }}; }
+        </style>
+        <style>
+            .overview-layout {
+                display: grid;
+                gap: 16px;
+            }
+
+            .overview-summary {
+                display: grid;
+                grid-template-columns: minmax(0, 1.3fr) repeat(4, minmax(0, 1fr));
+                gap: 12px;
+            }
+
+            .summary-main,
+            .summary-stat,
+            .discipline-card {
+                padding: 16px;
+            }
+
+            .summary-main {
+                display: grid;
+                gap: 10px;
+                align-content: start;
+            }
+
+            .summary-kicker,
+            .discipline-meta {
+                color: var(--muted);
+                font-size: 0.92rem;
+            }
+
+            .summary-percent {
+                font-size: clamp(2rem, 5vw, 3rem);
+                line-height: 1;
+                font-weight: 700;
+            }
+
+            .summary-bar,
+            .discipline-bar {
+                height: 10px;
+                border-radius: 999px;
+                background: rgba(var(--primary-rgb), 0.10);
+                overflow: hidden;
+            }
+
+            .summary-bar > span,
+            .discipline-bar > span {
+                display: block;
+                height: 100%;
+                background: var(--primary);
+            }
+
+            .summary-stat-value {
+                font-size: 1.5rem;
+                font-weight: 700;
+            }
+
+            .summary-stat-label {
+                margin-top: 4px;
+                color: var(--muted);
+            }
+
+            .discipline-grid {
+                display: grid;
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                gap: 12px;
+            }
+
+            .discipline-card {
+                display: grid;
+                gap: 14px;
+            }
+
+            .discipline-head {
+                display: flex;
+                justify-content: space-between;
+                gap: 12px;
+                align-items: start;
+            }
+
+            .discipline-title {
+                font-size: 1.05rem;
+                font-weight: 700;
+            }
+
+            .discipline-percent {
+                font-size: 1.5rem;
+                font-weight: 700;
+                white-space: nowrap;
+            }
+
+            .discipline-stats {
+                display: grid;
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+                gap: 10px;
+            }
+
+            .discipline-stat {
+                padding: 12px;
+                border: 1px solid var(--border);
+                border-radius: var(--radius-sm);
+                background: rgba(var(--panel-rgb), 0.72);
+            }
+
+            .discipline-stat-value {
+                font-size: 1.4rem;
+                font-weight: 700;
+            }
+
+            .discipline-stat-label {
+                margin-top: 2px;
+                color: var(--muted);
+                font-size: 0.9rem;
+            }
+
+            .discipline-card.is-complete .discipline-percent {
+                color: var(--primary);
+            }
+
+            .discipline-card.is-active .discipline-percent {
+                color: var(--warning-contrast);
+            }
+
+            .discipline-card.is-open .discipline-percent {
+                color: var(--muted);
+            }
+
+            @media (max-width: 980px) {
+                .overview-summary,
+                .discipline-grid {
+                    grid-template-columns: 1fr;
+                }
+            }
+
+            @media (max-width: 640px) {
+                .discipline-stats {
+                    grid-template-columns: 1fr;
+                }
+            }
+        </style>
+    </head>
+    <body>
+        <header class="app-header">
+            <div class="app-header__inner">
+                <div class="app-header__title">Event Übersicht</div>
+                <nav class="app-nav">
+                    {% if session and session.get("role") == "admin" %}
+                    <a href="/admin">Admin</a>
+                    <a href="/admin/disziplinen">Disziplinen</a>
+                    {% endif %}
+                    <form action="/logout" method="POST" style="display: inline">
+                        <input
+                            type="hidden"
+                            name="csrf_token"
+                            value="{{ csrf_token() }}"
+                        />
+                        <button type="submit">Logout</button>
+                    </form>
+                </nav>
+            </div>
+        </header>
+
+        <main class="page">
+            {% with messages = get_flashed_messages(with_categories=True) %}
+            {% if messages %}
+            {% for category, message in messages %}
+            <div class="flash {{ category }}">{{ message }}</div>
+            {% endfor %}
+            {% endif %}
+            {% endwith %}
+
+            <section class="overview-layout">
+                <div class="overview-summary">
+                    <article class="card summary-main">
+                        <div class="summary-kicker">
+                            {{ event_progress.total_riegen }} Riegen über {{ disziplinen|length }} Disziplinen
+                        </div>
+                        <div class="summary-percent">
+                            {{ event_progress.summary.percent_complete }}%
+                        </div>
+                        <div class="summary-kicker">
+                            Gesamtfortschritt des Events
+                        </div>
+                        <div class="summary-bar" aria-hidden="true">
+                            <span style="width: {{ event_progress.summary.percent_complete }}%"></span>
+                        </div>
+                        <div class="discipline-meta">
+                            {{ event_progress.summary.completed_slots }} von
+                            {{ event_progress.summary.total_slots }} Disziplin-Riegen-Kombinationen abgeschlossen
+                        </div>
+                    </article>
+
+                    <article class="card summary-stat">
+                        <div class="summary-stat-value">{{ stats.total_schueler or 0 }}</div>
+                        <div class="summary-stat-label">Schüler</div>
+                    </article>
+                    <article class="card summary-stat">
+                        <div class="summary-stat-value">{{ event_progress.summary.completed_slots }}</div>
+                        <div class="summary-stat-label">Fertig</div>
+                    </article>
+                    <article class="card summary-stat">
+                        <div class="summary-stat-value">{{ event_progress.summary.active_slots }}</div>
+                        <div class="summary-stat-label">Gerade dran</div>
+                    </article>
+                    <article class="card summary-stat">
+                        <div class="summary-stat-value">{{ event_progress.summary.open_slots }}</div>
+                        <div class="summary-stat-label">Noch offen</div>
+                    </article>
+                </div>
+
+                {% if event_progress.cards %}
+                <section class="discipline-grid">
+                    {% for card in event_progress.cards %}
+                    <article class="card discipline-card {% if card.fertig == card.total_riegen %}is-complete{% elif card.aktiv > 0 %}is-active{% else %}is-open{% endif %}">
+                        <div class="discipline-head">
+                            <div>
+                                <div class="discipline-title">{{ card.label }}</div>
+                                <div class="discipline-meta">
+                                    {{ card.total_riegen }} Riegen, {{ card.num_rounds }} Runden
+                                </div>
+                            </div>
+                            <div class="discipline-percent">{{ card.percent_complete }}%</div>
+                        </div>
+
+                        <div class="discipline-bar" aria-hidden="true">
+                            <span style="width: {{ card.percent_complete }}%"></span>
+                        </div>
+
+                        <div class="discipline-stats">
+                            <div class="discipline-stat">
+                                <div class="discipline-stat-value">{{ card.fertig }}</div>
+                                <div class="discipline-stat-label">Fertig</div>
+                            </div>
+                            <div class="discipline-stat">
+                                <div class="discipline-stat-value">{{ card.aktiv }}</div>
+                                <div class="discipline-stat-label">Gerade dran</div>
+                            </div>
+                            <div class="discipline-stat">
+                                <div class="discipline-stat-value">{{ card.offen }}</div>
+                                <div class="discipline-stat-label">Noch offen</div>
+                            </div>
+                        </div>
+                    </article>
+                    {% endfor %}
+                </section>
+                {% else %}
+                <div class="flash info">Keine Riegen mit Schülern vorhanden.</div>
+                {% endif %}
+            </section>
+        </main>
+    </body>
+</html>

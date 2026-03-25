@@ -1,4 +1,4 @@
-"""Zentrale, statische Disziplin-Konfiguration fuer die Anwendung."""
+"""Zentrale, statische Disziplin-Konfiguration für die Anwendung."""
 
 from __future__ import annotations
 
@@ -22,7 +22,7 @@ HARDCODED_DISZIPLINEN: tuple[DisziplinDefinition, ...] = (
         format="time",
         num_rounds=3,
         label="Laufen",
-        hinweis="Zeitdisziplin fuer die Auswertungskategorie Lauf.",
+        hinweis="Zeitdisziplin für die Auswertungskategorie Lauf.",
     ),
     DisziplinDefinition(
         id=2,
@@ -30,7 +30,7 @@ HARDCODED_DISZIPLINEN: tuple[DisziplinDefinition, ...] = (
         format="time",
         num_rounds=3,
         label="Sprinten",
-        hinweis="Zeitdisziplin mit altersabhaengiger Distanz von 50 m, 75 m oder 100 m.",
+        hinweis="Zeitdisziplin mit altersabhängiger Distanz von 50 m, 75 m oder 100 m.",
     ),
     DisziplinDefinition(
         id=3,
@@ -38,7 +38,7 @@ HARDCODED_DISZIPLINEN: tuple[DisziplinDefinition, ...] = (
         format="distance",
         num_rounds=3,
         label="Weitsprung",
-        hinweis="Distanzdisziplin fuer die Auswertungskategorie Sprung.",
+        hinweis="Distanzdisziplin für die Auswertungskategorie Sprung.",
     ),
     DisziplinDefinition(
         id=4,
@@ -58,14 +58,14 @@ DISZIPLINEN_TAB_KONSTANTEN: tuple[dict[str, str], ...] = (
         "technik_key": "lauf",
         "format": "Zeit",
         "runden": "3",
-        "hinweis": "1000 m fuer Jungen, 800 m fuer Maedchen.",
+        "hinweis": "1000 m für Jungen, 800 m für Mädchen.",
     },
     {
         "titel": "Sprinten",
         "technik_key": "sprint",
         "format": "Zeit",
         "runden": "3",
-        "hinweis": "Sprintstrecke abhaengig von Alter und Geschlecht: 50 m, 75 m oder 100 m.",
+        "hinweis": "Sprintstrecke abhängig von Alter und Geschlecht: 50 m, 75 m oder 100 m.",
     },
     {
         "titel": "Weitsprung",
@@ -79,14 +79,14 @@ DISZIPLINEN_TAB_KONSTANTEN: tuple[dict[str, str], ...] = (
         "technik_key": "wurf",
         "format": "Distanz",
         "runden": "3",
-        "hinweis": "Altersabhaengig mit Geraeten von 3 kg bis 6 kg.",
+        "hinweis": "Altersabhängig mit Geräten von 3 kg bis 6 kg.",
     },
     {
         "titel": "Weitwurf",
         "technik_key": "wurf",
         "format": "Distanz",
         "runden": "3",
-        "hinweis": "Altersabhaengig mit 80 g oder 200 g Ball.",
+        "hinweis": "Altersabhängig mit 80 g oder 200 g Ball.",
     },
 )
 

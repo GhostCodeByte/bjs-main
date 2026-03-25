@@ -9,6 +9,9 @@
             href="{{ url_for('static', filename='ui.css') }}"
         />
         <style>
+            :root { {{ ui_theme_css_vars }}; }
+        </style>
+        <style>
             .stats-grid,
             .disziplin-stats {
                 display: grid;
