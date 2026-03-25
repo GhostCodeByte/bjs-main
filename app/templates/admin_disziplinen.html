@@ -3,7 +3,7 @@
     <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>Disziplinen</title>
+        <title>Auswertung</title>
         <link
             rel="stylesheet"
             href="{{ url_for('static', filename='ui.css') }}"
@@ -116,6 +116,15 @@
                 grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
             }
 
+            .page-headline {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 16px;
+                margin-bottom: 20px;
+                flex-wrap: wrap;
+            }
+
             .table-card {
                 padding: 18px;
             }
@@ -163,7 +172,7 @@
                 <nav class="app-nav">
                     <a href="/admin">Dashboard</a>
                     <a href="/admin/riegeneinteilung">Riegeneinteilung</a>
-                    <a href="/admin/disziplinen">Disziplinen</a>
+                    <a href="/admin/disziplinen">Auswertung</a>
                     <form action="/logout" method="POST" style="display: inline">
                         <input
                             type="hidden"
@@ -177,50 +186,96 @@
         </header>
 
         <main class="page">
-            <section class="hero">
-                <div class="card hero-card">
-                    <p class="eyebrow">Read only</p>
-                    <h1>Disziplinen und Auswertungslogik</h1>
-                    <p class="page-note">
-                        Diese Seite zeigt nur noch fest hinterlegte Disziplinen,
-                        Konstanten und Formeln. Die Werte kommen aus dem
-                        Auswertungsstand und werden hier nicht mehr im Browser
-                        bearbeitet.
-                    </p>
-                </div>
 
-                <div class="hero-meta">
-                    <div class="card metric">
-                        <span class="metric-value">{{ disziplinen_tab_konstanten|length }}</span>
-                        <p>Fachliche Disziplinen auf der Seite</p>
-                    </div>
-                    <div class="card metric">
-                        <span class="metric-value">{{ disziplinen|length }}</span>
-                        <p>Technische Laufzeit-Keys in der App</p>
-                    </div>
-                </div>
-            </section>
+            <div class="page-headline">
+                <h1>Auswertung</h1>
+                <button class="primary" type="button" onclick="runAuswertung()">
+                    Auswertung starten
+                </button>
+            </div>
 
             <section>
                 <div class="section-head">
-                    <h2>Disziplin-Konstanten</h2>
-                    <p class="page-note">
-                        Fachliche Sicht für den Tab. Die Auswertung arbeitet
-                        intern weiterhin mit den stabilen technischen Keys.
-                    </p>
+                    <h2>Disziplinen</h2>
                 </div>
 
                 <div class="card-grid">
-                    {% for disziplin in disziplinen_tab_konstanten %}
+                    {% for key in ["wurf", "stoss", "sprint", "lauf", "sprung"] %}
+                    {% for disziplin in disziplinen_tab_konstanten if disziplin.technik_key == key %}
                     <article class="card discipline-card">
                         <h3>{{ disziplin.titel }}</h3>
                         <div class="chip-row">
-                            <span class="chip">Key: {{ disziplin.technik_key }}</span>
                             <span class="chip">Format: {{ disziplin.format }}</span>
-                            <span class="chip">{{ disziplin.runden }} Runden</span>
+                            <span class="chip">Rundenanzahl: {{ disziplin.runden }}</span>
                         </div>
-                        <p class="page-note">{{ disziplin.hinweis }}</p>
+                        {% if disziplin.technik_key == "sprint" %}
+                        <div class="table-wrap">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Alter</th>
+                                        <th>Jungen</th>
+                                        <th>Mädchen</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for alter, junge in auswertung_config.age_config.male.items() %}
+                                    {% set maedchen = auswertung_config.age_config.female[alter] %}
+                                    <tr>
+                                        <td>{{ alter }}</td>
+                                        <td>{{ junge.sprint_distance }} m</td>
+                                        <td>{{ maedchen.sprint_distance }} m</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% elif disziplin.technik_key == "lauf" %}
+                        <div class="table-wrap">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Geschlecht</th>
+                                        <th>Distanz</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>Jungen</td>
+                                        <td>{{ auswertung_config.formula_config.lauf.male.distance }} m</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Mädchen</td>
+                                        <td>{{ auswertung_config.formula_config.lauf.female.distance }} m</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        {% elif disziplin.technik_key in ["wurf", "stoss"] %}
+                        <div class="table-wrap">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Alter</th>
+                                        <th>Jungen</th>
+                                        <th>Mädchen</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for alter, junge in auswertung_config.age_config.male.items() %}
+                                    {% set maedchen = auswertung_config.age_config.female[alter] %}
+                                    <tr>
+                                        <td>{{ alter }}</td>
+                                        <td>{{ junge.wurf_weight }}</td>
+                                        <td>{{ maedchen.wurf_weight }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% endif %}
                     </article>
+                    {% endfor %}
                     {% endfor %}
                 </div>
             </section>
@@ -228,10 +283,6 @@
             <section>
                 <div class="section-head">
                     <h2>Formeln</h2>
-                    <p class="page-note">
-                        Die Konstanten unten sind direkt aus dem Auswertungsstand
-                        übernommen.
-                    </p>
                 </div>
 
                 <div class="formula-grid">
@@ -403,60 +454,6 @@
 
             <section class="table-grid">
                 <article class="card table-card">
-                    <h2>Altersprofile Jungen</h2>
-                    <p class="page-note">
-                        Sprintdistanz und Wurfgerät nach Alter.
-                    </p>
-                    <div class="table-wrap">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Alter</th>
-                                    <th>Sprint</th>
-                                    <th>Wurf</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for alter, werte in auswertung_config.age_config.male.items() %}
-                                <tr>
-                                    <td>{{ alter }}</td>
-                                    <td>{{ werte.sprint_distance }} m</td>
-                                    <td>{{ werte.wurf_weight }}</td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                </article>
-
-                <article class="card table-card">
-                    <h2>Altersprofile Mädchen</h2>
-                    <p class="page-note">
-                        Sprintdistanz und Wurfgerät nach Alter.
-                    </p>
-                    <div class="table-wrap">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Alter</th>
-                                    <th>Sprint</th>
-                                    <th>Wurf</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for alter, werte in auswertung_config.age_config.female.items() %}
-                                <tr>
-                                    <td>{{ alter }}</td>
-                                    <td>{{ werte.sprint_distance }} m</td>
-                                    <td>{{ werte.wurf_weight }}</td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                </article>
-
-                <article class="card table-card">
                     <h2>Urkundengrenzen</h2>
                     <p class="page-note">
                         Sieger- und Ehrenurkunde je Alter.
@@ -485,12 +482,42 @@
                             </tbody>
                         </table>
                     </div>
-                    <p class="muted-small">
-                        Die Tabellen sind absichtlich nur lesbar. Änderungen laufen
-                        über den Code, nicht mehr über die Admin-Oberfläche.
-                    </p>
                 </article>
             </section>
         </main>
+        <div class="toast" id="toast"></div>
+        <script>
+            const csrfToken = "{{ csrf_token() }}";
+
+            function showToast(message, type = "success") {
+                const toast = document.getElementById("toast");
+                toast.textContent = message;
+                toast.className = `toast ${type} show`;
+                setTimeout(() => toast.classList.remove("show"), 2500);
+            }
+
+            async function runAuswertung() {
+                try {
+                    const res = await fetch("/stats/auswertung/run", {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                            "X-CSRFToken": csrfToken,
+                        },
+                        body: "{}",
+                    });
+                    const data = await res.json().catch(() => ({}));
+                    if (!res.ok) {
+                        throw new Error(data.error || "Fehler bei der Auswertung");
+                    }
+                    showToast(
+                        `Auswertung fertig: ${data.evaluated_students} bewertet, ${data.skipped_students} übersprungen`,
+                        "success",
+                    );
+                } catch (error) {
+                    showToast(error.message, "error");
+                }
+            }
+        </script>
     </body>
 </html>
