@@ -1,23 +1,26 @@
 # BJS Verwaltung
 
-Web-App fuer einen BJS-/Sporttag mit drei Rollen:
-
-- `Admin` richtet das Event ein
-- `Station` erfasst Ergebnisse an einer Disziplin
-- `Event` schaut Fortschritt und Bestenlisten an
+Web-App für die Bundesjugendspiele
 
 ## Ablauf am Eventtag
 
 ### 1. Vor dem Event
 
-1. Admin startet die App und meldet sich an.
-2. CSV mit Schuelerdaten wird importiert.
-3. Die neue Event-Datenbank wird aktiv gesetzt.
-4. Riegen werden erstellt.
-5. Falls noetig werden echte Riegennamen per Leiter-CSV ersetzt.
-6. Disziplinen werden gepflegt.
-7. Fuer Disziplinen werden Stations-PINs erzeugt.
-8. Fuer die Event-Uebersicht wird ein Event-Passwort bzw. Event-PIN gesetzt.
+1. Anmelden als Admin.
+![[admin login.png]]
+
+2. "Neue Datenbank erstellen"
+3. Schüler CSV importieren
+4. Die neue Event-Datenbank wird erstellt.
+5. Riegen werden erstellt.
+6. Riegenführernamen per CSV hochladen.
+	Riegenführer CSV Import -> Datei auswählen -> Import starten
+7. Riegen überprüfen.
+	alle Riegen mit eigenen Riegenführer?
+8. Disziplinen überprüfen.
+	Oben rechts "Disziplinen" -> Disziplinen erstellen, bearbeiten oder löschen falls Nötig
+9. Fuer Disziplinen werden Stations-PINs erzeugt.
+10. Fuer die Event-Uebersicht wird ein Event-Passwort bzw. Event-PIN gesetzt.
 
 ### 2. Waehren des Events
 
@@ -139,3 +142,4 @@ Standardempfehlung:
 ## Entwicklerdoku
 
 Technischer Aufbau und interne Hinweise stehen in `README_DEV.md`.
+**

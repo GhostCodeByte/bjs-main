@@ -259,7 +259,8 @@ class AuswertungService:
         gesamtpunktzahl = None
         if len(vorhandene_punkte) >= 3:
             gesamtpunkte_liste = list(vorhandene_punkte)
-            gesamtpunkte_liste.remove(min(gesamtpunkte_liste))
+            if len(gesamtpunkte_liste) > 3:
+                gesamtpunkte_liste.remove(min(gesamtpunkte_liste))
             gesamtpunktzahl = int(round(sum(gesamtpunkte_liste)))
 
         urkunde = None

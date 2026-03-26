@@ -60,6 +60,25 @@ _DEVICE_COOKIE_NAME = "device_id"
 _EVENT_PASSWORD_KEY = "event_password"
 
 
+def _generate_event_pin(length: int = 6) -> str:
+    """Erzeugt eine numerische Event-PIN mit erlaubten fuehrenden Nullen."""
+    return "".join(secrets.choice("0123456789") for _ in range(length))
+
+
+def _ensure_event_pin(db) -> str | None:
+    """Liefert die Event-PIN der aktiven DB und legt sie bei Bedarf automatisch an."""
+    if db is None:
+        return None
+    event_pin = db.get_setting(_EVENT_PASSWORD_KEY, None)
+    if event_pin:
+        return str(event_pin).strip()
+
+    event_pin = _generate_event_pin()
+    db.set_setting(_EVENT_PASSWORD_KEY, event_pin)
+    logger.info("Automatische Event-PIN fuer aktive Datenbank erstellt.")
+    return event_pin
+
+
 def _check_rate_limit(
     key: str, limit: int = _RATE_LIMIT_MAX, window: int = _RATE_LIMIT_WINDOW
 ):
@@ -177,6 +196,41 @@ def _get_current_year_db(registry: DbRegistry):
     return registry.find_latest_db_for_year(datetime.now().year)
 
 
+def _get_active_event_year(registry: DbRegistry, db) -> int:
+    """Leitet das Event-Jahr der aktiven Datenbank robust aus Registry oder Dateinamen ab."""
+    db_path = Path(getattr(db, "db_path", "") or "")
+    if db_path:
+        registered = registry.get_by_name(db_path.name)
+        if registered and registered.year is not None:
+            return int(registered.year)
+        match = re.match(r"^BJS_(\d{4})_\d+\.db$", db_path.name, re.IGNORECASE)
+        if match:
+            return int(match.group(1))
+    return datetime.now().year
+
+
+def _get_progress_num_rounds(registry: DbRegistry, disziplin: Optional[str]) -> int:
+    """Liefert die Rundenzahl fuer einen Disziplinfilter, sonst den sicheren Default."""
+    if not disziplin:
+        return 3
+    disziplin_info = registry.get_disziplin_by_name(disziplin)
+    if not disziplin_info:
+        return 3
+    return max(int(disziplin_info.num_rounds or 0), 1)
+
+
+def _resolve_assignment_genders(geschlecht: str) -> list[str]:
+    """Normalisiert Riegen-Geschlecht in konkrete Zielgeschlechter fuer Zuweisungen."""
+    geschlecht_text = str(geschlecht or "").strip().lower()
+    if geschlecht_text in {"beide", "mw", "m+w", "m/w", "both", "m w", "m,w"}:
+        return ["m", "w"]
+    if geschlecht_text in {"m", "jungen", "male"}:
+        return ["m"]
+    if geschlecht_text in {"w", "maedchen", "mädchen", "female"}:
+        return ["w"]
+    return [geschlecht_text or "mw"]
+
+
 def _get_existing_custom_leader_names(db) -> list[str]:
     """Liest bestehende nicht-Platzhalter-Riegenführer in stabiler Reihenfolge aus."""
     riegen = db.get_all_riegen_with_progress()
@@ -201,7 +255,7 @@ def _format_export_result(value: Any, *, result_format: str) -> str:
 
 def _export_auswertung_by_class(*, db, registry: DbRegistry, service: AuswertungService) -> Path:
     """Erzeugt einen Klassen-export der Auswertung als verschachtelte CSV-Ordnerstruktur."""
-    referenzjahr = datetime.now().year
+    referenzjahr = _get_active_event_year(registry, db)
     projektwurzel = Path(current_app.root_path).parent
     datenbank_name = Path(getattr(db, "db_path", "auswertung")).stem
     zielordner = (
@@ -464,7 +518,7 @@ def _get_event_password():
     db = get_db()
     if db is None:
         return current_app.config.get("EVENT_PASSWORD")
-    pw = db.get_setting(_EVENT_PASSWORD_KEY, None)
+    pw = _ensure_event_pin(db)
     if pw:
         return pw
     return current_app.config.get("EVENT_PASSWORD")
@@ -677,7 +731,7 @@ def admin_dashboard():
             ORDER BY created_at DESC
             """
         ).fetchall()
-        event_pin = db.get_setting(_EVENT_PASSWORD_KEY, None)
+        event_pin = _ensure_event_pin(db)
 
     data = {
         "pins": [
@@ -903,7 +957,7 @@ def admin_generate_event_pin():
         return jsonify({"error": "Unauthorized"}), 401
 
     # Sechs Stellen, kryptografisch zufaellig, fuehrende Nullen sind erlaubt.
-    new_pin = "".join(secrets.choice("0123456789") for _ in range(6))
+    new_pin = _generate_event_pin()
 
     db = get_db()
     if db is None:
@@ -1435,13 +1489,24 @@ def admin_update_riege():
             )
             for kl_end in klassen or "":
                 if kl_end.strip():
-                    db.add_riegenfuehrer_to_schueler(
-                        rf_id=riegen_id,
-                        klassenbuchstabe=kl_end.strip().lower(),
-                        stufe=stufe,
-                        geschlecht=geschlecht or "mw",
-                        profil=bool(profil),
-                    )
+                    if profil:
+                        db.add_riegenfuehrer_to_schueler(
+                            rf_id=riegen_id,
+                            klassenbuchstabe=kl_end.strip().lower(),
+                            stufe=stufe,
+                            geschlecht="mw",
+                            profil=True,
+                        )
+                        continue
+
+                    for zielgeschlecht in _resolve_assignment_genders(geschlecht):
+                        db.add_riegenfuehrer_to_schueler(
+                            rf_id=riegen_id,
+                            klassenbuchstabe=kl_end.strip().lower(),
+                            stufe=stufe,
+                            geschlecht=zielgeschlecht,
+                            profil=False,
+                        )
             db.connection.commit()
     except Exception as exc:
         flash(f"Update fehlgeschlagen: {exc}", "error")
@@ -1595,7 +1660,15 @@ def dashboard():
     db = get_db()
     registry = _get_registry()
     disziplin_filter = request.args.get("disziplin")
-    riegen = db.get_all_riegen_with_progress(disziplin=disziplin_filter) if db else []
+    num_rounds = _get_progress_num_rounds(registry, disziplin_filter)
+    riegen = (
+        db.get_all_riegen_with_progress(
+            disziplin=disziplin_filter,
+            num_rounds=num_rounds,
+        )
+        if db
+        else []
+    )
     disziplinen = [_disziplin_to_dict(d) for d in registry.get_disziplinen()]
     stats = db.get_stats() if db else {}
 
@@ -1616,8 +1689,16 @@ def dashboard_data():
 
     db = get_db()
     disziplin_filter = request.args.get("disziplin")
-
-    riegen = db.get_all_riegen_with_progress(disziplin=disziplin_filter) if db else []
+    registry = _get_registry()
+    num_rounds = _get_progress_num_rounds(registry, disziplin_filter)
+    riegen = (
+        db.get_all_riegen_with_progress(
+            disziplin=disziplin_filter,
+            num_rounds=num_rounds,
+        )
+        if db
+        else []
+    )
     stats = db.get_stats() if db else {}
 
     return jsonify({"riegen": riegen, "stats": stats})
@@ -1728,7 +1809,8 @@ def stats_run_auswertung():
 
     registry = _get_registry()
     service = AuswertungService.from_registry(registry)
-    result = service.evaluate_database(db)
+    referenzjahr = _get_active_event_year(registry, db)
+    result = service.evaluate_database(db, year=referenzjahr)
     summary = db.get_auswertung_summary()
     export_dir = _export_auswertung_by_class(
         db=db,

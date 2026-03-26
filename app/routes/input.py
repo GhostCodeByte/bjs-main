@@ -86,7 +86,12 @@ def _validate_and_normalize_result(ergebnis: str, discipline: str):
     if not bereinigter_wert:
         return False, None, "Ergebnis erforderlich"
 
+    result_format = _get_result_format_for_discipline(discipline)
+
     if ":" in bereinigter_wert:
+        if result_format != "time":
+            return False, None, "Zeitformat nur fuer Zeitdisziplinen erlaubt"
+
         zeitteile = bereinigter_wert.split(":")
         if len(zeitteile) != 2:
             return False, None, "Zeitformat mm:ss erforderlich"
@@ -99,7 +104,7 @@ def _validate_and_normalize_result(ergebnis: str, discipline: str):
         if sekunden_int >= 60:
             return False, None, "Sekunden muessen < 60 sein"
 
-        return True, f"{int(minuten):02d}:{sekunden_int:02d}", ""
+        return True, float((int(minuten) * 60) + sekunden_int), ""
 
     try:
         numerischer_wert = float(bereinigter_wert.replace(",", "."))

@@ -2,6 +2,7 @@
 
 import json
 import logging
+import re
 import secrets
 import sqlite3
 import string
@@ -346,6 +347,24 @@ class Database:
 
         self.connection.commit()
 
+    def _infer_event_year(self) -> Optional[int]:
+        """Leitet das Event-Jahr aus dem Datenbanknamen ab, falls moeglich."""
+        match = re.match(
+            r"^BJS_(\d{4})_\d+\.db$",
+            Path(self.db_path).name,
+            re.IGNORECASE,
+        )
+        if not match:
+            return None
+        try:
+            return int(match.group(1))
+        except Exception:
+            return None
+
+    def _get_reference_year(self) -> int:
+        """Liefert das fachliche Referenzjahr fuer altersabhaengige Werte."""
+        return self._infer_event_year() or datetime.now().year
+
     def _execute_tx(self, query: str, params: tuple = ()):
         """Führt Query in Transaktion aus mit Rollback bei Fehler."""
         try:
@@ -387,7 +406,7 @@ class Database:
                 int(klasse),
                 klassenbuchstabe,
                 int(geburtsjahr),
-                datetime.now().year - int(geburtsjahr),
+                self._get_reference_year() - int(geburtsjahr),
                 1 if profil else 0,
             ),
         )
@@ -586,7 +605,9 @@ class Database:
         return schueler_liste
 
     def get_all_riegen_with_progress(
-        self, disziplin: Optional[str] = None
+        self,
+        disziplin: Optional[str] = None,
+        num_rounds: int = 3,
     ) -> List[Dict[str, Any]]:
         """
         Holt alle Riegen mit Fortschritts-Informationen.
@@ -608,7 +629,11 @@ class Database:
             total = row[6] or 0
 
             # Fortschritt berechnen
-            progress = self._get_riege_progress(riege_id, disziplin)
+            progress = self._get_riege_progress(
+                riege_id,
+                disziplin,
+                num_rounds=max(int(num_rounds or 0), 1),
+            )
 
             riegen.append(
                 {
@@ -626,11 +651,14 @@ class Database:
         return riegen
 
     def _get_riege_progress(
-        self, riege_id: int, disziplin: Optional[str] = None
+        self,
+        riege_id: int,
+        disziplin: Optional[str] = None,
+        num_rounds: int = 3,
     ) -> Dict[str, Any]:
         """Berechnet den Fortschritt einer Riege."""
         disziplin_filter = "AND e.Disziplin = ?" if disziplin else ""
-        params = (riege_id, disziplin) if disziplin else (riege_id,)
+        params = (disziplin, riege_id) if disziplin else (riege_id,)
 
         # Gesamt-Schüler
         self.cursor.execute(
@@ -641,7 +669,7 @@ class Database:
         if total == 0:
             return {"total": 0, "completed": 0, "absent": 0, "percent": 0, "rounds": {}}
 
-        # Schüler mit vollständigen Ergebnissen (alle 3 Runden)
+        # Schüler mit vollständigen Ergebnissen auf Basis des neuesten Stands je Runde.
         query = f"""
             SELECT s.SchuelerID,
                    SUM(CASE WHEN e.status = 'OK' THEN 1 ELSE 0 END) as ok_count,
@@ -666,22 +694,30 @@ class Database:
         for row in self.cursor.fetchall():
             ok_count = row[1] or 0
             absent_count = row[2] or 0
-            if ok_count >= 3:
+            if ok_count >= num_rounds:
                 completed += 1
             if absent_count > 0:
                 absent += 1
 
         # Runden-Details
         rounds = {}
-        for round_nr in (1, 2, 3):
+        for round_nr in range(1, num_rounds + 1):
             query = f"""
-                SELECT COUNT(DISTINCT e.SchuelerID)
-                FROM Schueler_Disziplin_Ergebnis e
-                JOIN Schueler s ON s.SchuelerID = e.SchuelerID
+                SELECT COUNT(DISTINCT latest.SchuelerID)
+                FROM (
+                    SELECT e.SchuelerID, e.Disziplin, e.ErgebnisNR, e.status
+                    FROM Schueler_Disziplin_Ergebnis e
+                    JOIN (
+                        SELECT SchuelerID, Disziplin, ErgebnisNR, MAX(ID) AS max_id
+                        FROM Schueler_Disziplin_Ergebnis
+                        GROUP BY SchuelerID, Disziplin, ErgebnisNR
+                    ) newest ON newest.max_id = e.ID
+                ) latest
+                JOIN Schueler s ON s.SchuelerID = latest.SchuelerID
                 WHERE s.RiegenfuehrerID = ?
-                AND e.ErgebnisNR = ?
-                AND e.status = 'OK'
-                {disziplin_filter.replace("e.Disziplin", "e.Disziplin")}
+                AND latest.ErgebnisNR = ?
+                AND latest.status = 'OK'
+                {disziplin_filter.replace("e.Disziplin", "latest.Disziplin")}
             """
             params_round = (
                 (riege_id, round_nr, disziplin) if disziplin else (riege_id, round_nr)
@@ -799,21 +835,36 @@ class Database:
                 "SELECT result_format FROM Disziplinen WHERE name = ?", (disziplin,)
             )
             row = self.cursor.fetchone()
-            result_format = row[0] if row else "distance"
+            if row and row[0] in ("time", "distance"):
+                result_format = row[0]
+            elif str(disziplin or "").strip().lower() in {"sprint", "lauf"}:
+                result_format = "time"
+            else:
+                result_format = "distance"
 
         order = "ASC" if result_format == "time" else "DESC"
         aggregate = "MIN" if result_format == "time" else "MAX"
         geschlecht_filter = "AND s.Geschlecht = ?" if geschlecht else ""
 
         query = f"""
+            WITH latest_results AS (
+                SELECT e.SchuelerID, e.Disziplin, e.ErgebnisNR, e.result_value, e.status
+                FROM Schueler_Disziplin_Ergebnis e
+                JOIN (
+                    SELECT SchuelerID, Disziplin, ErgebnisNR, MAX(ID) AS max_id
+                    FROM Schueler_Disziplin_Ergebnis
+                    GROUP BY SchuelerID, Disziplin, ErgebnisNR
+                ) latest ON latest.max_id = e.ID
+                WHERE e.status = 'OK' AND e.result_value IS NOT NULL
+            )
             SELECT s.SchuelerID, s.Name, s.Vorname, s.Klasse, s.Klassenbuchstabe,
-                   s.Geschlecht, {aggregate}(e.result_value) as best_result
+                   s.Geschlecht, {aggregate}(lr.result_value) as best_result
             FROM Schueler s
-            JOIN Schueler_Disziplin_Ergebnis e ON e.SchuelerID = s.SchuelerID
-            WHERE e.Disziplin = ? AND e.status = 'OK' AND e.result_value IS NOT NULL
+            JOIN latest_results lr ON lr.SchuelerID = s.SchuelerID
+            WHERE lr.Disziplin = ?
             {geschlecht_filter}
             GROUP BY s.SchuelerID
-            ORDER BY best_result {order}
+            ORDER BY best_result {order}, s.Name ASC, s.Vorname ASC
             LIMIT ?
         """
 
@@ -1588,15 +1639,33 @@ class Database:
         self.cursor.execute("SELECT COUNT(*) FROM Riegenfuehrer")
         stats["total_riegen"] = self.cursor.fetchone()[0]
 
-        # Ergebnisse gesamt
+        latest_results_cte = """
+            WITH latest_results AS (
+                SELECT e.SchuelerID, e.Disziplin, e.ErgebnisNR, e.status
+                FROM Schueler_Disziplin_Ergebnis e
+                JOIN (
+                    SELECT SchuelerID, Disziplin, ErgebnisNR, MAX(ID) AS max_id
+                    FROM Schueler_Disziplin_Ergebnis
+                    GROUP BY SchuelerID, Disziplin, ErgebnisNR
+                ) latest ON latest.max_id = e.ID
+            )
+        """
+
+        # Ergebnisse gesamt nach aktuellem Stand
         self.cursor.execute(
-            "SELECT COUNT(*) FROM Schueler_Disziplin_Ergebnis WHERE status = 'OK'"
+            latest_results_cte
+            + """
+            SELECT COUNT(*) FROM latest_results WHERE status = 'OK'
+            """
         )
         stats["total_ergebnisse"] = self.cursor.fetchone()[0]
 
-        # Abwesend gesamt
+        # Abwesend gesamt nach aktuellem Stand
         self.cursor.execute(
-            "SELECT COUNT(*) FROM Schueler_Disziplin_Ergebnis WHERE status = 'ABWESEND'"
+            latest_results_cte
+            + """
+            SELECT COUNT(*) FROM latest_results WHERE status = 'ABWESEND'
+            """
         )
         stats["total_abwesend"] = self.cursor.fetchone()[0]
 
@@ -1606,9 +1675,10 @@ class Database:
 
         # Ergebnisse pro Disziplin
         self.cursor.execute(
-            """
+            latest_results_cte
+            + """
             SELECT Disziplin, COUNT(*)
-            FROM Schueler_Disziplin_Ergebnis
+            FROM latest_results
             WHERE status = 'OK'
             GROUP BY Disziplin
             """

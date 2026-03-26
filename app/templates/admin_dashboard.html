@@ -35,12 +35,21 @@
       .event-pin-box {
         display: flex;
         align-items: center;
-        justify-content: space-between;
-        gap: 12px;
+        justify-content: flex-start;
+        gap: 8px;
         padding: 12px 14px;
         border: 1px solid var(--border);
         border-radius: var(--radius);
         background: var(--panel-muted);
+        cursor: pointer;
+        transition:
+          border-color 0.14s ease,
+          background 0.14s ease;
+      }
+
+      .event-pin-box:hover {
+        border-color: var(--primary);
+        background: var(--panel);
       }
 
       .event-pin-label {
@@ -48,10 +57,10 @@
       }
 
       .event-pin-value {
-        min-width: 92px;
-        text-align: center;
+        min-width: 0;
+        text-align: left;
         font-weight: 700;
-        background: var(--panel);
+        letter-spacing: 0.08em;
       }
 
       .pin-row .row-actions {
@@ -295,22 +304,17 @@
           <div class="card" id="event-pin-card">
             <h3>Event</h3>
 
-            <div class="event-pin-box">
-              <div class="event-pin-label">Aktuelle Event-PIN</div>
+            <div
+              class="event-pin-box"
+              id="event-pin-copy"
+              role="button"
+              tabindex="0"
+              aria-label="Event-PIN kopieren"
+            >
+              <div class="event-pin-label">Event-PIN:</div>
               <div class="event-pin-value" id="current-event-pin">
                 {% if event_pin %}{{ event_pin }}{% else %}-{% endif %}
               </div>
-            </div>
-
-            <div class="btnrow" style="margin-top: 10px">
-              <button
-                class="primary"
-                type="button"
-                onclick="generateEventPin()"
-              >
-                Neuen Event-PIN generieren
-              </button>
-              <div class="muted" id="event-pin-result"></div>
             </div>
           </div>
 
@@ -758,24 +762,27 @@
           return data;
       }
 
-      async function generateEventPin() {
-          const el = document.getElementById("event-pin-result");
-          const current = document.getElementById("current-event-pin");
-          el.textContent = "Generiere...";
+      const eventPinCopy = document.getElementById("event-pin-copy");
+      const currentEventPin = document.getElementById("current-event-pin");
+
+      async function copyEventPin() {
+          const pin = currentEventPin?.textContent?.trim();
+          if (!pin || pin === "-") return;
           try {
-              const data = await jsonFetch(
-                  "/admin/event_pin/generate",
-                  "POST",
-                  {},
-              );
-              current.textContent = data.event_pin;
-              el.innerHTML = `Neu gesetzt: <code>${data.event_pin}</code>`;
-              showToast("Event-PIN aktualisiert", "info");
+              await navigator.clipboard.writeText(pin);
+              showToast(`Event-PIN kopiert: ${pin}`, "info");
           } catch (e) {
-              el.textContent = e.message;
-              showToast(e.message, "error");
+              showToast("Event-PIN konnte nicht kopiert werden", "error");
           }
       }
+
+      eventPinCopy?.addEventListener("click", copyEventPin);
+      eventPinCopy?.addEventListener("keydown", (event) => {
+          if (event.key === "Enter" || event.key === " ") {
+              event.preventDefault();
+              copyEventPin();
+          }
+      });
 
       const genForm = document.getElementById("generate-pin-form");
       const genResult = document.getElementById("generate-pin-result");
