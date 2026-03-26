@@ -34,17 +34,17 @@ from flask import (
 from werkzeug.utils import secure_filename
 
 from app import get_db
-from app.db_registry import DbRegistry, Disziplin, default_meta_db_path
-from app.disziplinen_config import (
+from app.core.registry import DbRegistry, Disziplin, default_meta_db_path
+from app.core.disziplinen import (
     get_disziplinen_tab_konstanten,
     get_hardcoded_disziplinen,
 )
-from app.services_auswertung import AuswertungService
-from app.services_csv_import import (
+from app.services.auswertung import AuswertungService
+from app.services.csv_import import (
     import_students_csv_into_db,
     import_students_csv_to_new_db,
 )
-from app.services_riegen import (
+from app.services.riegen import (
     auto_create_riegen_and_assign,
     parse_leader_names_csv,
     replace_placeholder_names,
@@ -1118,6 +1118,7 @@ def admin_download_riegeneinteilung_csv():
 
     riegen = db.get_all_riegen_with_progress()
     def sort_key(riege: dict[str, Any]) -> tuple[int, str, int, str]:
+        """Sortiert Exportzeilen stabil nach Klasse, Profil/Geschlecht und Name."""
         stufe = int(riege.get("stufe") or 0)
         klassen = str(riege.get("klassenendungen") or "").strip().lower()
         geschlecht = str(riege.get("geschlecht") or "").strip().lower()

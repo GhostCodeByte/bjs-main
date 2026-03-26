@@ -14,7 +14,7 @@ from flask import (
 )
 
 from app import get_db
-from app.db_registry import DbRegistry, default_meta_db_path
+from app.core.registry import DbRegistry, default_meta_db_path
 
 input_bp = Blueprint("input", __name__, template_folder="../templates")
 

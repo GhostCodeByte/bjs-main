@@ -1,4 +1,4 @@
-"""Verwaltet die Registry fuer Event-Datenbanken und globale Disziplinen."""
+"""Verwaltet Meta-Datenbank, aktive Event-DB und statische Disziplinlisten."""
 
 from __future__ import annotations
 
@@ -10,10 +10,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Optional
 
-from .auswertung_config import (
-    get_default_auswertung_config,
-)
-from .disziplinen_config import get_hardcoded_disziplinen
+from app.core.disziplinen import get_hardcoded_disziplinen
+from app.services.auswertung import get_default_auswertung_config
 
 
 @dataclass(frozen=True)

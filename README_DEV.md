@@ -15,26 +15,32 @@ Die Web-App arbeitet immer nur mit genau einer aktiven Event-Datenbank gleichzei
 
 - `app/__init__.py`
   App-Factory, Logging, CSRF, Fehlerhandler, `get_db()`
-- `app/db_registry.py`
-  Meta-DB fuer aktive Event-DB und Disziplinen
+- `app/core/settings.py`
+  zentrale Flask-Einstellungen fuer alle Betriebsmodi
+- `app/core/registry.py`
+  Meta-DB fuer aktive Event-DB und statische Disziplinen
+- `app/core/disziplinen.py`
+  feste Disziplindefinitionen und UI-Texte
 - `app/database/database.py`
   SQLite-Zugriff fuer Event-Daten
 - `app/routes/auth.py`
   Login, Admin, Event, Dashboard, Import, Backups
 - `app/routes/input.py`
   Stations-Erfassung
-- `app/services_csv_import.py`
+- `app/services/csv_import.py`
   CSV-Import in neue Event-DB
-- `app/services_riegen.py`
+- `app/services/riegen.py`
   Riegenerzeugung und Namensersetzung
+- `app/services/auswertung.py`
+  Bewertungslogik samt fest eingebauter Auswertungskonfiguration
 
 ## Fachlicher Ablauf im Code
 
 ### Import
 
 1. CSV kommt ueber `auth.py`
-2. `services_csv_import.py` erzeugt eine neue Event-DB
-3. `db_registry.py` registriert sie
+2. `app/services/csv_import.py` erzeugt eine neue Event-DB
+3. `app/core/registry.py` registriert sie
 4. die DB wird aktiv gesetzt
 5. danach startet die Riegenerzeugung
 

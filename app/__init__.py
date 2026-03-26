@@ -11,10 +11,10 @@ from flask_wtf.csrf import CSRFError, CSRFProtect, generate_csrf
 from werkzeug.exceptions import RequestEntityTooLarge
 from werkzeug.middleware.proxy_fix import ProxyFix
 
-from config import get_config
+from app.core.settings import get_config
 
 from .database.database import Database
-from .db_registry import DbRegistry, default_meta_db_path
+from .core.registry import DbRegistry, default_meta_db_path
 
 csrf = CSRFProtect()
 load_dotenv()
@@ -70,6 +70,7 @@ def _register_error_handlers(app: Flask) -> None:
 
     @app.errorhandler(RequestEntityTooLarge)
     def handle_request_entity_too_large(_error):
+        """Antwortet bei zu grossen Uploads mit HTML oder JSON."""
         nachricht = "Upload zu gross. Bitte eine kleinere Datei verwenden."
         app.logger.warning("Upload wegen MAX_CONTENT_LENGTH abgewiesen: path=%s", request.path)
         if request.is_json:
@@ -78,6 +79,7 @@ def _register_error_handlers(app: Flask) -> None:
 
     @app.errorhandler(CSRFError)
     def handle_csrf_error(error: CSRFError):
+        """Antwortet bei CSRF-Problemen mit HTML oder JSON."""
         nachricht = f"CSRF-Fehler: {error.description}"
         app.logger.warning("CSRF-Fehler auf %s", request.path)
         if request.is_json:

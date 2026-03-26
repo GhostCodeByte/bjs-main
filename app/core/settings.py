@@ -13,6 +13,7 @@ def _as_bool(value: str | None, default: bool = False) -> bool:
 
 
 class BaseConfig:
+    """Gemeinsame Grundeinstellungen fuer alle Betriebsmodi."""
     ENV_NAME = "development"
     SECRET_KEY = os.getenv("SECRET_KEY", "change-me")
     DB_PATH = os.getenv(
@@ -85,18 +86,21 @@ class BaseConfig:
 
 
 class DevelopmentConfig(BaseConfig):
+    """Entwicklungsmodus mit aktivem Debugging."""
     ENV_NAME = "development"
     DEBUG = True
     SESSION_COOKIE_SECURE = False
 
 
 class ProductionConfig(BaseConfig):
+    """Produktionsmodus mit sicheren Cookie-Vorgaben."""
     ENV_NAME = "production"
     DEBUG = False
     SESSION_COOKIE_SECURE = os.getenv("SESSION_COOKIE_SECURE", "true").lower() == "true"
 
 
 class TestingConfig(BaseConfig):
+    """Testmodus mit entspannter Sicherheitskonfiguration."""
     ENV_NAME = "testing"
     TESTING = True
     DEBUG = True
