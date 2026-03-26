@@ -308,8 +308,13 @@ class DbRegistry:
 
         if delete_file:
             datenbankpfad = Path(eintrag.path)
-            if datenbankpfad.exists():
-                datenbankpfad.unlink()
+            for pfad in (
+                datenbankpfad,
+                Path(f"{datenbankpfad}-wal"),
+                Path(f"{datenbankpfad}-shm"),
+            ):
+                if pfad.exists():
+                    pfad.unlink()
 
         return True
 

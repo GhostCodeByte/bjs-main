@@ -3,4 +3,3 @@
 - männlich weiblich getrent sport? -> jeweils eine auswertungs csv
 - wie viele sport profiel gibt es pro klasse
 - in der import liste wissen welche sport profil wer ist für die auswertung aufteilung
--

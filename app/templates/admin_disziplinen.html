@@ -496,6 +496,19 @@
                 setTimeout(() => toast.classList.remove("show"), 2500);
             }
 
+            function getDownloadFilename(contentDisposition) {
+                if (!contentDisposition) return "auswertung.zip";
+                const utf8Match = contentDisposition.match(/filename\*=UTF-8''([^;]+)/i);
+                if (utf8Match && utf8Match[1]) {
+                    return decodeURIComponent(utf8Match[1]);
+                }
+                const plainMatch = contentDisposition.match(/filename="?([^"]+)"?/i);
+                if (plainMatch && plainMatch[1]) {
+                    return plainMatch[1];
+                }
+                return "auswertung.zip";
+            }
+
             async function runAuswertung() {
                 try {
                     const res = await fetch("/stats/auswertung/run", {
@@ -506,12 +519,23 @@
                         },
                         body: "{}",
                     });
-                    const data = await res.json().catch(() => ({}));
                     if (!res.ok) {
+                        const data = await res.json().catch(() => ({}));
                         throw new Error(data.error || "Fehler bei der Auswertung");
                     }
+                    const blob = await res.blob();
+                    const downloadUrl = window.URL.createObjectURL(blob);
+                    const link = document.createElement("a");
+                    link.href = downloadUrl;
+                    link.download = getDownloadFilename(
+                        res.headers.get("Content-Disposition"),
+                    );
+                    document.body.appendChild(link);
+                    link.click();
+                    link.remove();
+                    window.URL.revokeObjectURL(downloadUrl);
                     showToast(
-                        `Auswertung fertig: ${data.evaluated_students} bewertet, Export: ${data.export_dir || "-"}`,
+                        `Auswertung fertig: ${res.headers.get("X-Evaluated-Students") || "-"} bewertet, ZIP wird heruntergeladen.`,
                         "success",
                     );
                 } catch (error) {

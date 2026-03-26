@@ -12,6 +12,7 @@ import shutil
 import tempfile
 import time
 import uuid
+import zipfile
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Optional
@@ -26,6 +27,7 @@ from flask import (
     redirect,
     render_template,
     request,
+    send_file,
     session,
     url_for,
 )
@@ -354,6 +356,17 @@ def _export_auswertung_by_class(*, db, registry: DbRegistry, service: Auswertung
         shutil.rmtree(latest_dir, ignore_errors=True)
     shutil.copytree(zielordner, latest_dir)
     return zielordner
+
+
+def _build_zip_from_directory(source_dir: Path) -> io.BytesIO:
+    """Packt einen Exportordner rekursiv als ZIP in einen Speicherpuffer."""
+    zip_buffer = io.BytesIO()
+    with zipfile.ZipFile(zip_buffer, "w", compression=zipfile.ZIP_DEFLATED) as zip_file:
+        for path in sorted(source_dir.rglob("*")):
+            if path.is_file():
+                zip_file.write(path, arcname=path.relative_to(source_dir))
+    zip_buffer.seek(0)
+    return zip_buffer
 
 
 def _build_event_progress_cards(
@@ -1191,21 +1204,27 @@ def admin_delete_db():
     active_path = registry.get_active_db_path()
     was_active = active_path and Path(active_path) == Path(entry.path)
 
-    # Entfernt den Registry-Eintrag und optional die eigentliche Datei.
+    if was_active:
+        db = g.pop("db", None)
+        if db is not None:
+            try:
+                db.close()
+            except Exception:
+                logger.exception(
+                    "Aktive Datenbank konnte vor dem Loeschen nicht geschlossen werden."
+                )
+
     delete_file = request.form.get("delete_file", "true").lower() == "true"
-    success = registry.delete_db(name, delete_file=delete_file)
+    try:
+        success = registry.delete_db(name, delete_file=delete_file)
+    except Exception as exc:
+        logger.exception("Loeschen der Datenbank fehlgeschlagen: %s", exc)
+        flash(f"Löschen fehlgeschlagen: {exc}", "error")
+        return redirect(url_for("auth.admin_dashboard"))
 
     if not success:
         flash("Löschen fehlgeschlagen.", "error")
         return redirect(url_for("auth.admin_dashboard"))
-
-    # Bei geloeschter aktiver DB darf keine alte Verbindung im Request-Kontext haengen bleiben.
-    if was_active:
-        try:
-            db = get_db()
-            db.close()
-        except Exception:
-            pass
 
     action = "gelöscht" if delete_file else "aus Registry entfernt"
     flash(f"Datenbank '{name}' wurde {action}.", "success")
@@ -1799,7 +1818,7 @@ def stats_bestenliste():
 
 @auth_bp.route("/stats/auswertung/run", methods=["POST"])
 def stats_run_auswertung():
-    """Berechnet Gesamtpunktzahlen und Urkunden fuer die aktive Event-Datenbank."""
+    """Berechnet Gesamtpunktzahlen, erzeugt CSV-Export und liefert ihn als ZIP."""
     if not _require_dashboard_access():
         return jsonify({"error": "Unauthorized"}), 401
 
@@ -1817,14 +1836,18 @@ def stats_run_auswertung():
         registry=registry,
         service=service,
     )
+    zip_buffer = _build_zip_from_directory(export_dir)
+    download_name = f"{export_dir.name}.zip"
 
-    return jsonify(
-        {
-            "status": "ok",
-            "evaluated_students": result.evaluated_students,
-            "skipped_students": result.skipped_students,
-            "total_students": result.total_students,
-            "summary": summary,
-            "export_dir": str(export_dir),
-        }
+    response = send_file(
+        zip_buffer,
+        mimetype="application/zip",
+        as_attachment=True,
+        download_name=download_name,
     )
+    response.headers["X-Evaluated-Students"] = str(result.evaluated_students)
+    response.headers["X-Skipped-Students"] = str(result.skipped_students)
+    response.headers["X-Total-Students"] = str(result.total_students)
+    response.headers["X-Export-Dir"] = str(export_dir)
+    response.headers["X-Auswertung-Summary"] = json.dumps(summary)
+    return response
