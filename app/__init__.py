@@ -115,6 +115,11 @@ def create_app():
         aktive_datenbank = registry.get_active_db_path()
         if aktive_datenbank and Path(aktive_datenbank).exists():
             return aktive_datenbank
+        if aktive_datenbank:
+            app.logger.warning(
+                "Gespeicherter DB-Pfad ist ungueltig und wird ignoriert: %s",
+                aktive_datenbank,
+            )
 
         aktuelle_jahres_db = registry.find_latest_db_for_year(datetime.now().year)
         if aktuelle_jahres_db:
@@ -159,6 +164,12 @@ def get_db():
         aktive_datenbank = registry.get_active_db_path()
         datenbankpfad = aktive_datenbank
         if (not datenbankpfad or not Path(datenbankpfad).exists()):
+            if aktive_datenbank:
+                current_app.logger.warning(
+                    "Gespeicherter DB-Pfad ist ungueltig und wird ignoriert: %s",
+                    aktive_datenbank,
+                )
+            datenbankpfad = None
             aktuelle_jahres_db = registry.find_latest_db_for_year(datetime.now().year)
             if aktuelle_jahres_db:
                 registry.set_active_db_path(aktuelle_jahres_db.path)
